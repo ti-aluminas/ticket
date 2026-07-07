@@ -232,6 +232,40 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .sbadge.ajustar{background:rgba(183,28,28,.3);color:#ff8a80;border:1px solid rgba(255,138,128,.3)}
 .no-tickets{text-align:center;color:var(--text-muted);font-size:13px;padding:40px 0}
 
+/* ADMIN TABS */
+.admin-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:22px;gap:0}
+.admin-tab-btn{padding:10px 18px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;background:none;border:none;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:'Inter',sans-serif;transition:color .15s}
+.admin-tab-btn:hover{color:var(--text)}
+.admin-tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ANALYTICS */
+.analytics-wrap{display:none}
+.anl-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.anl-kpi{background:var(--surface2);border:1px solid var(--border);padding:16px 18px}
+.anl-kpi-label{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px}
+.anl-kpi-val{font-size:28px;font-weight:700;font-family:'Roboto Mono',monospace;line-height:1}
+.anl-kpi-sub{font-size:11px;color:var(--text-dim);margin-top:4px}
+.anl-kpi-val.accent{color:var(--accent)}
+.anl-kpi-val.green{color:#69f0ae}
+.anl-kpi-val.yellow{color:var(--yellow)}
+.anl-kpi-val.red{color:#ff8a80}
+.anl-charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.anl-chart-box{background:var(--surface2);border:1px solid var(--border);padding:18px}
+.anl-chart-box.full{grid-column:1/-1}
+.anl-chart-title{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.anl-chart-title span{font-weight:400;color:var(--text-dim)}
+.anl-chart-wrap{position:relative;height:180px}
+.anl-chart-wrap.tall{height:220px}
+.anl-empty{text-align:center;padding:40px;font-size:12px;color:var(--text-dim)}
+
+/* TOP USERS TABLE */
+.anl-user-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)}
+.anl-user-row:last-child{border-bottom:none}
+.anl-user-name{font-size:13px;font-weight:500;flex:1}
+.anl-user-bar-wrap{width:100px;height:6px;background:var(--border);overflow:hidden}
+.anl-user-bar-fill{height:100%;background:var(--accent);transition:width .4s}
+.anl-user-count{font-size:12px;font-family:'Roboto Mono',monospace;font-weight:700;color:var(--accent);min-width:24px;text-align:right}
+
 /* MODAL TICKET */
 .ticket-modal{background:var(--surface);border:1px solid var(--border);width:100%;max-width:540px;max-height:90vh;display:flex;flex-direction:column}
 .tm-head{padding:15px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
@@ -547,31 +581,109 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 
       <div class="admin-content">
         <div class="eyebrow">Painel do Admin</div>
-        <h2 style="font-size:18px;font-weight:700;margin-bottom:4px">Tickets Recebidos</h2>
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-          <div style="font-size:12px;color:var(--text-muted);flex:1" id="adminSub">Carregando...</div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:11px;color:var(--text-dim);font-family:'Roboto Mono',monospace">⟳ <span id="syncCountdown">5:00</span></span>
-            <button onclick="syncManual()" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">↻ Sincronizar</button>
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:16px">Gestão de Tickets</h2>
+
+        <!-- ABAS ADMIN -->
+        <div class="admin-tabs">
+          <button class="admin-tab-btn active" id="atab-tickets" onclick="switchAdminTab('tickets')">📋 Tickets</button>
+          <button class="admin-tab-btn" id="atab-analytics" onclick="switchAdminTab('analytics')">📊 Analytics</button>
+        </div>
+
+        <!-- PANE TICKETS -->
+        <div id="apane-tickets">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+            <div style="font-size:12px;color:var(--text-muted);flex:1" id="adminSub">Carregando...</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:11px;color:var(--text-dim);font-family:'Roboto Mono',monospace">⟳ <span id="syncCountdown">5:00</span></span>
+              <button onclick="syncManual()" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">↻ Sincronizar</button>
+            </div>
           </div>
+          <div class="filter-row">
+            <button class="filter-btn active" onclick="setFilter('todos',this)">Todos</button>
+            <button class="filter-btn" onclick="setFilter('pendente',this)">Pendentes</button>
+            <button class="filter-btn" onclick="setFilter('andamento',this)">Em Andamento</button>
+            <button class="filter-btn" onclick="setFilter('ok',this)">Concluídos</button>
+            <button class="filter-btn" onclick="setFilter('ajustar',this)">Precisa Ajustar</button>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr>
+                <th>#</th><th>Usuário</th><th>Categoria</th><th>Demanda</th>
+                <th>Abertura</th><th>Resolução</th><th>Fotos</th><th>Status</th>
+              </tr></thead>
+              <tbody id="ticketsList"></tbody>
+            </table>
+          </div>
+          <div class="no-tickets" id="noTickets" style="display:none">Nenhum ticket encontrado.</div>
         </div>
-        <div class="filter-row">
-          <button class="filter-btn active" onclick="setFilter('todos',this)">Todos</button>
-          <button class="filter-btn" onclick="setFilter('pendente',this)">Pendentes</button>
-          <button class="filter-btn" onclick="setFilter('andamento',this)">Em Andamento</button>
-          <button class="filter-btn" onclick="setFilter('ok',this)">Concluídos</button>
-          <button class="filter-btn" onclick="setFilter('ajustar',this)">Precisa Ajustar</button>
-        </div>
-        <div class="admin-table-wrap">
-          <table class="admin-table">
-            <thead><tr>
-              <th>#</th><th>Usuário</th><th>Categoria</th><th>Demanda</th>
-              <th>Abertura</th><th>Resolução</th><th>Fotos</th><th>Status</th>
-            </tr></thead>
-            <tbody id="ticketsList"></tbody>
-          </table>
-        </div>
-        <div class="no-tickets" id="noTickets" style="display:none">Nenhum ticket encontrado.</div>
+
+        <!-- PANE ANALYTICS -->
+        <div class="analytics-wrap" id="apane-analytics" style="display:none">
+
+          <!-- KPI CARDS -->
+          <div class="anl-kpi-row" style="grid-template-columns:repeat(5,1fr)">
+            <div class="anl-kpi">
+              <div class="anl-kpi-label">TMR — Criação</div>
+              <div class="anl-kpi-val accent" id="anlTMRCriacao">—</div>
+              <div class="anl-kpi-sub">horas úteis (média)</div>
+            </div>
+            <div class="anl-kpi">
+              <div class="anl-kpi-label">TMR — Composição</div>
+              <div class="anl-kpi-val accent" id="anlTMRComp">—</div>
+              <div class="anl-kpi-sub">horas úteis (média)</div>
+            </div>
+            <div class="anl-kpi">
+              <div class="anl-kpi-label">TMR — Geral</div>
+              <div class="anl-kpi-val accent" id="anlTMRGeral">—</div>
+              <div class="anl-kpi-sub">horas úteis (média)</div>
+            </div>
+            <div class="anl-kpi">
+              <div class="anl-kpi-label">Índice de Reabertura</div>
+              <div class="anl-kpi-val yellow" id="anlIR">—</div>
+              <div class="anl-kpi-sub" id="anlIRsub">tickets reabertos</div>
+            </div>
+            <div class="anl-kpi">
+              <div class="anl-kpi-label">Tickets — Últimos 7d</div>
+              <div class="anl-kpi-val accent" id="anl7d">—</div>
+              <div class="anl-kpi-sub" id="anl7dSub">abertos no período</div>
+            </div>
+          </div>
+
+          <!-- GRÁFICOS LINHA 1 -->
+          <div class="anl-charts-grid">
+            <div class="anl-chart-box full">
+              <div class="anl-chart-title">Tickets por Dia <span>— últimos 14 dias</span></div>
+              <div class="anl-chart-wrap tall"><canvas id="chartDia"></canvas></div>
+            </div>
+          </div>
+
+          <!-- GRÁFICOS LINHA 2 -->
+          <div class="anl-charts-grid">
+            <div class="anl-chart-box">
+              <div class="anl-chart-title">Distribuição de Status</div>
+              <div class="anl-chart-wrap" style="height:200px;display:flex;align-items:center;justify-content:center">
+                <canvas id="chartStatus" style="max-height:200px;max-width:200px"></canvas>
+              </div>
+            </div>
+            <div class="anl-chart-box">
+              <div class="anl-chart-title">Tempo Médio por Categoria <span>— horas</span></div>
+              <div class="anl-chart-wrap"><canvas id="chartTempoCat"></canvas></div>
+            </div>
+          </div>
+
+          <!-- GRÁFICOS LINHA 3 -->
+          <div class="anl-charts-grid">
+            <div class="anl-chart-box">
+              <div class="anl-chart-title">Top Solicitantes</div>
+              <div id="anlTopUsers"><div class="anl-empty">Sem dados</div></div>
+            </div>
+            <div class="anl-chart-box">
+              <div class="anl-chart-title">Reabertura por Usuário</div>
+              <div id="anlReaberturaUsers"><div class="anl-empty">Sem reaberutras</div></div>
+            </div>
+          </div>
+
+        </div><!-- /analytics-wrap -->
       </div>
     </div>
   </section>
@@ -580,6 +692,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 <div class="toast" id="toast"></div>
 <div class="overlay" id="overlay"><div class="spinner"></div></div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL = 'https://zeaknzyvlgawtjjdfluc.supabase.co';
@@ -668,6 +781,8 @@ function entrarAdmin(nomeAdmin) {
 
 function voltarModo() {
   pararSync();
+  Object.keys(_anlCharts).forEach(k=>{ _anlCharts[k].destroy(); delete _anlCharts[k]; });
+  switchAdminTab('tickets');
   localStorage.removeItem('aluminas_admin');
   selectedUser = null; fotosBase64 = [];
   document.getElementById('mainPage').style.display = 'none';
@@ -1110,6 +1225,250 @@ async function excluirUsuario(id,nome) {
   if(error){ showToast('Erro: '+error.message,'error'); return; }
   showToast('Usuário "'+nome+'" excluído.','success');
   carregarUsuarios();
+}
+
+// ── ADMIN TABS ──
+let _anlCharts = {};
+function switchAdminTab(tab) {
+  document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('atab-'+tab).classList.add('active');
+  document.getElementById('apane-tickets').style.display = tab==='tickets' ? 'block' : 'none';
+  document.getElementById('apane-analytics').style.display = tab==='analytics' ? 'block' : 'none';
+  if(tab==='analytics') renderAnalytics();
+}
+
+// ── HORAS ÚTEIS (seg-sex, 08:00–18:00 = 10h/dia = 50h/sem → ajustado para 40h/sem = 8h/dia útil) ──
+// Jornada: 8h por dia útil (08:00–18:00 com 2h de intervalo = 8h líquidas)
+const HORA_INICIO = 8;   // 08:00
+const HORA_FIM   = 18;  // 18:00 (10h janela, mas 8h úteis líquidas — almoço excluído pelo padrão 40h/5d)
+const HORAS_DIA  = 8;   // horas úteis por dia
+
+function calcHorasUteis(inicio, fim) {
+  if(fim <= inicio) return 0;
+  let uteis = 0;
+  let cur = new Date(inicio);
+
+  // Avança cursor para o próximo instante útil se estiver fora do horário
+  function ajustarInicio(d) {
+    const dow = d.getDay();
+    // Fim de semana → pula para segunda 08:00
+    if(dow === 0) { d.setDate(d.getDate()+1); d.setHours(HORA_INICIO,0,0,0); }
+    if(dow === 6) { d.setDate(d.getDate()+2); d.setHours(HORA_INICIO,0,0,0); }
+    // Antes do expediente → avança para 08:00
+    if(d.getHours() < HORA_INICIO) d.setHours(HORA_INICIO,0,0,0);
+    // Após expediente → pula para próximo dia útil 08:00
+    if(d.getHours() >= HORA_FIM) {
+      d.setDate(d.getDate()+1); d.setHours(HORA_INICIO,0,0,0);
+      const nd=d.getDay();
+      if(nd===6) d.setDate(d.getDate()+2);
+      if(nd===0) d.setDate(d.getDate()+1);
+    }
+  }
+
+  ajustarInicio(cur);
+  if(cur >= fim) return 0;
+
+  while(cur < fim) {
+    const dow = cur.getDay();
+    if(dow===0||dow===6){ cur.setDate(cur.getDate()+1); cur.setHours(HORA_INICIO,0,0,0); continue; }
+    // Fim do expediente hoje
+    const fimDia = new Date(cur); fimDia.setHours(HORA_FIM,0,0,0);
+    const efetivo = Math.min(fimDia, fim);
+    const diffH = (efetivo - cur) / 3600000;
+    if(diffH > 0) uteis += diffH;
+    // Avança para próximo dia útil
+    cur.setDate(cur.getDate()+1); cur.setHours(HORA_INICIO,0,0,0);
+    const nd=cur.getDay();
+    if(nd===6) cur.setDate(cur.getDate()+2);
+    if(nd===0) cur.setDate(cur.getDate()+1);
+  }
+
+  // A janela 08-18 tem 10h, mas a jornada é 8h (2h de intervalo/almoço)
+  // Escala proporcional: 8/10 = 0.8
+  return uteis * (HORAS_DIA / (HORA_FIM - HORA_INICIO));
+}
+
+// ── ANALYTICS ──
+Chart.defaults.color = '#666';
+Chart.defaults.borderColor = '#2e2e2e';
+Chart.defaults.font.family = "'Inter', sans-serif";
+Chart.defaults.font.size = 11;
+
+function destroyChart(id) { if(_anlCharts[id]){ _anlCharts[id].destroy(); delete _anlCharts[id]; } }
+
+function renderAnalytics() {
+  const tickets = allTickets;
+  if(!tickets || tickets.length===0){
+    document.getElementById('anlTMRCriacao').textContent='—';
+    document.getElementById('anlTMRComp').textContent='—';
+    document.getElementById('anlTMRGeral').textContent='—';
+    document.getElementById('anlIR').textContent='—';
+    document.getElementById('anlIRsub').textContent='tickets reabertos';
+    document.getElementById('anl7d').textContent='0';
+    document.getElementById('anl7dSub').textContent='abertos nos últimos 7 dias';
+    return;
+  }
+
+  // ── KPI: Tempo médio de resolução por categoria (horas úteis seg-sex 8h-18h) ──
+  const resolvidos = tickets.filter(t=>t.resolvido_em && t.criado_em && (t.status==='ok'||t.status==='ajustar'));
+  function fmtTMR(grupo) {
+    if(grupo.length===0) return '—';
+    const avg = grupo.reduce((s,t)=>s+calcHorasUteis(new Date(t.criado_em),new Date(t.resolvido_em)),0)/grupo.length;
+    return avg<1 ? Math.round(avg*60)+'min' : avg<8 ? avg.toFixed(1)+'h' : (avg/8).toFixed(1)+'d úteis';
+  }
+  const resolvidosCriacao = resolvidos.filter(t=>t.categoria==='Criação de Produto');
+  const resolvidosComp    = resolvidos.filter(t=>t.categoria==='Adição de Composição');
+  document.getElementById('anlTMRCriacao').textContent = fmtTMR(resolvidosCriacao);
+  document.getElementById('anlTMRComp').textContent    = fmtTMR(resolvidosComp);
+  document.getElementById('anlTMRGeral').textContent   = fmtTMR(resolvidos);
+
+  // ── KPI: Índice de reabertura ──
+  const reabertos = tickets.filter(t=>t.reaberto_comentario);
+  const pctReab = tickets.length>0 ? (reabertos.length/tickets.length*100).toFixed(1) : 0;
+  document.getElementById('anlIR').textContent = pctReab+'%';
+  document.getElementById('anlIRsub').textContent = reabertos.length+' reaberto(s) de '+tickets.length;
+
+  // ── KPI: Últimos 7 dias ──
+  const d7ago = new Date(); d7ago.setDate(d7ago.getDate()-7); d7ago.setHours(0,0,0,0);
+  const tickets7d = tickets.filter(t=>t.criado_em && new Date(t.criado_em)>=d7ago);
+  document.getElementById('anl7d').textContent = tickets7d.length;
+  document.getElementById('anl7dSub').textContent = 'abertos nos últimos 7 dias';
+
+  // ── CHART: Tickets por dia (14d) ──
+  destroyChart('dia');
+  const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const days14 = [];
+  const labels14 = [];
+  for(let i=13;i>=0;i--){
+    const d=new Date(); d.setDate(d.getDate()-i); d.setHours(0,0,0,0);
+    const dow=d.getDay();
+    const dNext=new Date(d); dNext.setDate(dNext.getDate()+1);
+    const count=tickets.filter(t=>{
+      if(!t.criado_em) return false;
+      const dt=new Date(t.criado_em); return dt>=d && dt<dNext;
+    }).length;
+    // Só exibe dias com pelo menos 1 ticket
+    if(count===0) continue;
+    days14.push(count);
+    labels14.push(d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' ('+DIAS_SEMANA[dow]+')');
+  }
+  _anlCharts['dia'] = new Chart(document.getElementById('chartDia'),{
+    type:'bar',
+    data:{
+      labels:labels14,
+      datasets:[{
+        label:'Tickets abertos',
+        data:days14,
+        backgroundColor:'rgba(192,146,42,0.35)',
+        borderColor:'#c0922a',
+        borderWidth:1.5,
+        borderRadius:2
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y+' ticket(s)'}}},
+      scales:{
+        x:{grid:{color:'#1f1f1f'},ticks:{color:'#666'}},
+        y:{grid:{color:'#1f1f1f'},ticks:{color:'#666',stepSize:1,precision:0},beginAtZero:true}
+      }
+    }
+  });
+
+  // ── CHART: Status doughnut ──
+  destroyChart('status');
+  const statusCounts = [
+    tickets.filter(t=>t.status==='pendente').length,
+    tickets.filter(t=>t.status==='andamento').length,
+    tickets.filter(t=>t.status==='ok').length,
+    tickets.filter(t=>t.status==='ajustar').length
+  ];
+  _anlCharts['status'] = new Chart(document.getElementById('chartStatus'),{
+    type:'doughnut',
+    data:{
+      labels:['Pendente','Em Andamento','Concluído','Precisa Ajustar'],
+      datasets:[{
+        data:statusCounts,
+        backgroundColor:['rgba(249,168,37,.7)','rgba(100,181,246,.7)','rgba(105,240,174,.7)','rgba(255,138,128,.7)'],
+        borderColor:['#f9a825','#64b5f6','#69f0ae','#ff8a80'],
+        borderWidth:1.5
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,cutout:'65%',
+      plugins:{
+        legend:{position:'bottom',labels:{padding:12,boxWidth:10,color:'#888'}},
+        tooltip:{callbacks:{label:ctx=>{const t=statusCounts.reduce((a,b)=>a+b,0); return ctx.label+': '+ctx.parsed+(t>0?' ('+Math.round(ctx.parsed/t*100)+'%)':''); }}}
+      }
+    }
+  });
+
+  // ── CHART: Tempo médio por categoria (horas úteis) ──
+  destroyChart('tempoCat');
+  const cats = ['Criação de Produto','Adição de Composição'];
+  const tmCat = cats.map(cat=>{
+    const grupo = resolvidos.filter(t=>t.categoria===cat);
+    if(grupo.length===0) return 0;
+    const avg = grupo.reduce((s,t)=>s+calcHorasUteis(new Date(t.criado_em),new Date(t.resolvido_em)),0)/grupo.length;
+    return parseFloat(avg.toFixed(1));
+  });
+  _anlCharts['tempoCat'] = new Chart(document.getElementById('chartTempoCat'),{
+    type:'bar',
+    data:{
+      labels:['Criação','Composição'],
+      datasets:[{
+        label:'Horas úteis',
+        data:tmCat,
+        backgroundColor:['rgba(192,146,42,0.4)','rgba(100,181,246,0.4)'],
+        borderColor:['#c0922a','#64b5f6'],
+        borderWidth:1.5,
+        borderRadius:3
+      }]
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.x+'h úteis (média)'}}},
+      scales:{
+        x:{grid:{color:'#1f1f1f'},ticks:{color:'#666'},beginAtZero:true},
+        y:{grid:{display:false},ticks:{color:'#888'}}
+      }
+    }
+  });
+
+  // ── TOP SOLICITANTES (inline bar) ──
+  const userMap={};
+  tickets.forEach(t=>{ userMap[t.operador]=(userMap[t.operador]||0)+1; });
+  const topUsers=Object.entries(userMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxU=topUsers.length>0?topUsers[0][1]:1;
+  const elU=document.getElementById('anlTopUsers');
+  if(topUsers.length===0){ elU.innerHTML='<div class="anl-empty">Sem dados</div>'; }
+  else {
+    elU.innerHTML=topUsers.map(([nome,cnt])=>`
+      <div class="anl-user-row">
+        <div class="avatar" style="width:24px;height:24px;font-size:9px;flex-shrink:0">${initials(nome)}</div>
+        <span class="anl-user-name">${nome}</span>
+        <div class="anl-user-bar-wrap"><div class="anl-user-bar-fill" style="width:${Math.round(cnt/maxU*100)}%"></div></div>
+        <span class="anl-user-count">${cnt}</span>
+      </div>`).join('');
+  }
+
+  // ── REABERTURA POR USUÁRIO ──
+  const reabMap={};
+  reabertos.forEach(t=>{ reabMap[t.operador]=(reabMap[t.operador]||0)+1; });
+  const topReab=Object.entries(reabMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxR=topReab.length>0?topReab[0][1]:1;
+  const elR=document.getElementById('anlReaberturaUsers');
+  if(topReab.length===0){ elR.innerHTML='<div class="anl-empty">Nenhuma reabertura registrada</div>'; }
+  else {
+    elR.innerHTML=topReab.map(([nome,cnt])=>`
+      <div class="anl-user-row">
+        <div class="avatar" style="width:24px;height:24px;font-size:9px;flex-shrink:0;background:rgba(249,168,37,.15);color:var(--yellow)">${initials(nome)}</div>
+        <span class="anl-user-name">${nome}</span>
+        <div class="anl-user-bar-wrap"><div class="anl-user-bar-fill" style="width:${Math.round(cnt/maxR*100)}%;background:var(--yellow)"></div></div>
+        <span class="anl-user-count" style="color:var(--yellow)">${cnt}</span>
+      </div>`).join('');
+  }
 }
 
 // ── INIT ──
