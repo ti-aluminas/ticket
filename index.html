@@ -1320,6 +1320,7 @@ function gerarResumoTickets(subset) {
   const porSolicitante = {};
   const porAdmin = {};
   const temposResolucao = [];
+  const temposPorCategoria = {};
   subset.forEach(t=>{
     if(t.categoria) porCategoria[t.categoria] = (porCategoria[t.categoria]||0)+1;
     if(t.status in porStatus) porStatus[t.status]++;
@@ -1327,15 +1328,19 @@ function gerarResumoTickets(subset) {
     if(t.respondido_por) porAdmin[t.respondido_por] = (porAdmin[t.respondido_por]||0)+1;
     if(t.resolvido_em && t.criado_em && (t.status==='ok'||t.status==='ajustar')) {
       temposResolucao.push(calcHorasUteis(new Date(t.criado_em),new Date(t.resolvido_em)));
+      if(t.categoria) {
+        (temposPorCategoria[t.categoria] = temposPorCategoria[t.categoria]||[]).push(calcHorasUteis(new Date(t.criado_em),new Date(t.resolvido_em)));
+      }
     }
   });
   const reabertos = subset.filter(t=>t.reaberto_comentario).length;
 
-  const linhaBar = (label, val, max, color) => `
+  const linhaBar = (label, val, max, color, extra) => `
     <div class="anl-user-row">
       <span class="anl-user-name">${label}</span>
       <div class="anl-user-bar-wrap"><div class="anl-user-bar-fill" style="width:${max>0?Math.round(val/max*100):0}%;background:${color||'var(--accent)'}"></div></div>
       <span class="anl-user-count">${val}</span>
+      ${extra?`<span style="margin-left:8px;font-size:11px;color:var(--text-muted);font-family:'Roboto Mono',monospace;white-space:nowrap">${extra}</span>`:''}
     </div>`;
   const secaoTitulo = txt => `<div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin:16px 0 6px">${txt}</div>`;
 
@@ -1354,7 +1359,10 @@ function gerarResumoTickets(subset) {
   const catEntries = Object.entries(porCategoria).sort((a,b)=>b[1]-a[1]);
   if(catEntries.length>0){
     const maxCat = catEntries[0][1];
-    html += secaoTitulo('Por Categoria') + catEntries.map(([k,v])=>linhaBar(k, v, maxCat, 'var(--accent)')).join('');
+    html += secaoTitulo('Por Categoria') + catEntries.map(([k,v])=>{
+      const tmrCat = temposPorCategoria[k] ? fmtTMRGenerico(temposPorCategoria[k]) : '—';
+      return linhaBar(k, v, maxCat, 'var(--accent)', 'TMR '+tmrCat);
+    }).join('');
   }
 
   const topSol = Object.entries(porSolicitante).sort((a,b)=>b[1]-a[1]).slice(0,5);
