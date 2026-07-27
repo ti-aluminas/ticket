@@ -213,6 +213,27 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .filter-row{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
 .filter-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);padding:6px 14px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s}
 .filter-btn.active{background:rgba(192,146,42,.12);border-color:var(--accent);color:var(--accent);font-weight:600}
+.filter-select,.filter-date{background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);padding:6px 10px;font-size:12px;font-family:'Inter',sans-serif;outline:none;cursor:pointer}
+.filter-select:focus,.filter-date:focus{border-color:var(--accent);color:var(--text)}
+.filter-date{font-family:'Roboto Mono',monospace;color-scheme:dark;cursor:text}
+.filter-clear-btn{background:none;border:1px solid var(--border);color:var(--text-dim);padding:6px 12px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif}
+.filter-clear-btn:hover{border-color:#ff8a80;color:#ff8a80}
+.filter-adv-btn{position:relative;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);padding:6px 10px;cursor:pointer;display:flex;align-items:center;transition:all .15s}
+.filter-adv-btn:hover{border-color:var(--accent);color:var(--accent)}
+.filter-adv-btn.active{background:rgba(192,146,42,.12);border-color:var(--accent);color:var(--accent)}
+.filter-adv-dot{position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:var(--accent);border:2px solid var(--surface)}
+.filter-adv-panel{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--surface);border:1px solid var(--border-light);box-shadow:0 8px 24px rgba(0,0,0,.5);padding:14px;z-index:20;width:240px;flex-direction:column;gap:10px}
+.filter-adv-panel.show{display:flex}
+.filter-adv-row{display:flex;flex-direction:column;gap:4px}
+.filter-adv-row label{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim)}
+.filter-adv-row .filter-date,.filter-adv-row .filter-select{width:100%}
+.chart-tmr-toggle{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted);cursor:pointer;font-weight:400;text-transform:none;letter-spacing:0}
+.chart-tmr-toggle input{accent-color:var(--accent);cursor:pointer;width:13px;height:13px}
+.sync-badge{font-size:10px;font-weight:700;padding:4px 10px;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;font-family:'Inter',sans-serif}
+.sync-badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+.sync-badge.conn{background:rgba(136,136,136,.15);color:var(--text-muted);border:1px solid var(--border)}
+.sync-badge.live{background:rgba(105,240,174,.15);color:#69f0ae;border:1px solid rgba(105,240,174,.3)}
+.sync-badge.err{background:rgba(255,138,128,.15);color:#ff8a80;border:1px solid rgba(255,138,128,.3)}
 .admin-table-wrap{overflow-x:auto}
 .admin-table{width:100%;border-collapse:collapse;font-size:13px}
 .admin-table thead tr{border-bottom:2px solid var(--border)}
@@ -610,22 +631,52 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
             <div style="font-size:12px;color:var(--text-muted);flex:1" id="adminSub">Carregando...</div>
             <div style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:11px;color:var(--text-dim);font-family:'Roboto Mono',monospace">⟳ <span id="syncCountdown">5:00</span></span>
+              <span class="sync-badge conn" id="syncStatus"><span class="dot"></span>conectando</span>
               <button onclick="syncManual()" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">↻ Sincronizar</button>
             </div>
           </div>
-          <div class="filter-row">
+          <div class="filter-row" style="position:relative">
             <button class="filter-btn active" onclick="setFilter('todos',this)">Todos</button>
             <button class="filter-btn" onclick="setFilter('pendente',this)">Pendentes</button>
             <button class="filter-btn" onclick="setFilter('andamento',this)">Em Andamento</button>
             <button class="filter-btn" onclick="setFilter('ok',this)">Concluídos</button>
             <button class="filter-btn" onclick="setFilter('ajustar',this)">Precisa Ajustar</button>
+            <button class="filter-adv-btn" id="btnFiltroAvancado" onclick="toggleFiltrosAvancados(event)" title="Mais filtros">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              <span id="filtroAvancadoDot" class="filter-adv-dot" style="display:none"></span>
+            </button>
+
+            <div class="filter-adv-panel" id="filtrosAvancados">
+              <div class="filter-adv-row">
+                <label>Data</label>
+                <input type="date" class="filter-date" id="filtroData" onchange="onFiltroExtraChange()">
+              </div>
+              <div class="filter-adv-row">
+                <label>Categoria</label>
+                <select class="filter-select" id="filtroCategoria" onchange="onFiltroExtraChange()">
+                  <option value="todas">Todas categorias</option>
+                </select>
+              </div>
+              <div class="filter-adv-row">
+                <label>Usuário</label>
+                <select class="filter-select" id="filtroUsuario" onchange="onFiltroExtraChange()">
+                  <option value="todos">Todos usuários</option>
+                </select>
+              </div>
+              <div class="filter-adv-row">
+                <label>Responsável</label>
+                <select class="filter-select" id="filtroResponsavel" onchange="onFiltroExtraChange()">
+                  <option value="todos">Todos responsáveis</option>
+                </select>
+              </div>
+              <button class="filter-clear-btn" style="width:100%;justify-content:center;margin-top:4px" onclick="limparFiltrosExtras()">✕ Limpar filtros</button>
+            </div>
           </div>
           <div class="admin-table-wrap">
             <table class="admin-table">
               <thead><tr>
                 <th>#</th><th>Usuário</th><th>Categoria</th><th>Demanda</th>
-                <th>Abertura</th><th>Resolução</th><th>Fotos</th><th>Status</th>
+                <th>Abertura</th><th>Resolução</th><th>TMR</th><th>Fotos</th><th>Status</th>
               </tr></thead>
               <tbody id="ticketsList"></tbody>
             </table>
@@ -740,7 +791,10 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
           <!-- EVOLUÇÃO DIÁRIA -->
           <div class="anl-charts-grid">
             <div class="anl-chart-box full">
-              <div class="anl-chart-title">Evolução Diária <span>— últimos 30 dias úteis</span></div>
+              <div class="anl-chart-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                <span>Evolução Diária <span>— últimos 30 dias úteis</span></span>
+                <label class="chart-tmr-toggle"><input type="checkbox" id="chkTmrDia" onchange="toggleTmrLine('diaRel',this)"> Mostrar TMR</label>
+              </div>
               <div class="anl-chart-wrap tall"><canvas id="chartDiaRel"></canvas></div>
             </div>
           </div>
@@ -748,7 +802,10 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
           <!-- EVOLUÇÃO SEMANAL -->
           <div class="anl-charts-grid">
             <div class="anl-chart-box full">
-              <div class="anl-chart-title">Evolução Semanal <span>— últimas 12 semanas (seg–sex)</span></div>
+              <div class="anl-chart-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                <span>Evolução Semanal <span>— últimas 12 semanas (seg–sex)</span></span>
+                <label class="chart-tmr-toggle"><input type="checkbox" id="chkTmrSemana" onchange="toggleTmrLine('semana',this)"> Mostrar TMR</label>
+              </div>
               <div class="anl-chart-wrap tall"><canvas id="chartSemana"></canvas></div>
             </div>
           </div>
@@ -756,7 +813,10 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
           <!-- EVOLUÇÃO MENSAL -->
           <div class="anl-charts-grid">
             <div class="anl-chart-box full">
-              <div class="anl-chart-title">Evolução Mensal <span>— últimos 12 meses</span></div>
+              <div class="anl-chart-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                <span>Evolução Mensal <span>— últimos 12 meses</span></span>
+                <label class="chart-tmr-toggle"><input type="checkbox" id="chkTmrMes" onchange="toggleTmrLine('mes',this)"> Mostrar TMR</label>
+              </div>
               <div class="anl-chart-wrap tall"><canvas id="chartMes"></canvas></div>
             </div>
           </div>
@@ -764,11 +824,17 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
           <!-- PADRÕES DE ABERTURA -->
           <div class="anl-charts-grid">
             <div class="anl-chart-box">
-              <div class="anl-chart-title">Horário de Pico <span>— horário útil, 07h–18h</span></div>
+              <div class="anl-chart-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                <span>Horário de Pico <span>— horário útil, 07h–18h</span></span>
+                <label class="chart-tmr-toggle"><input type="checkbox" id="chkTmrHora" onchange="toggleTmrLine('hora',this)"> Mostrar TMR</label>
+              </div>
               <div class="anl-chart-wrap"><canvas id="chartHora"></canvas></div>
             </div>
             <div class="anl-chart-box">
-              <div class="anl-chart-title">Dia da Semana mais Movimentado <span>— seg a sex</span></div>
+              <div class="anl-chart-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                <span>Dia da Semana mais Movimentado <span>— seg a sex</span></span>
+                <label class="chart-tmr-toggle"><input type="checkbox" id="chkTmrDiaSemana" onchange="toggleTmrLine('diaSemana',this)"> Mostrar TMR</label>
+              </div>
               <div class="anl-chart-wrap"><canvas id="chartDiaSemana"></canvas></div>
             </div>
           </div>
@@ -845,13 +911,16 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // ── STATE ──
 let allUsers = [], selectedUser = null;
 let allTickets = [], filterAtual = 'todos';
+let filtroData = '', filtroCategoria = 'todas', filtroUsuario = 'todos', filtroResponsavel = 'todos';
 let fotosBase64 = [];
 let ticketAberto = null, statusModalSel = null;
-let _syncTimer = null, _syncCD = 300;
+let _rtChannel = null;
 
 // ── CLOCK ──
 setInterval(() => { document.getElementById('clock').textContent = new Date().toLocaleTimeString('pt-BR'); }, 1000);
 document.getElementById('clock').textContent = new Date().toLocaleTimeString('pt-BR');
+
+iniciarRealtimeSync();
 
 function getNow() {
   const n = new Date();
@@ -859,7 +928,40 @@ function getNow() {
 }
 function fmtNum(n) { return '#' + String(n||0).padStart(4,'0'); }
 function initials(n) { return n.trim().split(/\s+/).map(p=>p[0]).slice(0,2).join('').toUpperCase(); }
-function stLabel(s) { return {pendente:'Pendente',andamento:'Em Andamento',ok:'Concluído',ajustar:'Precisa Ajustar'}[s]||s; }
+
+// ── LABELS DE STATUS (fonte única) ──
+const STATUS_LABEL = {pendente:'Pendente', andamento:'Em Andamento', ok:'Concluído', ajustar:'Precisa Ajustar'};
+function stLabel(s) { return STATUS_LABEL[s]||s; }
+
+// Escapa conteúdo vindo do banco antes de injetar via innerHTML (evita HTML/script em campos de texto)
+function esc(v) {
+  if(v===null||v===undefined) return '';
+  return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Formata data/hora no padrão pt-BR usado nas tabelas e cards
+function fmtDataHora(valor, anoLongo) {
+  if(!valor) return null;
+  return new Date(valor).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:anoLongo?'numeric':'2-digit',hour:'2-digit',minute:'2-digit'});
+}
+
+// Um ticket só entra nas métricas de tempo quando foi realmente finalizado
+function ehResolvido(t) { return !!(t.resolvido_em && t.criado_em && (t.status==='ok'||t.status==='ajustar')); }
+
+// Horas úteis de um ticket resolvido
+function horasTicket(t) { return calcHorasUteis(new Date(t.criado_em), new Date(t.resolvido_em)); }
+
+// Média de horas úteis de um grupo de tickets (null quando não há base)
+function mediaTMR(grupo) {
+  if(!grupo || grupo.length===0) return null;
+  return grupo.reduce((s,t)=>s+horasTicket(t),0)/grupo.length;
+}
+
+// Formata horas úteis: min / h / dias úteis
+function fmtHorasUteis(h) {
+  if(h===null || h===undefined || isNaN(h)) return '—';
+  return h<1 ? Math.round(h*60)+'min' : h<8 ? h.toFixed(1)+'h' : (h/8).toFixed(1)+'d úteis';
+}
 
 // ── HELPERS UI ──
 function showOverlay(v) { document.getElementById('overlay').classList.toggle('show',v); }
@@ -919,11 +1021,9 @@ function entrarAdmin(nomeAdmin) {
   document.getElementById('headerSub').textContent = 'Painel do Admin · PCP';
   document.getElementById('atab-relatorio').style.display = (nomeAdmin === 'João Pedro') ? '' : 'none';
   loadTickets();
-  iniciarSync();
 }
 
 function voltarModo() {
-  pararSync();
   Object.keys(_anlCharts).forEach(k=>{ _anlCharts[k].destroy(); delete _anlCharts[k]; });
   switchAdminTab('tickets');
   localStorage.removeItem('aluminas_admin');
@@ -945,17 +1045,65 @@ function setModeBadge(label, cls) {
   document.getElementById('btnSair').style.display = '';
 }
 
-// ── SYNC ADMIN ──
-function iniciarSync() {
-  pararSync(); _syncCD = 300; atualizarSyncUI();
-  _syncTimer = setInterval(()=>{ _syncCD--; if(_syncCD<=0){ _syncCD=300; loadTickets(); } atualizarSyncUI(); }, 1000);
+// ── SYNC REALTIME (tickets + ticket_users, pra todo mundo) ──
+function iniciarRealtimeSync() {
+  if (_rtChannel) return; // já inscrito, evita duplicar
+  atualizarSyncUI('conectando');
+  _rtChannel = sb.channel('tickets-realtime')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, onTicketsRealtimeChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'ticket_users' }, onUsersRealtimeChange)
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') atualizarSyncUI('ao-vivo');
+      else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') atualizarSyncUI('erro');
+      else if (status === 'CLOSED') atualizarSyncUI('conectando');
+    });
 }
-function pararSync() { if(_syncTimer){ clearInterval(_syncTimer); _syncTimer=null; } }
-function atualizarSyncUI() {
-  const el = document.getElementById('syncCountdown');
-  if(el) el.textContent = Math.floor(_syncCD/60)+':'+ String(_syncCD%60).padStart(2,'0');
+
+// Agrupa eventos em rajada (ex.: várias atualizações seguidas) num único refresh
+let _rtDebounce = {};
+function agendarRefresh(chave, fn, ms=400) {
+  clearTimeout(_rtDebounce[chave]);
+  _rtDebounce[chave] = setTimeout(fn, ms);
 }
-function syncManual() { _syncCD=300; atualizarSyncUI(); loadTickets(); showToast('Sincronizado!','success'); }
+
+// Reage a qualquer INSERT/UPDATE/DELETE em `tickets`, pro admin e pro solicitante
+function onTicketsRealtimeChange(payload) {
+  const adminVisivel = document.getElementById('adminLayout').style.display !== 'none';
+  if (adminVisivel) {
+    agendarRefresh('tickets', ()=>{
+      loadTickets();
+      if (document.getElementById('apane-analytics').style.display !== 'none') renderAnalytics();
+      if (document.getElementById('apane-relatorio').style.display !== 'none') renderRelatorioGeral();
+    });
+  }
+  const paneMeus = document.getElementById('pane-meus');
+  if (selectedUser && paneMeus && paneMeus.style.display !== 'none') {
+    // só recarrega se o ticket alterado for do usuário logado (ou se não der pra saber, recarrega mesmo)
+    const row = payload.new || payload.old;
+    if (!row || row.user_id === selectedUser.id) agendarRefresh('meus', loadMeusTickets);
+  }
+}
+
+// Reage a criação/exclusão de usuários (tela de solicitante + modal admin)
+function onUsersRealtimeChange() {
+  agendarRefresh('users', ()=>{
+    if (document.getElementById('modeScreen').style.display === 'none' && document.getElementById('adminLayout').style.display === 'none') {
+      loadUsers();
+    }
+    const modalUsuarios = document.getElementById('modalUsuarios');
+    if (modalUsuarios && modalUsuarios.classList.contains('show')) carregarUsuarios();
+  });
+}
+
+function atualizarSyncUI(estado) {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  if (estado === 'ao-vivo') { el.className = 'sync-badge live'; el.innerHTML = '<span class="dot"></span>ao vivo'; }
+  else if (estado === 'erro') { el.className = 'sync-badge err'; el.innerHTML = '<span class="dot"></span>reconectando'; }
+  else { el.className = 'sync-badge conn'; el.innerHTML = '<span class="dot"></span>conectando'; }
+}
+
+function syncManual() { loadTickets(); showToast('Sincronizado!','success'); }
 
 // ── TABS ──
 function switchTab(tab) {
@@ -980,7 +1128,7 @@ function renderUsers(list) {
     const d = document.createElement('div');
     d.className = 'user-item'+(selectedUser&&selectedUser.id===u.id?' sel':'');
     d.dataset.id = u.id;
-    d.innerHTML = `<div class="avatar">${initials(u.nome)}</div><span class="uname">${u.nome}</span>`;
+    d.innerHTML = `<div class="avatar">${initials(u.nome)}</div><span class="uname">${esc(u.nome)}</span>`;
     d.addEventListener('click',()=>selectUser(u));
     ul.appendChild(d);
   });
@@ -1095,7 +1243,7 @@ async function loadMeusTickets() {
       const icon = t.status==='ok'?'✅':t.status==='andamento'?'🔄':'⚠️';
       const label = t.status==='ok'?'Concluído':t.status==='andamento'?'Em Andamento':'Precisa de ajuste';
       const por = t.respondido_por?' · '+t.respondido_por:'';
-      const resStr = t.resolvido_em ? new Date(t.resolvido_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : null;
+      const resStr = fmtDataHora(t.resolvido_em, true);
       const reabrirBtns = t.status!=='andamento' ? `
         <br><button class="btn-reabrir" id="btn-reabrir-${t.id}" onclick="mostrarReabrirForm('${t.id}')">↩ Reabrir Ticket</button>
         <div class="reabrir-form" id="form-reabrir-${t.id}">
@@ -1109,7 +1257,7 @@ async function loadMeusTickets() {
         <div class="mcard-resp-icon">${icon}</div>
         <div class="mcard-resp-body ${t.status}">
           <strong>${label}${por}</strong>
-          ${t.status==='andamento'?'':(t.comentario_admin||'<span style="opacity:.5">Sem comentário adicional.</span>')}
+          ${t.status==='andamento'?'':(t.comentario_admin ? esc(t.comentario_admin) : '<span style="opacity:.5">Sem comentário adicional.</span>')}
           ${resStr?'<br><span style="font-size:11px;color:var(--text-dim);font-family:Roboto Mono,monospace">⏱ '+resStr+'</span>':''}
           ${reabrirBtns}
         </div>
@@ -1120,10 +1268,10 @@ async function loadMeusTickets() {
         <div class="mcard-left">
           <div class="mcard-meta">
             <span class="mid">${fmtNum(t.numero)}</span>
-            <span class="mcat">${t.categoria}</span>
+            <span class="mcat">${esc(t.categoria)}</span>
             <span class="mtime">${t.data} ${t.horario}</span>
           </div>
-          <div class="mdemanda">${t.demanda}</div>
+          <div class="mdemanda">${esc(t.demanda)}</div>
         </div>
         <span class="spill ${t.status}">${sl}</span>
       </div>
@@ -1158,7 +1306,7 @@ async function loadTickets() {
   document.getElementById('adminSub').textContent = 'Carregando...';
   const {data,error} = await sb.from('tickets').select('*').order('criado_em',{ascending:false});
   if(error){ showToast('Erro: '+error.message,'error'); return; }
-  allTickets = data||[]; renderTickets();
+  allTickets = data||[]; atualizarFiltrosDropdowns(); renderTickets();
 }
 
 function setFilter(f, btn) {
@@ -1167,65 +1315,154 @@ function setFilter(f, btn) {
   btn.classList.add('active'); renderTickets();
 }
 
+function isoParaBr(iso) {
+  if(!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function toggleFiltrosAvancados(e) {
+  e.stopPropagation();
+  document.getElementById('filtrosAvancados').classList.toggle('show');
+  document.getElementById('btnFiltroAvancado').classList.toggle('active');
+}
+document.addEventListener('click', (e)=>{
+  const painel = document.getElementById('filtrosAvancados');
+  const btn = document.getElementById('btnFiltroAvancado');
+  if(!painel || !painel.classList.contains('show')) return;
+  if(!painel.contains(e.target) && e.target!==btn && !btn.contains(e.target)) {
+    painel.classList.remove('show'); btn.classList.remove('active');
+  }
+});
+
+function atualizarDotFiltros() {
+  const ativo = !!filtroData || filtroCategoria!=='todas' || filtroUsuario!=='todos' || filtroResponsavel!=='todos';
+  document.getElementById('filtroAvancadoDot').style.display = ativo ? 'block' : 'none';
+}
+
+function onFiltroExtraChange() {
+  filtroData = document.getElementById('filtroData').value;
+  filtroCategoria = document.getElementById('filtroCategoria').value;
+  filtroUsuario = document.getElementById('filtroUsuario').value;
+  filtroResponsavel = document.getElementById('filtroResponsavel').value;
+  atualizarDotFiltros();
+  renderTickets();
+}
+
+function limparFiltrosExtras() {
+  filtroData=''; filtroCategoria='todas'; filtroUsuario='todos'; filtroResponsavel='todos';
+  document.getElementById('filtroData').value='';
+  document.getElementById('filtroCategoria').value='todas';
+  document.getElementById('filtroUsuario').value='todos';
+  document.getElementById('filtroResponsavel').value='todos';
+  atualizarDotFiltros();
+  renderTickets();
+}
+
+// Preenche os selects de categoria/usuário/responsável com base nos tickets carregados, sem perder a seleção atual
+function atualizarFiltrosDropdowns() {
+  const selCat = document.getElementById('filtroCategoria');
+  const selUser = document.getElementById('filtroUsuario');
+  const selResp = document.getElementById('filtroResponsavel');
+  const categorias = [...new Set(allTickets.map(t=>t.categoria).filter(Boolean))].sort();
+  const usuarios = [...new Set(allTickets.map(t=>t.operador).filter(Boolean))].sort();
+  const responsaveis = [...new Set(allTickets.map(t=>t.respondido_por).filter(Boolean))].sort();
+  selCat.innerHTML = '<option value="todas">Todas categorias</option>' + categorias.map(c=>`<option value="${c}">${c}</option>`).join('');
+  selUser.innerHTML = '<option value="todos">Todos usuários</option>' + usuarios.map(u=>`<option value="${u}">${u}</option>`).join('');
+  selResp.innerHTML = '<option value="todos">Todos responsáveis</option>' + responsaveis.map(r=>`<option value="${r}">${r}</option>`).join('');
+  selCat.value = categorias.includes(filtroCategoria) ? filtroCategoria : 'todas';
+  selUser.value = usuarios.includes(filtroUsuario) ? filtroUsuario : 'todos';
+  selResp.value = responsaveis.includes(filtroResponsavel) ? filtroResponsavel : 'todos';
+  filtroCategoria = selCat.value; filtroUsuario = selUser.value; filtroResponsavel = selResp.value;
+  atualizarDotFiltros();
+}
+
 function updateKPIs() {
   const total=allTickets.length;
-  const pend=allTickets.filter(t=>t.status==='pendente').length;
-  const and=allTickets.filter(t=>t.status==='andamento').length;
-  const ok=allTickets.filter(t=>t.status==='ok').length;
-  const aj=allTickets.filter(t=>t.status==='ajustar').length;
+  // Uma única passada em vez de 7 filters separados sobre o mesmo array
+  const st={pendente:0,andamento:0,ok:0,ajustar:0};
+  const catCount={};
+  const adminMap={};
+  allTickets.forEach(t=>{
+    if(st[t.status]!==undefined) st[t.status]++;
+    if(t.categoria) catCount[t.categoria]=(catCount[t.categoria]||0)+1;
+    if(t.respondido_por) adminMap[t.respondido_por]=(adminMap[t.respondido_por]||0)+1;
+  });
   const pct=n=>total>0?Math.round(n/total*100):0;
   document.getElementById('kpiTotal').textContent=total;
-  document.getElementById('kpiPend').textContent=pend;
-  document.getElementById('kpiAnd').textContent=and;
-  document.getElementById('kpiOk').textContent=ok;
-  document.getElementById('kpiAj').textContent=aj;
-  document.getElementById('kbPend').style.width=pct(pend)+'%';
-  document.getElementById('kbAnd').style.width=pct(and)+'%';
-  document.getElementById('kbOk').style.width=pct(ok)+'%';
-  document.getElementById('kbAj').style.width=pct(aj)+'%';
-  const adminMap={};
-  allTickets.filter(t=>t.respondido_por).forEach(t=>{ adminMap[t.respondido_por]=(adminMap[t.respondido_por]||0)+1; });
+  document.getElementById('kpiPend').textContent=st.pendente;
+  document.getElementById('kpiAnd').textContent=st.andamento;
+  document.getElementById('kpiOk').textContent=st.ok;
+  document.getElementById('kpiAj').textContent=st.ajustar;
+  document.getElementById('kbPend').style.width=pct(st.pendente)+'%';
+  document.getElementById('kbAnd').style.width=pct(st.andamento)+'%';
+  document.getElementById('kbOk').style.width=pct(st.ok)+'%';
+  document.getElementById('kbAj').style.width=pct(st.ajustar)+'%';
   const ae = document.getElementById('kpiAdmins');
   ae.innerHTML = Object.keys(adminMap).length===0
     ? '<span style="font-size:11px;color:var(--text-dim)">Nenhum ainda</span>'
-    : Object.entries(adminMap).sort((a,b)=>b[1]-a[1]).map(([n,c])=>`<div class="kpi-admin-row"><span style="font-size:12px;font-weight:500">${n}</span><span style="font-size:12px;font-family:Roboto Mono,monospace;font-weight:700;color:#69f0ae">${c}</span></div>`).join('');
-  document.getElementById('kpiCriacao').textContent = allTickets.filter(t=>t.categoria==='Criação de Produto').length;
-  document.getElementById('kpiComp').textContent = allTickets.filter(t=>t.categoria==='Adição de Composição').length;
+    : Object.entries(adminMap).sort((a,b)=>b[1]-a[1]).map(([n,c])=>`<div class="kpi-admin-row"><span style="font-size:12px;font-weight:500">${esc(n)}</span><span style="font-size:12px;font-family:Roboto Mono,monospace;font-weight:700;color:#69f0ae">${c}</span></div>`).join('');
+  document.getElementById('kpiCriacao').textContent = catCount['Criação de Produto']||0;
+  document.getElementById('kpiComp').textContent = catCount['Adição de Composição']||0;
 }
 
 function renderTickets() {
-  const list = filterAtual==='todos' ? allTickets : allTickets.filter(t=>t.status===filterAtual);
+  let list = filterAtual==='todos' ? allTickets : allTickets.filter(t=>t.status===filterAtual);
+  if(filtroData) list = list.filter(t=>t.data === isoParaBr(filtroData));
+  if(filtroCategoria && filtroCategoria!=='todas') list = list.filter(t=>t.categoria===filtroCategoria);
+  if(filtroUsuario && filtroUsuario!=='todos') list = list.filter(t=>t.operador===filtroUsuario);
+  if(filtroResponsavel && filtroResponsavel!=='todos') list = list.filter(t=>t.respondido_por===filtroResponsavel);
   const pend=allTickets.filter(t=>t.status==='pendente').length;
   const and=allTickets.filter(t=>t.status==='andamento').length;
-  document.getElementById('adminSub').textContent = allTickets.length+' ticket(s) · '+pend+' pendente(s) · '+and+' em andamento';
+  document.getElementById('adminSub').textContent = allTickets.length+' ticket(s) · '+pend+' pendente(s) · '+and+' em andamento'+(list.length!==allTickets.length?' · '+list.length+' filtrado(s)':'');
   const tbody=document.getElementById('ticketsList');
   const noT=document.getElementById('noTickets');
   tbody.innerHTML=''; updateKPIs();
-  if(list.length===0){ noT.style.display='block'; return; }
+  if(list.length===0){ noT.style.display='block'; _timerEls=[]; return; }
   noT.style.display='none';
-  const cats=[['Criação de Produto','var(--accent)'],['Adição de Composição','var(--blue)']];
-  cats.forEach(([cat,color])=>{
-    const grupo=list.filter(t=>t.categoria===cat);
-    if(grupo.length===0) return;
+  const catColors={'Criação de Produto':'var(--accent)','Adição de Composição':'var(--blue)'};
+  const paleta=['var(--accent)','var(--blue)','#ba68c8','#69f0ae','#ff8a80','#ffd54f'];
+  // Agrupa em uma passada só (antes filtrava a lista inteira uma vez por categoria)
+  const grupos = new Map();
+  list.forEach(t=>{
+    if(!grupos.has(t.categoria)) grupos.set(t.categoria, []);
+    grupos.get(t.categoria).push(t);
+  });
+  const frag = document.createDocumentFragment();
+  let i = 0;
+  grupos.forEach((grupo, cat)=>{
+    const color=catColors[cat]||paleta[i++%paleta.length];
     const hr=document.createElement('tr'); hr.className='cat-group-header';
-    hr.innerHTML=`<td colspan="8"><span style="display:inline-block;width:8px;height:8px;background:${color};margin-right:8px;vertical-align:middle"></span>${cat} <span style="color:var(--text-dim);font-weight:400">(${grupo.length})</span></td>`;
-    tbody.appendChild(hr);
+    hr.innerHTML=`<td colspan="9"><span style="display:inline-block;width:8px;height:8px;background:${color};margin-right:8px;vertical-align:middle"></span>${esc(cat)} <span style="color:var(--text-dim);font-weight:400">(${grupo.length})</span></td>`;
+    frag.appendChild(hr);
     grupo.forEach(t=>{
       const tr=document.createElement('tr'); tr.onclick=()=>abrirTicketModal(t);
       let nF=0; if(t.fotos){ try{nF=JSON.parse(t.fotos).length;}catch(e){} }
-      const res=t.resolvido_em ? new Date(t.resolvido_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+      const res=fmtDataHora(t.resolvido_em) || '—';
+      let tmrHtml;
+      if(t.resolvido_em && t.criado_em){
+        tmrHtml = `<span style="color:#69f0ae">${fmtHorasUteis(horasTicket(t))}</span>`;
+      } else if(t.criado_em){
+        const corCron = t.status==='andamento' ? 'var(--blue)' : 'var(--yellow)';
+        tmrHtml = `<span class="tmr-live" data-start="${t.criado_em}" style="color:${corCron};font-family:'Roboto Mono',monospace;font-weight:600">--:--:--</span>`;
+      } else {
+        tmrHtml = '—';
+      }
       tr.innerHTML=`
         <td class="td-id">${fmtNum(t.numero)}</td>
-        <td class="td-op">${t.operador}</td>
-        <td><span class="td-cat">${t.categoria}</span></td>
-        <td class="td-dem">${t.demanda}</td>
+        <td class="td-op">${esc(t.operador)}</td>
+        <td><span class="td-cat">${esc(t.categoria)}</span></td>
+        <td class="td-dem">${esc(t.demanda)}</td>
         <td class="td-time">${t.data}<br>${t.horario}</td>
         <td class="td-time" style="color:${t.resolvido_em?'#69f0ae':'var(--text-dim)'}">${res}</td>
+        <td class="td-time">${tmrHtml}</td>
         <td class="td-time">${nF>0?'📎 '+nF:'—'}</td>
         <td><span class="sbadge ${t.status}">${stLabel(t.status)}</span></td>`;
-      tbody.appendChild(tr);
+      frag.appendChild(tr);
     });
   });
+  tbody.appendChild(frag); // um único reflow em vez de um por linha
+  atualizarTimersPendentes(true);
 }
 
 // ── MODAL TICKET ──
@@ -1256,8 +1493,8 @@ function abrirTicketModal(t) {
 
 function renderTmFooter(t) {
   const foot=document.getElementById('tmFoot');
-  const resolStr=t.resolvido_em ? new Date(t.resolvido_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : null;
-  const reabertoBox=t.reaberto_comentario ? `<div class="reaberto-box"><strong>↩ Reaberto pelo solicitante</strong>${t.reaberto_comentario}</div>` : '';
+  const resolStr=fmtDataHora(t.resolvido_em, true);
+  const reabertoBox=t.reaberto_comentario ? `<div class="reaberto-box"><strong>↩ Reaberto pelo solicitante</strong>${esc(t.reaberto_comentario)}</div>` : '';
 
   if(t.status==='pendente'||t.status==='andamento'){
     const andBtn=t.status==='pendente'
@@ -1279,7 +1516,7 @@ function renderTmFooter(t) {
         <span style="font-size:16px">${icon}</span>
         <div style="font-size:12px;color:var(--text-muted);line-height:1.5">
           <strong style="color:var(--text);display:block;margin-bottom:2px">${label}${t.respondido_por?' · '+t.respondido_por:''}</strong>
-          ${t.comentario_admin||'<span style="opacity:.5">Sem comentário.</span>'}
+          ${t.comentario_admin ? esc(t.comentario_admin) : '<span style="opacity:.5">Sem comentário.</span>'}
           ${resolStr?'<br><span style="font-size:11px;color:var(--text-dim);font-family:Roboto Mono,monospace">⏱ '+resolStr+'</span>':''}
         </div>
       </div>
@@ -1305,13 +1542,11 @@ function abrirModalChartInfo(titulo, subtitulo, bodyHtml) {
 }
 function fecharModalChartInfo() { document.getElementById('modalChartInfo').classList.remove('show'); }
 
+// Média de um array de horas já calculadas
 function fmtTMRGenerico(arr) {
   if(!arr || arr.length===0) return '—';
-  const avg = arr.reduce((s,v)=>s+v,0)/arr.length;
-  return avg<1 ? Math.round(avg*60)+'min' : avg<8 ? avg.toFixed(1)+'h' : (avg/8).toFixed(1)+'d úteis';
+  return fmtHorasUteis(arr.reduce((s,v)=>s+v,0)/arr.length);
 }
-
-const STATUS_LABEL_GERAL = {pendente:'Pendente', andamento:'Em Andamento', ok:'Concluído', ajustar:'Precisa Ajustar'};
 
 function gerarResumoTickets(subset) {
   if(!subset || subset.length===0) return '<div class="anl-empty">Nenhum ticket encontrado neste recorte.</div>';
@@ -1327,7 +1562,7 @@ function gerarResumoTickets(subset) {
     if(t.status in porStatus) porStatus[t.status]++;
     if(t.operador) porSolicitante[t.operador] = (porSolicitante[t.operador]||0)+1;
     if(t.respondido_por) porAdmin[t.respondido_por] = (porAdmin[t.respondido_por]||0)+1;
-    if(t.resolvido_em && t.criado_em && (t.status==='ok'||t.status==='ajustar')) {
+    if(ehResolvido(t)) {
       temposResolucao.push(calcHorasUteis(new Date(t.criado_em),new Date(t.resolvido_em)));
       if(t.categoria) {
         (temposPorCategoria[t.categoria] = temposPorCategoria[t.categoria]||[]).push(calcHorasUteis(new Date(t.criado_em),new Date(t.resolvido_em)));
@@ -1354,7 +1589,7 @@ function gerarResumoTickets(subset) {
   const statusEntries = Object.entries(porStatus).filter(([,v])=>v>0);
   if(statusEntries.length>0){
     const maxStatus = Math.max(...statusEntries.map(([,v])=>v));
-    html += secaoTitulo('Por Status') + statusEntries.map(([k,v])=>linhaBar(STATUS_LABEL_GERAL[k]||k, v, maxStatus, '#64b5f6')).join('');
+    html += secaoTitulo('Por Status') + statusEntries.map(([k,v])=>linhaBar(stLabel(k), v, maxStatus, '#64b5f6')).join('');
   }
 
   const catEntries = Object.entries(porCategoria).sort((a,b)=>b[1]-a[1]);
@@ -1362,20 +1597,20 @@ function gerarResumoTickets(subset) {
     const maxCat = catEntries[0][1];
     html += secaoTitulo('Por Categoria') + catEntries.map(([k,v])=>{
       const tmrCat = temposPorCategoria[k] ? fmtTMRGenerico(temposPorCategoria[k]) : '—';
-      return linhaBar(k, v, maxCat, 'var(--accent)', 'TMR '+tmrCat);
+      return linhaBar(esc(k), v, maxCat, 'var(--accent)', 'TMR '+tmrCat);
     }).join('');
   }
 
   const topSol = Object.entries(porSolicitante).sort((a,b)=>b[1]-a[1]).slice(0,5);
   if(topSol.length>0){
     const maxSol = topSol[0][1];
-    html += secaoTitulo('Top Solicitantes') + topSol.map(([k,v])=>linhaBar(k, v, maxSol, '#ba68c8')).join('');
+    html += secaoTitulo('Top Solicitantes') + topSol.map(([k,v])=>linhaBar(esc(k), v, maxSol, '#ba68c8')).join('');
   }
 
   const topAdm = Object.entries(porAdmin).sort((a,b)=>b[1]-a[1]).slice(0,5);
   if(topAdm.length>0){
     const maxAdm = topAdm[0][1];
-    html += secaoTitulo('Resolvido por') + topAdm.map(([k,v])=>linhaBar(k, v, maxAdm, '#69f0ae')).join('');
+    html += secaoTitulo('Resolvido por') + topAdm.map(([k,v])=>linhaBar(esc(k), v, maxAdm, '#69f0ae')).join('');
   }
 
   return html;
@@ -1437,14 +1672,15 @@ async function carregarUsuarios() {
   el.innerHTML='<div style="padding:14px 20px;font-size:12px;color:var(--text-muted)">Carregando...</div>';
   const {data,error} = await sb.from('ticket_users').select('*').order('nome');
   if(error){ el.innerHTML='<div style="padding:14px 20px;font-size:12px;color:var(--red)">Erro.</div>'; return; }
+  allUsers = data||[];
   if(!data||data.length===0){ el.innerHTML='<div style="padding:14px 20px;font-size:12px;color:var(--text-muted)">Nenhum usuário.</div>'; return; }
   el.innerHTML=data.map(u=>`
     <div id="ur-${u.id}" style="display:flex;align-items:center;gap:10px;padding:10px 20px;border-bottom:1px solid var(--border)">
       <div class="avatar">${initials(u.nome)}</div>
-      <span style="flex:1;font-size:13px;font-weight:500">${u.nome}</span>
+      <span style="flex:1;font-size:13px;font-weight:500">${esc(u.nome)}</span>
       <div id="uc-${u.id}" style="display:none;align-items:center;gap:6px">
         <span style="font-size:11px;color:var(--text-muted)">Confirmar?</span>
-        <button onclick="excluirUsuario('${u.id}','${u.nome}')" style="background:#b71c1c;border:none;color:#fff;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif">Sim</button>
+        <button onclick="excluirUsuario('${u.id}')" style="background:#b71c1c;border:none;color:#fff;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif">Sim</button>
         <button onclick="cancelarExcluir('${u.id}')" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif">Não</button>
       </div>
       <button id="ub-${u.id}" onclick="pedirConf('${u.id}')" style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:4px 10px;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif" onmouseover="this.style.borderColor='#ff8a80';this.style.color='#ff8a80'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">Excluir</button>
@@ -1452,7 +1688,8 @@ async function carregarUsuarios() {
 }
 function pedirConf(id) { document.getElementById('ub-'+id).style.display='none'; document.getElementById('uc-'+id).style.display='flex'; }
 function cancelarExcluir(id) { document.getElementById('uc-'+id).style.display='none'; document.getElementById('ub-'+id).style.display=''; }
-async function excluirUsuario(id,nome) {
+async function excluirUsuario(id) {
+  const nome = (allUsers.find(u=>u.id===id)||{}).nome || 'usuário';
   showOverlay(true);
   const {error} = await sb.from('ticket_users').delete().eq('id',id);
   showOverlay(false);
@@ -1526,6 +1763,45 @@ function calcHorasUteis(inicio, fim) {
   return uteis * (HORAS_DIA / (HORA_FIM - HORA_INICIO));
 }
 
+// Liga/desliga a linha de TMR (e o eixo secundário) num dos gráficos de evolução
+function toggleTmrLine(chartId, checkbox) {
+  const chart = _anlCharts[chartId];
+  if(!chart) return;
+  const idx = chart.data.datasets.findIndex(d=>d.label && d.label.indexOf('TMR')===0);
+  if(idx<0) return;
+  chart.data.datasets[idx].hidden = !checkbox.checked;
+  chart.options.scales.y1.display = checkbox.checked;
+  chart.update();
+}
+
+// ── CRONÔMETRO AO VIVO (tickets pendentes/em andamento na tabela do admin) ──
+function formatarElapsed(ms) {
+  if(ms<0) ms=0;
+  const totalSec=Math.floor(ms/1000);
+  const dias=Math.floor(totalSec/86400);
+  const horas=Math.floor((totalSec%86400)/3600);
+  const min=Math.floor((totalSec%3600)/60);
+  const seg=totalSec%60;
+  if(dias>0) return `${dias}d ${String(horas).padStart(2,'0')}h${String(min).padStart(2,'0')}`;
+  return `${String(horas).padStart(2,'0')}:${String(min).padStart(2,'0')}:${String(seg).padStart(2,'0')}`;
+}
+let _timerEls = [];
+// Recalcula a lista de cronômetros só quando a tabela é redesenhada (evita querySelectorAll a cada segundo)
+function atualizarTimersPendentes(recarregarLista) {
+  if(recarregarLista) _timerEls = Array.from(document.querySelectorAll('.tmr-live'));
+  if(_timerEls.length===0) return;
+  const agora = Date.now();
+  _timerEls.forEach(el=>{
+    const start = Date.parse(el.dataset.start);
+    el.textContent = isNaN(start) ? '—' : formatarElapsed(agora-start);
+  });
+}
+setInterval(()=>{
+  // Não gasta ciclo com a aba em segundo plano nem fora do painel de tickets
+  if(document.hidden) return;
+  atualizarTimersPendentes(false);
+}, 1000);
+
 // ── ANALYTICS ──
 Chart.defaults.color = '#666';
 Chart.defaults.borderColor = '#2e2e2e';
@@ -1533,6 +1809,24 @@ Chart.defaults.font.family = "'Inter', sans-serif";
 Chart.defaults.font.size = 11;
 
 function destroyChart(id) { if(_anlCharts[id]){ _anlCharts[id].destroy(); delete _anlCharts[id]; } }
+
+// ── FACTORIES DA LINHA DE TMR (usadas pelos 5 gráficos com toggle) ──
+function datasetTMR(dados) {
+  return {
+    type:'line', label:'TMR (h úteis)', data:dados,
+    borderColor:'#ffd54f', backgroundColor:'#ffd54f',
+    borderWidth:2, pointRadius:2.5, pointHoverRadius:4, pointBackgroundColor:'#ffd54f',
+    tension:.3, spanGaps:true, yAxisID:'y1', order:1, hidden:true
+  };
+}
+function eixoTMR() {
+  return {position:'right', grid:{display:false}, ticks:{color:'#ffd54f'}, beginAtZero:true, display:false};
+}
+function tooltipTMR(periodo) {
+  return {callbacks:{label:ctx=>ctx.dataset.label==='Tickets abertos'
+    ? ctx.parsed.y+' ticket(s)'
+    : (ctx.parsed.y!=null ? 'TMR: '+fmtHorasUteis(ctx.parsed.y) : 'TMR: sem resolução '+periodo)}};
+}
 
 function renderAnalytics() {
   const tickets = allTickets;
@@ -1548,12 +1842,8 @@ function renderAnalytics() {
   }
 
   // ── KPI: Tempo médio de resolução por categoria (horas úteis seg-sex 8h-18h) ──
-  const resolvidos = tickets.filter(t=>t.resolvido_em && t.criado_em && (t.status==='ok'||t.status==='ajustar'));
-  function fmtTMR(grupo) {
-    if(grupo.length===0) return '—';
-    const avg = grupo.reduce((s,t)=>s+calcHorasUteis(new Date(t.criado_em),new Date(t.resolvido_em)),0)/grupo.length;
-    return avg<1 ? Math.round(avg*60)+'min' : avg<8 ? avg.toFixed(1)+'h' : (avg/8).toFixed(1)+'d úteis';
-  }
+  const resolvidos = tickets.filter(ehResolvido);
+  const fmtTMR = grupo => fmtHorasUteis(mediaTMR(grupo));
   const resolvidosCriacao = resolvidos.filter(t=>t.categoria==='Criação de Produto');
   const resolvidosComp    = resolvidos.filter(t=>t.categoria==='Adição de Composição');
   document.getElementById('anlTMRCriacao').textContent = fmtTMR(resolvidosCriacao);
@@ -1647,10 +1937,9 @@ function renderAnalytics() {
       onClick:(evt,elements,chart)=>{
         if(!elements||elements.length===0) return;
         const STATUS_KEYS=['pendente','andamento','ok','ajustar'];
-        const STATUS_LABEL_FULL=['Pendente','Em Andamento','Concluído','Precisa Ajustar'];
         const idx=elements[0].index; const key=STATUS_KEYS[idx];
         const subset=allTickets.filter(t=>t.status===key);
-        abrirModalChartInfo(STATUS_LABEL_FULL[idx], subset.length+' ticket(s) neste status', gerarResumoTickets(subset));
+        abrirModalChartInfo(stLabel(['pendente','andamento','ok','ajustar'][idx]), subset.length+' ticket(s) neste status', gerarResumoTickets(subset));
       },
       onHover:(evt,elements)=>{ evt.native.target.style.cursor = elements.length>0 ? 'pointer' : 'default'; },
       plugins:{
@@ -1664,10 +1953,8 @@ function renderAnalytics() {
   destroyChart('tempoCat');
   const cats = ['Criação de Produto','Adição de Composição'];
   const tmCat = cats.map(cat=>{
-    const grupo = resolvidos.filter(t=>t.categoria===cat);
-    if(grupo.length===0) return 0;
-    const avg = grupo.reduce((s,t)=>s+calcHorasUteis(new Date(t.criado_em),new Date(t.resolvido_em)),0)/grupo.length;
-    return parseFloat(avg.toFixed(1));
+    const avg = mediaTMR(resolvidos.filter(t=>t.categoria===cat));
+    return avg===null ? 0 : parseFloat(avg.toFixed(1));
   });
   _anlCharts['tempoCat'] = new Chart(document.getElementById('chartTempoCat'),{
     type:'bar',
@@ -1711,7 +1998,7 @@ function renderAnalytics() {
     elU.innerHTML=topUsers.map(([nome,cnt])=>`
       <div class="anl-user-row">
         <div class="avatar" style="width:24px;height:24px;font-size:9px;flex-shrink:0">${initials(nome)}</div>
-        <span class="anl-user-name">${nome}</span>
+        <span class="anl-user-name">${esc(nome)}</span>
         <div class="anl-user-bar-wrap"><div class="anl-user-bar-fill" style="width:${Math.round(cnt/maxU*100)}%"></div></div>
         <span class="anl-user-count">${cnt}</span>
       </div>`).join('');
@@ -1728,7 +2015,7 @@ function renderAnalytics() {
     elR.innerHTML=topReab.map(([nome,cnt])=>`
       <div class="anl-user-row">
         <div class="avatar" style="width:24px;height:24px;font-size:9px;flex-shrink:0;background:rgba(249,168,37,.15);color:var(--yellow)">${initials(nome)}</div>
-        <span class="anl-user-name">${nome}</span>
+        <span class="anl-user-name">${esc(nome)}</span>
         <div class="anl-user-bar-wrap"><div class="anl-user-bar-fill" style="width:${Math.round(cnt/maxR*100)}%;background:var(--yellow)"></div></div>
         <span class="anl-user-count" style="color:var(--yellow)">${cnt}</span>
       </div>`).join('');
@@ -1756,17 +2043,12 @@ function renderRelatorioGeral() {
   }
 
   // ── KPIs histórico geral ──
-  const resolvidosHist = tickets.filter(t=>t.resolvido_em && t.criado_em && (t.status==='ok'||t.status==='ajustar'));
+  const resolvidosHist = tickets.filter(ehResolvido);
   document.getElementById('relTotal').textContent = tickets.length;
   document.getElementById('relResolvidos').textContent = resolvidosHist.length;
   const pctConc = tickets.length>0 ? (resolvidosHist.length/tickets.length*100).toFixed(1) : 0;
   document.getElementById('relResolvidosSub').textContent = pctConc+'% de taxa de conclusão';
-  if(resolvidosHist.length>0){
-    const avg = resolvidosHist.reduce((s,t)=>s+calcHorasUteis(new Date(t.criado_em),new Date(t.resolvido_em)),0)/resolvidosHist.length;
-    document.getElementById('relTMR').textContent = avg<1 ? Math.round(avg*60)+'min' : avg<8 ? avg.toFixed(1)+'h' : (avg/8).toFixed(1)+'d úteis';
-  } else {
-    document.getElementById('relTMR').textContent = '—';
-  }
+  document.getElementById('relTMR').textContent = fmtHorasUteis(mediaTMR(resolvidosHist));
   const reabertosHist = tickets.filter(t=>t.reaberto_comentario);
   const pctReabHist = tickets.length>0 ? (reabertosHist.length/tickets.length*100).toFixed(1) : 0;
   document.getElementById('relIR').textContent = pctReabHist+'%';
@@ -1795,7 +2077,7 @@ function renderRelatorioGeral() {
 
   // ── CHART: Evolução diária (30 dias úteis) ──
   destroyChart('diaRel');
-  const labelsDiaRel = []; const dataDiaRel = [];
+  const labelsDiaRel = []; const dataDiaRel = []; const dataTmrDiaRel = [];
   _chartRanges['diaRel'] = [];
   {
     const diasUteis = [];
@@ -1808,19 +2090,25 @@ function renderRelatorioGeral() {
     diasUteis.forEach(d=>{
       const dNext = new Date(d); dNext.setDate(dNext.getDate()+1);
       const count = tickets.filter(t=>{ if(!t.criado_em) return false; const dt=new Date(t.criado_em); return dt>=d && dt<dNext; }).length;
+      const resolvidosDia = tickets.filter(t=>t.criado_em && t.resolvido_em && new Date(t.resolvido_em)>=d && new Date(t.resolvido_em)<dNext);
+      const tmrDia = mediaTMR(resolvidosDia);
       const label = d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
       labelsDiaRel.push(label);
       dataDiaRel.push(count);
+      dataTmrDiaRel.push(tmrDia);
       _chartRanges['diaRel'].push({start:d, end:dNext, label:label});
     });
   }
   _anlCharts['diaRel'] = new Chart(document.getElementById('chartDiaRel'),{
     type:'bar',
-    data:{ labels:labelsDiaRel, datasets:[{
-      label:'Tickets abertos', data:dataDiaRel,
-      backgroundColor:'rgba(100,181,246,0.35)', borderColor:'#64b5f6',
-      borderWidth:1.5, borderRadius:2
-    }]},
+    data:{ labels:labelsDiaRel, datasets:[
+      {
+        type:'bar', label:'Tickets abertos', data:dataDiaRel,
+        backgroundColor:'rgba(100,181,246,0.35)', borderColor:'#64b5f6',
+        borderWidth:1.5, borderRadius:2, yAxisID:'y', order:2
+      },
+      datasetTMR(dataTmrDiaRel)
+    ]},
     options:{
       responsive:true, maintainAspectRatio:false,
       onClick:(evt,elements,chart)=>{
@@ -1830,17 +2118,21 @@ function renderRelatorioGeral() {
         abrirModalChartInfo(info.label, subset.length+' ticket(s) neste dia', gerarResumoTickets(subset));
       },
       onHover:(evt,elements)=>{ evt.native.target.style.cursor = elements.length>0 ? 'pointer' : 'default'; },
-      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>ctx.parsed.y+' ticket(s)'}}},
+      plugins:{
+        legend:{display:false},
+        tooltip:tooltipTMR('no dia')
+      },
       scales:{
         x:{grid:{color:'#1f1f1f'},ticks:{color:'#666',maxRotation:0,autoSkip:true,maxTicksLimit:15}},
-        y:{grid:{color:'#1f1f1f'},ticks:{color:'#666',stepSize:1,precision:0},beginAtZero:true}
+        y:{position:'left',grid:{color:'#1f1f1f'},ticks:{color:'#666',stepSize:1,precision:0},beginAtZero:true},
+        y1:eixoTMR()
       }
     }
   });
 
   // ── CHART: Evolução semanal (12 semanas, segunda a sexta) ──
   destroyChart('semana');
-  const labelsSemana = []; const dataSemana = [];
+  const labelsSemana = []; const dataSemana = []; const dataTmrSemana = [];
   _chartRanges['semana'] = [];
   {
     const hoje0 = new Date(); hoje0.setHours(0,0,0,0);
@@ -1852,19 +2144,25 @@ function renderRelatorioGeral() {
       const sextaSemana = new Date(inicioSemana); sextaSemana.setDate(sextaSemana.getDate()+4); // sexta
       const sabadoExcl = new Date(inicioSemana); sabadoExcl.setDate(sabadoExcl.getDate()+5); // sábado (exclusivo)
       const count = tickets.filter(t=>{ if(!t.criado_em) return false; const dt=new Date(t.criado_em); return dt>=inicioSemana && dt<sabadoExcl; }).length;
+      const resolvidosSemana = tickets.filter(t=>t.criado_em && t.resolvido_em && new Date(t.resolvido_em)>=inicioSemana && new Date(t.resolvido_em)<sabadoExcl);
+      const tmrSemana = mediaTMR(resolvidosSemana);
       const label = inicioSemana.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'–'+sextaSemana.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
       labelsSemana.push(label);
       dataSemana.push(count);
+      dataTmrSemana.push(tmrSemana);
       _chartRanges['semana'].push({start:inicioSemana, end:sabadoExcl, label:'Semana '+label});
     }
   }
   _anlCharts['semana'] = new Chart(document.getElementById('chartSemana'),{
     type:'bar',
-    data:{ labels:labelsSemana, datasets:[{
-      label:'Tickets abertos', data:dataSemana,
-      backgroundColor:'rgba(105,240,174,0.35)', borderColor:'#69f0ae',
-      borderWidth:1.5, borderRadius:2
-    }]},
+    data:{ labels:labelsSemana, datasets:[
+      {
+        type:'bar', label:'Tickets abertos', data:dataSemana,
+        backgroundColor:'rgba(105,240,174,0.35)', borderColor:'#69f0ae',
+        borderWidth:1.5, borderRadius:2, yAxisID:'y', order:2
+      },
+      datasetTMR(dataTmrSemana)
+    ]},
     options:{
       responsive:true, maintainAspectRatio:false,
       onClick:(evt,elements,chart)=>{
@@ -1874,35 +2172,47 @@ function renderRelatorioGeral() {
         abrirModalChartInfo(info.label, subset.length+' ticket(s) nesta semana', gerarResumoTickets(subset));
       },
       onHover:(evt,elements)=>{ evt.native.target.style.cursor = elements.length>0 ? 'pointer' : 'default'; },
-      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>ctx.parsed.y+' ticket(s)'}}},
+      plugins:{
+        legend:{display:false},
+        tooltip:tooltipTMR('na semana')
+      },
       scales:{
         x:{grid:{color:'#1f1f1f'},ticks:{color:'#666'}},
-        y:{grid:{color:'#1f1f1f'},ticks:{color:'#666',stepSize:1,precision:0},beginAtZero:true}
+        y:{position:'left',grid:{color:'#1f1f1f'},ticks:{color:'#666',stepSize:1,precision:0},beginAtZero:true},
+        y1:eixoTMR()
       }
     }
   });
+  if(document.getElementById('chkTmrDia').checked) toggleTmrLine('diaRel', document.getElementById('chkTmrDia'));
+  if(document.getElementById('chkTmrSemana').checked) toggleTmrLine('semana', document.getElementById('chkTmrSemana'));
 
   // ── CHART: Evolução mensal (12 meses) ──
   destroyChart('mes');
   const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const labelsMes = []; const dataMes = [];
+  const labelsMes = []; const dataMes = []; const dataTmrMes = [];
   _chartRanges['mes'] = [];
   for(let i=11;i>=0;i--){
     const d = new Date(); d.setDate(1); d.setMonth(d.getMonth()-i); d.setHours(0,0,0,0);
     const dNext = new Date(d); dNext.setMonth(dNext.getMonth()+1);
     const count = tickets.filter(t=>{ if(!t.criado_em) return false; const dt=new Date(t.criado_em); return dt>=d && dt<dNext; }).length;
+    const resolvidosMes = tickets.filter(t=>t.criado_em && t.resolvido_em && new Date(t.resolvido_em)>=d && new Date(t.resolvido_em)<dNext);
+    const tmrMes = mediaTMR(resolvidosMes);
     const label = MESES[d.getMonth()]+'/'+String(d.getFullYear()).slice(2);
     labelsMes.push(label);
     dataMes.push(count);
+    dataTmrMes.push(tmrMes);
     _chartRanges['mes'].push({start:d, end:dNext, label:label});
   }
   _anlCharts['mes'] = new Chart(document.getElementById('chartMes'),{
     type:'bar',
-    data:{ labels:labelsMes, datasets:[{
-      label:'Tickets abertos', data:dataMes,
-      backgroundColor:'rgba(192,146,42,0.35)', borderColor:'#c0922a',
-      borderWidth:1.5, borderRadius:2
-    }]},
+    data:{ labels:labelsMes, datasets:[
+      {
+        type:'bar', label:'Tickets abertos', data:dataMes,
+        backgroundColor:'rgba(192,146,42,0.35)', borderColor:'#c0922a',
+        borderWidth:1.5, borderRadius:2, yAxisID:'y', order:2
+      },
+      datasetTMR(dataTmrMes)
+    ]},
     options:{
       responsive:true, maintainAspectRatio:false,
       onClick:(evt,elements,chart)=>{
@@ -1912,31 +2222,44 @@ function renderRelatorioGeral() {
         abrirModalChartInfo(info.label, subset.length+' ticket(s) neste mês', gerarResumoTickets(subset));
       },
       onHover:(evt,elements)=>{ evt.native.target.style.cursor = elements.length>0 ? 'pointer' : 'default'; },
-      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>ctx.parsed.y+' ticket(s)'}}},
+      plugins:{
+        legend:{display:false},
+        tooltip:tooltipTMR('no mês')
+      },
       scales:{
         x:{grid:{color:'#1f1f1f'},ticks:{color:'#666'}},
-        y:{grid:{color:'#1f1f1f'},ticks:{color:'#666',stepSize:1,precision:0},beginAtZero:true}
+        y:{position:'left',grid:{color:'#1f1f1f'},ticks:{color:'#666',stepSize:1,precision:0},beginAtZero:true},
+        y1:eixoTMR()
       }
     }
   });
+  if(document.getElementById('chkTmrMes').checked) toggleTmrLine('mes', document.getElementById('chkTmrMes'));
 
   // ── CHART: Horário de pico (07h–18h, horário útil) ──
   destroyChart('hora');
   const HORA_MIN_CHART = 7, HORA_MAX_CHART = 18;
   const horasRange = []; const contagemHora = [];
-  for(let h=HORA_MIN_CHART; h<=HORA_MAX_CHART; h++){ horasRange.push(h); contagemHora.push(0); }
+  const tmrPorHora = [];
+  for(let h=HORA_MIN_CHART; h<=HORA_MAX_CHART; h++){ horasRange.push(h); contagemHora.push(0); tmrPorHora.push([]); }
   tickets.forEach(t=>{
     if(!t.criado_em) return;
     const h = new Date(t.criado_em).getHours();
-    if(h>=HORA_MIN_CHART && h<=HORA_MAX_CHART) contagemHora[h-HORA_MIN_CHART]++;
+    if(h>=HORA_MIN_CHART && h<=HORA_MAX_CHART){
+      contagemHora[h-HORA_MIN_CHART]++;
+      if(t.resolvido_em) tmrPorHora[h-HORA_MIN_CHART].push(calcHorasUteis(new Date(t.criado_em),new Date(t.resolvido_em)));
+    }
   });
+  const dataTmrHora = tmrPorHora.map(arr=> arr.length>0 ? arr.reduce((s,v)=>s+v,0)/arr.length : null);
   _anlCharts['hora'] = new Chart(document.getElementById('chartHora'),{
     type:'bar',
-    data:{ labels:horasRange.map(h=>String(h).padStart(2,'0')+'h'), datasets:[{
-      label:'Tickets abertos', data:contagemHora,
-      backgroundColor:'rgba(186,104,200,0.35)', borderColor:'#ba68c8',
-      borderWidth:1.5, borderRadius:2
-    }]},
+    data:{ labels:horasRange.map(h=>String(h).padStart(2,'0')+'h'), datasets:[
+      {
+        type:'bar', label:'Tickets abertos', data:contagemHora,
+        backgroundColor:'rgba(186,104,200,0.35)', borderColor:'#ba68c8',
+        borderWidth:1.5, borderRadius:2, yAxisID:'y', order:2
+      },
+      datasetTMR(dataTmrHora)
+    ]},
     options:{
       responsive:true, maintainAspectRatio:false,
       onClick:(evt,elements,chart)=>{
@@ -1946,30 +2269,43 @@ function renderRelatorioGeral() {
         abrirModalChartInfo(String(h).padStart(2,'0')+'h', subset.length+' ticket(s) abertos neste horário (histórico)', gerarResumoTickets(subset));
       },
       onHover:(evt,elements)=>{ evt.native.target.style.cursor = elements.length>0 ? 'pointer' : 'default'; },
-      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>ctx.parsed.y+' ticket(s)'}}},
+      plugins:{
+        legend:{display:false},
+        tooltip:tooltipTMR('neste horário')
+      },
       scales:{
         x:{grid:{color:'#1f1f1f'},ticks:{color:'#666',maxRotation:0}},
-        y:{grid:{color:'#1f1f1f'},ticks:{color:'#666',stepSize:1,precision:0},beginAtZero:true}
+        y:{position:'left',grid:{color:'#1f1f1f'},ticks:{color:'#666',stepSize:1,precision:0},beginAtZero:true},
+        y1:eixoTMR()
       }
     }
   });
+  if(document.getElementById('chkTmrHora').checked) toggleTmrLine('hora', document.getElementById('chkTmrHora'));
 
   // ── CHART: Dia da semana mais movimentado (seg–sex) ──
   destroyChart('diaSemana');
   const DIAS_SEMANA_UTEIS = ['Segunda','Terça','Quarta','Quinta','Sexta'];
   const contagemDiaSemana = new Array(5).fill(0);
+  const tmrPorDiaSemana = [[],[],[],[],[]];
   tickets.forEach(t=>{
     if(!t.criado_em) return;
     const dow = new Date(t.criado_em).getDay(); // 0=Dom...6=Sáb
-    if(dow>=1 && dow<=5) contagemDiaSemana[dow-1]++;
+    if(dow>=1 && dow<=5){
+      contagemDiaSemana[dow-1]++;
+      if(t.resolvido_em) tmrPorDiaSemana[dow-1].push(calcHorasUteis(new Date(t.criado_em),new Date(t.resolvido_em)));
+    }
   });
+  const dataTmrDiaSemana = tmrPorDiaSemana.map(arr=> arr.length>0 ? arr.reduce((s,v)=>s+v,0)/arr.length : null);
   _anlCharts['diaSemana'] = new Chart(document.getElementById('chartDiaSemana'),{
     type:'bar',
-    data:{ labels:DIAS_SEMANA_UTEIS, datasets:[{
-      label:'Tickets abertos', data:contagemDiaSemana,
-      backgroundColor:'rgba(255,138,128,0.35)', borderColor:'#ff8a80',
-      borderWidth:1.5, borderRadius:2
-    }]},
+    data:{ labels:DIAS_SEMANA_UTEIS, datasets:[
+      {
+        type:'bar', label:'Tickets abertos', data:contagemDiaSemana,
+        backgroundColor:'rgba(255,138,128,0.35)', borderColor:'#ff8a80',
+        borderWidth:1.5, borderRadius:2, yAxisID:'y', order:2
+      },
+      datasetTMR(dataTmrDiaSemana)
+    ]},
     options:{
       responsive:true, maintainAspectRatio:false,
       onClick:(evt,elements,chart)=>{
@@ -1979,20 +2315,24 @@ function renderRelatorioGeral() {
         abrirModalChartInfo(DIAS_SEMANA_UTEIS[idx], subset.length+' ticket(s) abertos neste dia (histórico)', gerarResumoTickets(subset));
       },
       onHover:(evt,elements)=>{ evt.native.target.style.cursor = elements.length>0 ? 'pointer' : 'default'; },
-      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>ctx.parsed.y+' ticket(s)'}}},
+      plugins:{
+        legend:{display:false},
+        tooltip:tooltipTMR('neste dia')
+      },
       scales:{
         x:{grid:{color:'#1f1f1f'},ticks:{color:'#666'}},
-        y:{grid:{color:'#1f1f1f'},ticks:{color:'#666',stepSize:1,precision:0},beginAtZero:true}
+        y:{position:'left',grid:{color:'#1f1f1f'},ticks:{color:'#666',stepSize:1,precision:0},beginAtZero:true},
+        y1:eixoTMR()
       }
     }
   });
+  if(document.getElementById('chkTmrDiaSemana').checked) toggleTmrLine('diaSemana', document.getElementById('chkTmrDiaSemana'));
 
   // ── TICKETS PARADOS HÁ MAIS TEMPO ──
   {
     const abertos = tickets.filter(t=>t.criado_em && (t.status==='pendente'||t.status==='andamento'));
     abertos.sort((a,b)=> new Date(a.criado_em) - new Date(b.criado_em));
     const topParados = abertos.slice(0,10);
-    const STATUS_LABEL_P = {pendente:'Pendente', andamento:'Em Andamento'};
     const bodyP = document.getElementById('relParadosBody');
     const emptyP = document.getElementById('relParadosEmpty');
     if(topParados.length===0){ bodyP.innerHTML=''; emptyP.style.display='block'; }
@@ -2001,14 +2341,14 @@ function renderRelatorioGeral() {
       const agoraP = new Date();
       bodyP.innerHTML = topParados.map((t,i)=>{
         const horasUteisParado = calcHorasUteis(new Date(t.criado_em), agoraP);
-        const paradoTxt = horasUteisParado<8 ? Math.round(horasUteisParado)+'h úteis' : (horasUteisParado/8).toFixed(1)+'d úteis';
+        const paradoTxt = fmtHorasUteis(horasUteisParado);
         return `<tr onclick="abrirTicketPorId('${t.id}')">
           <td>${i+1}</td>
           <td>${t.operador||'—'}</td>
           <td>${t.categoria||'—'}</td>
-          <td>${new Date(t.criado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
+          <td>${fmtDataHora(t.criado_em)}</td>
           <td style="color:var(--yellow);font-weight:600">${paradoTxt}</td>
-          <td>${STATUS_LABEL_P[t.status]||t.status}</td>
+          <td>${stLabel(t.status)}</td>
         </tr>`;
       }).join('');
     }
@@ -2033,7 +2373,7 @@ function renderRelatorioGeral() {
     elA.innerHTML = listaAdmins.map(([nome,cnt])=>`
       <div class="anl-user-row">
         <div class="avatar" style="width:24px;height:24px;font-size:9px;flex-shrink:0">${initials(nome)}</div>
-        <span class="anl-user-name">${nome}</span>
+        <span class="anl-user-name">${esc(nome)}</span>
         <div class="anl-user-bar-wrap"><div class="anl-user-bar-fill" style="width:${Math.round(cnt/maxA*100)}%"></div></div>
         <span class="anl-user-count">${cnt}</span>
       </div>`).join('');
@@ -2087,13 +2427,12 @@ function renderRelatorioGeral() {
     else {
       const maxSol = Math.max(...listaSolicitantes.map(([,h])=>h), 1);
       elSol.innerHTML = listaSolicitantes.map(([nome,h,cnt])=>{
-        const txt = h<1 ? Math.round(h*60)+'min' : h<8 ? h.toFixed(1)+'h' : (h/8).toFixed(1)+'d úteis';
         return `
         <div class="anl-user-row">
           <div class="avatar" style="width:24px;height:24px;font-size:9px;flex-shrink:0">${initials(nome)}</div>
-          <span class="anl-user-name">${nome} <span style="color:var(--text-dim);font-weight:400">(${cnt} ticket${cnt>1?'s':''})</span></span>
+          <span class="anl-user-name">${esc(nome)} <span style="color:var(--text-dim);font-weight:400">(${cnt} ticket${cnt>1?'s':''})</span></span>
           <div class="anl-user-bar-wrap"><div class="anl-user-bar-fill" style="width:${Math.round(h/maxSol*100)}%"></div></div>
-          <span class="anl-user-count">${txt}</span>
+          <span class="anl-user-count">${fmtHorasUteis(h)}</span>
         </div>`;
       }).join('');
     }
@@ -2111,7 +2450,6 @@ function renderRelatorioTabela() {
     (t.respondido_por||'').toLowerCase().includes(filtro) ||
     (t.status||'').toLowerCase().includes(filtro)
   );
-  const STATUS_LABEL = {pendente:'Pendente', andamento:'Em Andamento', ok:'Concluído', ajustar:'Precisa Ajustar'};
   const body = document.getElementById('relTabelaBody');
   const empty = document.getElementById('relTabelaEmpty');
   if(filtrados.length===0){ body.innerHTML=''; empty.style.display='block'; return; }
@@ -2121,10 +2459,10 @@ function renderRelatorioTabela() {
       <td>${filtrados.length-i}</td>
       <td>${t.operador||'—'}</td>
       <td>${t.categoria||'—'}</td>
-      <td>${t.criado_em ? new Date(t.criado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'}</td>
-      <td>${t.resolvido_em ? new Date(t.resolvido_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'}</td>
+      <td>${fmtDataHora(t.criado_em) || '—'}</td>
+      <td>${fmtDataHora(t.resolvido_em) || '—'}</td>
       <td>${t.respondido_por||'—'}</td>
-      <td>${STATUS_LABEL[t.status]||t.status||'—'}</td>
+      <td>${stLabel(t.status)||'—'}</td>
     </tr>`).join('');
 }
 
