@@ -1010,7 +1010,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
           <div class="anl-charts-grid">
             <div class="anl-chart-box">
               <div class="anl-chart-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-                <span>Horário de Pico <span>— horário útil, 07h–18h</span></span>
+                <span>Horário de Pico <span>— expediente: seg–qui 08:00–17:30 · sex 07:30–16:30</span></span>
                 <label class="chart-tmr-toggle"><input type="checkbox" id="chkTmrHora" onchange="toggleTmrLine('hora',this)"> Mostrar TMR</label>
               </div>
               <div class="anl-chart-wrap"><canvas id="chartHora"></canvas></div>
@@ -1160,7 +1160,7 @@ function mediaTMR(grupo) {
 // Formata horas úteis: min / h / dias úteis
 function fmtHorasUteis(h) {
   if(h===null || h===undefined || isNaN(h)) return '—';
-  return h<1 ? Math.round(h*60)+'min' : h<8 ? h.toFixed(1)+'h' : (h/8).toFixed(1)+'d úteis';
+  return h<1 ? Math.round(h*60)+'min' : h<MEDIA_JORNADA ? h.toFixed(1)+'h' : (h/MEDIA_JORNADA).toFixed(1)+'d úteis';
 }
 
 // ── HELPERS UI ──
@@ -2502,55 +2502,62 @@ function switchAdminTab(tab) {
   if(tab==='relatorio') renderRelatorioGeral();
 }
 
-// ── HORAS ÚTEIS (seg-sex, 08:00–18:00 = 10h/dia = 50h/sem → ajustado para 40h/sem = 8h/dia útil) ──
-// Jornada: 8h por dia útil (08:00–18:00 com 2h de intervalo = 8h líquidas)
-const HORA_INICIO = 8;   // 08:00
-const HORA_FIM   = 18;  // 18:00 (10h janela, mas 8h úteis líquidas — almoço excluído pelo padrão 40h/5d)
-const HORAS_DIA  = 8;   // horas úteis por dia
+// ── HORAS ÚTEIS — expediente real do PCP ──
+// Seg a qui: 08:00–17:30 · Sex: 07:30–16:30 · Sáb/dom: não conta
+// Os valores são horas decimais (17.5 = 17:30)
+const EXPEDIENTE = {
+  1: [8,   17.5],  // segunda
+  2: [8,   17.5],  // terça
+  3: [8,   17.5],  // quarta
+  4: [8,   17.5],  // quinta
+  5: [7.5, 16.5]   // sexta
+};
+// Intervalo de almoço descontado. null = não desconta.
+// Ex.: para 12:00–13:00, usar [12, 13].
+const ALMOCO = null;
 
+// Média de horas por dia útil — usada só para exibir "X d úteis"
+const MEDIA_JORNADA = (()=> {
+  const dias = Object.values(EXPEDIENTE);
+  const pausa = ALMOCO ? (ALMOCO[1]-ALMOCO[0]) : 0;
+  return dias.reduce((s,[a,b])=>s+(b-a)-pausa, 0) / dias.length;
+})();
+
+// Converte hora decimal (17.5) em um Date daquele dia
+function horaDoDia(base, decimal) {
+  const d = new Date(base);
+  d.setHours(Math.floor(decimal), Math.round((decimal % 1) * 60), 0, 0);
+  return d;
+}
+
+// Quanto de [ini,fim] cai dentro de [janIni,janFim], em horas
+function sobreposicao(ini, fim, janIni, janFim) {
+  const a = ini > janIni ? ini : janIni;
+  const b = fim < janFim ? fim : janFim;
+  return b > a ? (b - a) / 3600000 : 0;
+}
+
+// Tempo de relógio decorrido dentro do expediente (não é escalado por fator nenhum)
 function calcHorasUteis(inicio, fim) {
-  if(fim <= inicio) return 0;
-  let uteis = 0;
-  let cur = new Date(inicio);
-
-  // Avança cursor para o próximo instante útil se estiver fora do horário
-  function ajustarInicio(d) {
-    const dow = d.getDay();
-    // Fim de semana → pula para segunda 08:00
-    if(dow === 0) { d.setDate(d.getDate()+1); d.setHours(HORA_INICIO,0,0,0); }
-    if(dow === 6) { d.setDate(d.getDate()+2); d.setHours(HORA_INICIO,0,0,0); }
-    // Antes do expediente → avança para 08:00
-    if(d.getHours() < HORA_INICIO) d.setHours(HORA_INICIO,0,0,0);
-    // Após expediente → pula para próximo dia útil 08:00
-    if(d.getHours() >= HORA_FIM) {
-      d.setDate(d.getDate()+1); d.setHours(HORA_INICIO,0,0,0);
-      const nd=d.getDay();
-      if(nd===6) d.setDate(d.getDate()+2);
-      if(nd===0) d.setDate(d.getDate()+1);
+  if(!inicio || !fim || fim <= inicio) return 0;
+  let total = 0;
+  const cur = new Date(inicio); cur.setHours(0,0,0,0);
+  const ultimo = new Date(fim); ultimo.setHours(0,0,0,0);
+  let guarda = 0; // trava de segurança para datas absurdas
+  while(cur <= ultimo && guarda++ < 800) {
+    const jan = EXPEDIENTE[cur.getDay()];
+    if(jan){
+      const janIni = horaDoDia(cur, jan[0]);
+      const janFim = horaDoDia(cur, jan[1]);
+      let h = sobreposicao(inicio, fim, janIni, janFim);
+      if(h > 0 && ALMOCO){
+        h -= sobreposicao(inicio, fim, horaDoDia(cur, ALMOCO[0]), horaDoDia(cur, ALMOCO[1]));
+      }
+      if(h > 0) total += h;
     }
+    cur.setDate(cur.getDate()+1);
   }
-
-  ajustarInicio(cur);
-  if(cur >= fim) return 0;
-
-  while(cur < fim) {
-    const dow = cur.getDay();
-    if(dow===0||dow===6){ cur.setDate(cur.getDate()+1); cur.setHours(HORA_INICIO,0,0,0); continue; }
-    // Fim do expediente hoje
-    const fimDia = new Date(cur); fimDia.setHours(HORA_FIM,0,0,0);
-    const efetivo = Math.min(fimDia, fim);
-    const diffH = (efetivo - cur) / 3600000;
-    if(diffH > 0) uteis += diffH;
-    // Avança para próximo dia útil
-    cur.setDate(cur.getDate()+1); cur.setHours(HORA_INICIO,0,0,0);
-    const nd=cur.getDay();
-    if(nd===6) cur.setDate(cur.getDate()+2);
-    if(nd===0) cur.setDate(cur.getDate()+1);
-  }
-
-  // A janela 08-18 tem 10h, mas a jornada é 8h (2h de intervalo/almoço)
-  // Escala proporcional: 8/10 = 0.8
-  return uteis * (HORAS_DIA / (HORA_FIM - HORA_INICIO));
+  return total;
 }
 
 // Liga/desliga a linha de TMR (e o eixo secundário) num dos gráficos de evolução
@@ -3025,9 +3032,9 @@ function renderRelatorioGeral() {
   });
   if(document.getElementById('chkTmrMes').checked) toggleTmrLine('mes', document.getElementById('chkTmrMes'));
 
-  // ── CHART: Horário de pico (07h–18h, horário útil) ──
+  // ── CHART: Horário de pico (faixa do expediente) ──
   destroyChart('hora');
-  const HORA_MIN_CHART = 7, HORA_MAX_CHART = 18;
+  const HORA_MIN_CHART = 7, HORA_MAX_CHART = 17;
   const horasRange = []; const contagemHora = [];
   const tmrPorHora = [];
   for(let h=HORA_MIN_CHART; h<=HORA_MAX_CHART; h++){ horasRange.push(h); contagemHora.push(0); tmrPorHora.push([]); }
