@@ -367,6 +367,8 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 /* ANALYTICS */
 .analytics-wrap{display:none}
 .anl-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.anl-kpi-row.k5{grid-template-columns:repeat(5,1fr)}
+.anl-kpi-row.k3{grid-template-columns:repeat(3,1fr)}
 .anl-kpi{background:var(--surface2);border:1px solid var(--border);padding:16px 18px}
 .anl-kpi-label{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px}
 .anl-kpi-val{font-size:28px;font-weight:700;font-family:'Roboto Mono',monospace;line-height:1}
@@ -444,7 +446,68 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
   .cat-grid{grid-template-columns:1fr}
   .admin-layout{flex-direction:column}
   .admin-sidebar{width:100%;min-width:0;height:auto;position:static;border-right:none;border-bottom:1px solid var(--border)}
-  .admin-content{padding:16px;height:auto}
+
+  /* Nada pode empurrar a largura da pagina. Sem isso um unico grafico
+     estoura o body inteiro e a tela toda vira scroll horizontal. */
+  html,body{overflow-x:hidden;max-width:100%}
+  .admin-content{padding:14px 12px;height:auto;min-height:0;width:100%;min-width:0}
+  .admin-layout,.page,.tab-content{min-width:0;max-width:100%}
+
+  /* Cabecalho quebra em duas linhas em vez de espremer o relogio */
+  header{padding:10px 12px;flex-wrap:wrap;gap:8px;position:static}
+  .hr{margin-left:0;width:100%;flex-wrap:wrap;gap:6px}
+  .clock{font-size:11px;padding:4px 8px}
+  .mbadge{font-size:10px;padding:3px 8px}
+
+  /* Abas rolam na horizontal em vez de espremer/quebrar */
+  .admin-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px;scrollbar-width:none}
+  .admin-tabs::-webkit-scrollbar{display:none}
+  .admin-tab-btn{padding:10px 12px;font-size:11px;white-space:nowrap;flex-shrink:0}
+
+  /* KPIs: 4 colunas fixas viravam cartao cortado. Duas, e podendo encolher. */
+  .anl-kpi-row,.anl-kpi-row.k5,.anl-kpi-row.k3{grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px}
+  .anl-kpi{padding:12px;min-width:0;overflow:hidden}
+  .anl-kpi-label{font-size:9px;letter-spacing:.06em}
+  .anl-kpi-val{font-size:20px;overflow-wrap:anywhere}
+  .anl-kpi-sub{font-size:10px}
+
+  /* Graficos empilham; min-width:0 e o que permite o canvas encolher */
+  .anl-charts-grid{grid-template-columns:1fr;gap:12px;margin-bottom:12px}
+  .anl-chart-box{padding:12px;min-width:0;overflow:hidden}
+  .anl-chart-box.full{grid-column:auto}
+  .anl-chart-wrap{height:200px}
+  .anl-chart-wrap.tall{height:230px}
+  .anl-chart-title{font-size:10px;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+  .anl-chart-title span{display:block;width:100%;font-size:10px}
+  .anl-empty{padding:24px 12px}
+
+  /* Rankings: barra menor pra sobrar espaco pro nome */
+  .anl-user-row{gap:8px;padding:8px 0}
+  .anl-user-name{font-size:12px;min-width:0;overflow-wrap:anywhere}
+  .anl-user-bar-wrap{width:52px;flex-shrink:0}
+  .anl-user-count{font-size:11px}
+
+  /* Tabela rola dentro do proprio wrapper, nao arrasta a pagina */
+  .admin-table-wrap{min-width:0;max-width:100%;-webkit-overflow-scrolling:touch}
+  .admin-table{font-size:12px}
+  .admin-table th,.admin-table td{white-space:nowrap;padding-left:8px;padding-right:8px}
+
+  .filter-btn{padding:6px 10px;font-size:11px;white-space:nowrap}
+  .hist-box,.reaberto-box{font-size:11px}
+
+  /* Modais ocupam a tela toda em vez de sobrar margem inutil */
+  .ticket-modal,.modal-box,.modal-box.wide{max-width:100%;max-height:94vh}
+  .tm-row2{grid-template-columns:1fr;gap:10px}
+  .tm-body{padding:14px}
+  .tm-head{padding:12px 14px}
+  .mode-resumo{grid-template-columns:repeat(3,1fr);gap:2px}
+}
+
+@media(max-width:420px){
+  .anl-kpi-row,.anl-kpi-row.k5,.anl-kpi-row.k3{grid-template-columns:1fr 1fr;gap:6px}
+  .anl-kpi-val{font-size:18px}
+  .anl-user-bar-wrap{display:none}   /* em tela estreita o numero basta */
+  .admin-content{padding:12px 10px}
 }
 </style>
 </head>
@@ -878,7 +941,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
         <div class="analytics-wrap" id="apane-analytics" style="display:none">
 
           <!-- KPI CARDS -->
-          <div class="anl-kpi-row" style="grid-template-columns:repeat(5,1fr)">
+          <div class="anl-kpi-row k5">
             <div class="anl-kpi">
               <div class="anl-kpi-label">TMR — Criação</div>
               <div class="anl-kpi-val accent" id="anlTMRCriacao">—</div>
@@ -950,7 +1013,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
           </div>
 
           <!-- KPI HISTÓRICO GERAL -->
-          <div class="anl-kpi-row" style="grid-template-columns:repeat(5,1fr)">
+          <div class="anl-kpi-row k5">
             <div class="anl-kpi">
               <div class="anl-kpi-label">Total Histórico</div>
               <div class="anl-kpi-val accent" id="relTotal">—</div>
@@ -2569,7 +2632,7 @@ function gerarResumoTickets(subset) {
     </div>`;
   const secaoTitulo = txt => `<div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin:16px 0 6px">${txt}</div>`;
 
-  let html = `<div class="anl-kpi-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:4px">
+  let html = `<div class="anl-kpi-row k3" style="margin-bottom:4px">
     <div class="anl-kpi" style="padding:12px 14px"><div class="anl-kpi-label">Total</div><div class="anl-kpi-val accent" style="font-size:22px">${total}</div></div>
     <div class="anl-kpi" style="padding:12px 14px"><div class="anl-kpi-label">TMR</div><div class="anl-kpi-val green" style="font-size:22px">${fmtTMRGenerico(temposResolucao)}</div></div>
     <div class="anl-kpi" style="padding:12px 14px"><div class="anl-kpi-label">Reaberturas</div><div class="anl-kpi-val yellow" style="font-size:22px">${reabertos}</div></div>
