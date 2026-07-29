@@ -415,6 +415,11 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .btn-and:hover{background:rgba(33,150,243,.2)}
 .reaberto-box{background:rgba(249,168,37,.08);border:1px solid rgba(249,168,37,.3);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--yellow);line-height:1.5}
 .reaberto-box strong{display:block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
+.hist-box{background:var(--surface2);border:1px solid var(--border);padding:10px 12px;margin-bottom:12px;font-size:12px;line-height:1.5}
+.hist-box strong{display:block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px}
+.hist-ev{display:flex;gap:8px;align-items:flex-start;padding:4px 0}
+.hist-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:6px}
+.hist-txt{color:var(--text-muted);font-size:11px}
 
 /* IMG MODAL */
 .img-modal{background:var(--surface);border:1px solid var(--border);max-width:600px;max-height:90vh;width:100%;overflow:hidden;display:flex;flex-direction:column}
@@ -1151,8 +1156,48 @@ function fmtDataHora(valor, anoLongo) {
 // Um ticket só entra nas métricas de tempo quando foi realmente finalizado
 function ehResolvido(t) { return !!(t.resolvido_em && t.criado_em && (t.status==='ok'||t.status==='ajustar')); }
 
+// ── HISTORICO DE PASSAGENS ──
+// Cada fechamento e cada reabertura viram um evento na coluna jsonb `historico`.
+// Formato: {acao:'fechamento'|'reabertura', por:'Nome', em:ISO, status:'ok'}
+function histTicket(t) {
+  const h = t.historico;
+  if (!h) return [];
+  if (Array.isArray(h)) return h;
+  try { const p = JSON.parse(h); return Array.isArray(p) ? p : []; } catch(e) { return []; }
+}
+
+// Grava o evento via RPC para o append ser atomico (dois admins ao mesmo tempo
+// nao sobrescrevem o historico um do outro).
+async function registrarEvento(id, evento) {
+  const {error} = await sb.rpc('ticket_evento', { p_id: String(id), p_evento: evento });
+  if (error) console.warn('Historico nao gravado:', error.message);
+}
+
+// Retrabalho = fechamento que foi revertido por uma reabertura logo depois.
+// Conta para quem fechou, nao para quem reabriu.
+function retrabalhoPorAdmin(tickets) {
+  const mapa = {};
+  tickets.forEach(t=>{
+    const h = histTicket(t);
+    for (let i=0; i<h.length-1; i++) {
+      if (h[i].acao==='fechamento' && h[i+1].acao==='reabertura' && h[i].por) {
+        mapa[h[i].por] = (mapa[h[i].por]||0) + 1;
+      }
+    }
+  });
+  return mapa;
+}
+
+// Reabertura pode vir do solicitante (com comentário) ou do admin (sem).
+// Só o reaberto_em existe nas duas rotas, então ele é a marca oficial.
+function foiReaberto(t) { return !!(t.reaberto_em || t.reaberto_comentario); }
+
+// Início da contagem de TMR. Se o ticket foi reaberto, o relógio recomeça na
+// reabertura — senão o tempo em que ele já estava resolvido entrava na conta.
+function inicioTMR(t) { return new Date(t.reaberto_em || t.criado_em); }
+
 // Horas úteis de um ticket resolvido
-function horasTicket(t) { return calcHorasUteis(new Date(t.criado_em), new Date(t.resolvido_em)); }
+function horasTicket(t) { return calcHorasUteis(inicioTMR(t), new Date(t.resolvido_em)); }
 
 // Base de todas as métricas: cancelados não contam como demanda atendida nem como volume
 function ticketsValidos() { return allTickets.filter(t=>t.status!=='cancelado'); }
@@ -1209,7 +1254,7 @@ async function carregarResumoInicial() {
     if(hojeRes.count !== null && hojeRes.count !== undefined) setar('resumoHoje', hojeRes.count);
     const linhas = (semana.data||[]).filter(t=>t.criado_em && t.resolvido_em);
     if(linhas.length >= 2){
-      const media = linhas.reduce((s,t)=>s+calcHorasUteis(new Date(t.criado_em), new Date(t.resolvido_em)),0)/linhas.length;
+      const media = linhas.reduce((s,t)=>s+calcHorasUteis(inicioTMR(t), new Date(t.resolvido_em)),0)/linhas.length;
       setar('resumoTmr', fmtHorasUteis(media));
     } else {
       setar('resumoTmr', '—');
@@ -1364,7 +1409,7 @@ async function carregarPrevisao() {
   const porCat = {};
   (data||[]).forEach(t=>{
     if(!t.categoria || !t.criado_em || !t.resolvido_em) return;
-    (porCat[t.categoria] = porCat[t.categoria]||[]).push(calcHorasUteis(new Date(t.criado_em), new Date(t.resolvido_em)));
+    (porCat[t.categoria] = porCat[t.categoria]||[]).push(calcHorasUteis(inicioTMR(t), new Date(t.resolvido_em)));
   });
   _tmrRecente = {};
   Object.entries(porCat).forEach(([cat,arr])=>{
@@ -1704,7 +1749,9 @@ function exportarCSV() {
     ['Responsável',t=>t.respondido_por||''],
     ['Status',    t=>stLabel(t.status)],
     ['Comentário',t=>t.comentario_admin||''],
-    ['Reaberto',  t=>t.reaberto_comentario||'']
+    ['Reaberto',  t=>t.reaberto_comentario||''],
+    ['Reaberto em', t=>t.reaberto_em ? fmtDataHora(t.reaberto_em) : ''],
+    ['Reaberto por', t=>t.reaberto_por||'']
   ];
   const escapaCsv = v => '"'+String(v).replace(/"/g,'""')+'"';
   const linhas = [cols.map(c=>escapaCsv(c[0])).join(';')];
@@ -2138,13 +2185,17 @@ function cancelarReabrir(id) {
 }
 async function confirmarReabrir(id) {
   const comentario = document.getElementById('coment-reabrir-'+id).value.trim();
+  const reabIsoSol = new Date().toISOString();
   showOverlay(true);
   const {error} = await sb.from('tickets').update({
     status:'pendente', comentario_admin:null, respondido_por:null,
-    resolvido_em:null, reaberto_comentario:comentario||null
+    resolvido_em:null, reaberto_comentario:comentario||null,
+    reaberto_em: reabIsoSol,   // zera o relogio do TMR
+    reaberto_por: selectedUser ? selectedUser.nome : null
   }).eq('id',id);
   showOverlay(false);
   if(error){ showToast('Erro: '+error.message,'error'); return; }
+  registrarEvento(id, {acao:'reabertura', por:selectedUser?selectedUser.nome:null, em:reabIsoSol, comentario:comentario||null});
   showToast('Ticket reaberto!','success');
   loadMeusTickets();
 }
@@ -2324,11 +2375,13 @@ function renderTickets() {
       let nF=0; if(t.fotos){ try{nF=JSON.parse(t.fotos).length;}catch(e){} }
       const res=fmtDataHora(t.resolvido_em) || '—';
       let tmrHtml;
+      // Marca visual: TMR recontado a partir da reabertura, nao da abertura
+      const reabTag = t.reaberto_em ? `<span title="Contado a partir da reabertura" style="color:var(--yellow);font-size:10px;margin-left:4px">R</span>` : '';
       if(t.resolvido_em && t.criado_em){
-        tmrHtml = `<span style="color:#69f0ae">${fmtHorasUteis(horasTicket(t))}</span>`;
+        tmrHtml = `<span style="color:#69f0ae">${fmtHorasUteis(horasTicket(t))}</span>${reabTag}`;
       } else if(t.criado_em){
         const corCron = t.status==='andamento' ? 'var(--blue)' : 'var(--yellow)';
-        tmrHtml = `<span class="tmr-live" data-start="${t.criado_em}" style="color:${corCron};font-family:'Roboto Mono',monospace;font-weight:600">--:--:--</span>`;
+        tmrHtml = `<span class="tmr-live" data-start="${t.reaberto_em||t.criado_em}" style="color:${corCron};font-family:'Roboto Mono',monospace;font-weight:600">--:--:--</span>${reabTag}`;
       } else {
         tmrHtml = '—';
       }
@@ -2379,7 +2432,25 @@ function abrirTicketModal(t) {
 function renderTmFooter(t) {
   const foot=document.getElementById('tmFoot');
   const resolStr=fmtDataHora(t.resolvido_em, true);
-  const reabertoBox=t.reaberto_comentario ? `<div class="reaberto-box"><strong>↩ Reaberto pelo solicitante</strong>${esc(t.reaberto_comentario)}</div>` : '';
+  const reabQuem = t.reaberto_por ? ' por '+esc(t.reaberto_por) : '';
+  const reabQuando = t.reaberto_em ? ' · '+fmtDataHora(t.reaberto_em) : '';
+  // Linha do tempo: mostra cada passagem quando o ticket teve mais de uma
+  const hist = histTicket(t);
+  const timeline = hist.length > 1 ? `<div class="hist-box">
+      <strong>Passagens deste ticket</strong>
+      ${hist.map(ev=>{
+        const eFech = ev.acao==='fechamento';
+        const rot = eFech ? ('Finalizado · '+stLabel(ev.status)) : 'Reaberto';
+        const cor = eFech ? 'var(--green)' : 'var(--yellow)';
+        return `<div class="hist-ev">
+          <span class="hist-dot" style="background:${cor}"></span>
+          <span class="hist-txt"><strong style="color:${cor}">${rot}</strong> · ${esc(ev.por||'—')} · ${fmtDataHora(ev.em)||'—'}${ev.comentario?'<br><span style="opacity:.65">'+esc(ev.comentario)+'</span>':''}</span>
+        </div>`;
+      }).join('')}
+    </div>` : '';
+  const reabertoBox = (foiReaberto(t)
+    ? `<div class="reaberto-box"><strong>Reaberto${reabQuem}${reabQuando}</strong>${t.reaberto_comentario ? esc(t.reaberto_comentario) : '<span style="opacity:.6">Sem comentário. TMR recontado a partir da reabertura.</span>'}</div>`
+    : '') + timeline;
 
   if(t.status==='pendente'||t.status==='andamento'){
     const quem = t.respondido_por;
@@ -2463,13 +2534,13 @@ function gerarResumoTickets(subset) {
     if(t.operador) porSolicitante[t.operador] = (porSolicitante[t.operador]||0)+1;
     if(t.respondido_por && ehResolvido(t)) porAdmin[t.respondido_por] = (porAdmin[t.respondido_por]||0)+1;
     if(ehResolvido(t)) {
-      temposResolucao.push(calcHorasUteis(new Date(t.criado_em),new Date(t.resolvido_em)));
+      temposResolucao.push(calcHorasUteis(inicioTMR(t),new Date(t.resolvido_em)));
       if(t.categoria) {
-        (temposPorCategoria[t.categoria] = temposPorCategoria[t.categoria]||[]).push(calcHorasUteis(new Date(t.criado_em),new Date(t.resolvido_em)));
+        (temposPorCategoria[t.categoria] = temposPorCategoria[t.categoria]||[]).push(calcHorasUteis(inicioTMR(t),new Date(t.resolvido_em)));
       }
     }
   });
-  const reabertos = subset.filter(t=>t.reaberto_comentario).length;
+  const reabertos = subset.filter(foiReaberto).length;
 
   const linhaBar = (label, val, max, color, extra) => `
     <div class="anl-user-row">
@@ -2548,14 +2619,17 @@ async function tmEnviar() {
   if(error){ showToast('Erro: '+error.message,'error'); document.getElementById('tm-send').disabled=false; return; }
   const idx=allTickets.findIndex(t=>t.id===ticketAberto.id);
   if(idx>=0){ Object.assign(allTickets[idx],{status:statusModalSel,comentario_admin:comentario||null,respondido_por:window._adminNome||null,resolvido_em:iso}); }
+  registrarEvento(ticketAberto.id, {acao:'fechamento', por:window._adminNome||null, em:iso, status:statusModalSel});
   fecharModalTicket(); renderTickets(); showToast('Resposta enviada!','success');
 }
 
 async function adminReabrir(id) {
-  const {error} = await sb.from('tickets').update({status:'pendente',comentario_admin:null,respondido_por:null,resolvido_em:null}).eq('id',id);
+  const reabIso = new Date().toISOString();
+  const {error} = await sb.from('tickets').update({status:'pendente',comentario_admin:null,respondido_por:null,resolvido_em:null,reaberto_em:reabIso,reaberto_por:window._adminNome||null}).eq('id',id);
   if(error){ showToast('Erro: '+error.message,'error'); return; }
   const idx=allTickets.findIndex(t=>t.id===id);
-  if(idx>=0){ Object.assign(allTickets[idx],{status:'pendente',comentario_admin:null,respondido_por:null,resolvido_em:null}); }
+  if(idx>=0){ Object.assign(allTickets[idx],{status:'pendente',comentario_admin:null,respondido_por:null,resolvido_em:null,reaberto_em:reabIso,reaberto_por:window._adminNome||null}); }
+  registrarEvento(id, {acao:'reabertura', por:window._adminNome||null, em:reabIso});
   fecharModalTicket(); renderTickets(); showToast('Ticket reaberto!','success');
 }
 
@@ -2764,7 +2838,7 @@ function renderAnalytics() {
   document.getElementById('anlTMRGeral').textContent   = fmtTMR(resolvidos);
 
   // ── KPI: Índice de reabertura ──
-  const reabertos = tickets.filter(t=>t.reaberto_comentario);
+  const reabertos = tickets.filter(foiReaberto);
   const pctReab = tickets.length>0 ? (reabertos.length/tickets.length*100).toFixed(1) : 0;
   document.getElementById('anlIR').textContent = pctReab+'%';
   document.getElementById('anlIRsub').textContent = reabertos.length+' reaberto(s) de '+tickets.length;
@@ -2962,7 +3036,7 @@ function renderRelatorioGeral() {
   const pctConc = tickets.length>0 ? (resolvidosHist.length/tickets.length*100).toFixed(1) : 0;
   document.getElementById('relResolvidosSub').textContent = pctConc+'% de taxa de conclusão';
   document.getElementById('relTMR').textContent = fmtHorasUteis(mediaTMR(resolvidosHist));
-  const reabertosHist = tickets.filter(t=>t.reaberto_comentario);
+  const reabertosHist = tickets.filter(foiReaberto);
   const pctReabHist = tickets.length>0 ? (reabertosHist.length/tickets.length*100).toFixed(1) : 0;
   document.getElementById('relIR').textContent = pctReabHist+'%';
   document.getElementById('relIRsub').textContent = reabertosHist.length+' reaberto(s) de '+tickets.length;
@@ -3256,7 +3330,7 @@ function renderRelatorioGeral() {
       emptyP.style.display='none';
       const agoraP = new Date();
       bodyP.innerHTML = topParados.map((t,i)=>{
-        const horasUteisParado = calcHorasUteis(new Date(t.criado_em), agoraP);
+        const horasUteisParado = calcHorasUteis(inicioTMR(t), agoraP);
         const paradoTxt = fmtHorasUteis(horasUteisParado);
         return `<tr onclick="abrirTicketPorId('${t.id}')">
           <td>${i+1}</td>
@@ -3279,20 +3353,27 @@ function renderRelatorioGeral() {
     if(a===undefined || a===null) return;
     if(!(a in adminResolvidos)){ adminResolvidos[a]=0; adminTempos[a]=[]; }
     adminResolvidos[a]++;
-    adminTempos[a].push(calcHorasUteis(new Date(t.criado_em),new Date(t.resolvido_em)));
+    adminTempos[a].push(calcHorasUteis(inicioTMR(t),new Date(t.resolvido_em)));
   });
   const listaAdmins = Object.entries(adminResolvidos).sort((a,b)=>b[1]-a[1]);
   const maxA = listaAdmins.length>0 ? Math.max(...listaAdmins.map(([,c])=>c),1) : 1;
   const elA = document.getElementById('relAdminList');
   if(listaAdmins.every(([,c])=>c===0)){ elA.innerHTML='<div class="anl-empty">Sem dados</div>'; }
   else {
-    elA.innerHTML = listaAdmins.map(([nome,cnt])=>`
-      <div class="anl-user-row">
+    // Fechamentos que precisaram ser refeitos, atribuidos a quem fechou
+    const revert = retrabalhoPorAdmin(ticketsValidos());
+    elA.innerHTML = listaAdmins.map(([nome,cnt])=>{
+      const rv = revert[nome]||0;
+      const tagRv = rv>0
+        ? `<span title="${rv} fechamento(s) revertido(s) por reabertura" style="color:var(--yellow);font-size:10px;font-weight:700;margin-left:6px">${rv} rev</span>`
+        : '';
+      return `<div class="anl-user-row">
         <div class="avatar" style="width:24px;height:24px;font-size:9px;flex-shrink:0">${initials(nome)}</div>
-        <span class="anl-user-name">${esc(nome)}</span>
+        <span class="anl-user-name">${esc(nome)}${tagRv}</span>
         <div class="anl-user-bar-wrap"><div class="anl-user-bar-fill" style="width:${Math.round(cnt/maxA*100)}%"></div></div>
         <span class="anl-user-count">${cnt}</span>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
   destroyChart('adminTMR');
@@ -3333,7 +3414,7 @@ function renderRelatorioGeral() {
       const nome = t.operador;
       if(!nome) return;
       if(!solicitanteTempos[nome]) solicitanteTempos[nome]=[];
-      solicitanteTempos[nome].push(calcHorasUteis(new Date(t.criado_em),new Date(t.resolvido_em)));
+      solicitanteTempos[nome].push(calcHorasUteis(inicioTMR(t),new Date(t.resolvido_em)));
     });
     const listaSolicitantes = Object.entries(solicitanteTempos)
       .map(([nome,arr])=>[nome, arr.reduce((s,v)=>s+v,0)/arr.length, arr.length])
