@@ -1151,6 +1151,9 @@ function ehResolvido(t) { return !!(t.resolvido_em && t.criado_em && (t.status==
 // Horas úteis de um ticket resolvido
 function horasTicket(t) { return calcHorasUteis(new Date(t.criado_em), new Date(t.resolvido_em)); }
 
+// Base de todas as métricas: cancelados não contam como demanda atendida nem como volume
+function ticketsValidos() { return allTickets.filter(t=>t.status!=='cancelado'); }
+
 // Média de horas úteis de um grupo de tickets (null quando não há base)
 function mediaTMR(grupo) {
   if(!grupo || grupo.length===0) return null;
@@ -1196,7 +1199,7 @@ async function carregarResumoInicial() {
     // Contagens usam head:true — o banco devolve só o número, sem trazer as linhas
     const [fila, hojeRes, semana] = await Promise.all([
       sb.from('tickets').select('id', {count:'exact', head:true}).in('status',['pendente','andamento']),
-      sb.from('tickets').select('id', {count:'exact', head:true}).gte('criado_em', hoje.toISOString()),
+      sb.from('tickets').select('id', {count:'exact', head:true}).gte('criado_em', hoje.toISOString()).neq('status','cancelado'),
       sb.from('tickets').select('criado_em,resolvido_em').gte('resolvido_em', desde).in('status',['ok','ajustar'])
     ]);
     if(fila.count !== null && fila.count !== undefined) setar('resumoFila', fila.count);
@@ -2116,12 +2119,13 @@ function atualizarFiltrosDropdowns() {
 }
 
 function updateKPIs() {
-  const total=allTickets.length;
+  const base = ticketsValidos();
+  const total = base.length;
   // Uma única passada em vez de 7 filters separados sobre o mesmo array
-  const st={pendente:0,andamento:0,ok:0,ajustar:0,cancelado:0};
+  const st={pendente:0,andamento:0,ok:0,ajustar:0};
   const catCount={};
   const adminMap={};
-  allTickets.forEach(t=>{
+  base.forEach(t=>{
     if(st[t.status]!==undefined) st[t.status]++;
     if(t.categoria) catCount[t.categoria]=(catCount[t.categoria]||0)+1;
     if(t.respondido_por && ehResolvido(t)) adminMap[t.respondido_por]=(adminMap[t.respondido_por]||0)+1;
@@ -2182,7 +2186,7 @@ function renderTickets() {
     ? 'Abertos hoje + tudo que segue em aberto'
     : filterAtual==='todos' ? 'Histórico completo' : 'Filtro: '+stLabel(filterAtual);
   document.getElementById('adminSub').textContent =
-    escopo+' · '+list.length+' exibido(s) · '+pend+' pendente(s) · '+and+' em andamento · '+allTickets.length+' no total';
+    escopo+' · '+list.length+' exibido(s) · '+pend+' pendente(s) · '+and+' em andamento · '+ticketsValidos().length+' no total';
   const tbody=document.getElementById('ticketsList');
   const noT=document.getElementById('noTickets');
   tbody.innerHTML=''; updateKPIs();
@@ -2626,7 +2630,7 @@ function tooltipTMR(periodo) {
 }
 
 function renderAnalytics() {
-  const tickets = allTickets;
+  const tickets = ticketsValidos(); // cancelados fora de todas as métricas
   if(!tickets || tickets.length===0){
     document.getElementById('anlTMRCriacao').textContent='—';
     document.getElementById('anlTMRComp').textContent='—';
@@ -2698,7 +2702,7 @@ function renderAnalytics() {
       onClick:(evt,elements,chart)=>{
         if(!elements||elements.length===0) return;
         const info=_chartRanges['dia'][elements[0].index]; if(!info) return;
-        const subset=allTickets.filter(t=>t.criado_em && new Date(t.criado_em)>=info.start && new Date(t.criado_em)<info.end);
+        const subset=ticketsValidos().filter(t=>t.criado_em && new Date(t.criado_em)>=info.start && new Date(t.criado_em)<info.end);
         abrirModalChartInfo(info.label, subset.length+' ticket(s) neste dia', gerarResumoTickets(subset));
       },
       onHover:(evt,elements)=>{ evt.native.target.style.cursor = elements.length>0 ? 'pointer' : 'default'; },
@@ -2735,7 +2739,7 @@ function renderAnalytics() {
         if(!elements||elements.length===0) return;
         const STATUS_KEYS=['pendente','andamento','ok','ajustar'];
         const idx=elements[0].index; const key=STATUS_KEYS[idx];
-        const subset=allTickets.filter(t=>t.status===key);
+        const subset=ticketsValidos().filter(t=>t.status===key);
         abrirModalChartInfo(stLabel(['pendente','andamento','ok','ajustar'][idx]), subset.length+' ticket(s) neste status', gerarResumoTickets(subset));
       },
       onHover:(evt,elements)=>{ evt.native.target.style.cursor = elements.length>0 ? 'pointer' : 'default'; },
@@ -2772,7 +2776,7 @@ function renderAnalytics() {
       onClick:(evt,elements,chart)=>{
         if(!elements||elements.length===0) return;
         const idx=elements[0].index; const cat=cats[idx];
-        const subset=allTickets.filter(t=>t.categoria===cat);
+        const subset=ticketsValidos().filter(t=>t.categoria===cat);
         abrirModalChartInfo(cat, subset.length+' ticket(s) no total', gerarResumoTickets(subset));
       },
       onHover:(evt,elements)=>{ evt.native.target.style.cursor = elements.length>0 ? 'pointer' : 'default'; },
@@ -2821,7 +2825,7 @@ function renderAnalytics() {
 
 // ── RELATÓRIO GERAL (exclusivo João Pedro) ──
 function renderRelatorioGeral() {
-  const tickets = allTickets;
+  const tickets = ticketsValidos(); // cancelados fora de todas as métricas
   if(!tickets || tickets.length===0){
     document.getElementById('relTotal').textContent='0';
     document.getElementById('relResolvidos').textContent='0';
@@ -2887,7 +2891,8 @@ function renderRelatorioGeral() {
     diasUteis.forEach(d=>{
       const dNext = new Date(d); dNext.setDate(dNext.getDate()+1);
       const count = tickets.filter(t=>{ if(!t.criado_em) return false; const dt=new Date(t.criado_em); return dt>=d && dt<dNext; }).length;
-      const resolvidosDia = tickets.filter(t=>t.criado_em && t.resolvido_em && new Date(t.resolvido_em)>=d && new Date(t.resolvido_em)<dNext);
+      // Mesma população das barras: tickets ABERTOS neste dia que já foram resolvidos
+      const resolvidosDia = tickets.filter(t=>ehResolvido(t) && new Date(t.criado_em)>=d && new Date(t.criado_em)<dNext);
       const tmrDia = mediaTMR(resolvidosDia);
       const label = d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
       labelsDiaRel.push(label);
@@ -2911,13 +2916,13 @@ function renderRelatorioGeral() {
       onClick:(evt,elements,chart)=>{
         if(!elements||elements.length===0) return;
         const info=_chartRanges['diaRel'][elements[0].index]; if(!info) return;
-        const subset=allTickets.filter(t=>t.criado_em && new Date(t.criado_em)>=info.start && new Date(t.criado_em)<info.end);
+        const subset=ticketsValidos().filter(t=>t.criado_em && new Date(t.criado_em)>=info.start && new Date(t.criado_em)<info.end);
         abrirModalChartInfo(info.label, subset.length+' ticket(s) neste dia', gerarResumoTickets(subset));
       },
       onHover:(evt,elements)=>{ evt.native.target.style.cursor = elements.length>0 ? 'pointer' : 'default'; },
       plugins:{
         legend:{display:false},
-        tooltip:tooltipTMR('no dia')
+        tooltip:tooltipTMR('entre os abertos neste dia')
       },
       scales:{
         x:{grid:{color:'#1f1f1f'},ticks:{color:'#666',maxRotation:0,autoSkip:true,maxTicksLimit:15}},
@@ -2941,7 +2946,8 @@ function renderRelatorioGeral() {
       const sextaSemana = new Date(inicioSemana); sextaSemana.setDate(sextaSemana.getDate()+4); // sexta
       const sabadoExcl = new Date(inicioSemana); sabadoExcl.setDate(sabadoExcl.getDate()+5); // sábado (exclusivo)
       const count = tickets.filter(t=>{ if(!t.criado_em) return false; const dt=new Date(t.criado_em); return dt>=inicioSemana && dt<sabadoExcl; }).length;
-      const resolvidosSemana = tickets.filter(t=>t.criado_em && t.resolvido_em && new Date(t.resolvido_em)>=inicioSemana && new Date(t.resolvido_em)<sabadoExcl);
+      // Mesma população das barras: tickets ABERTOS nesta semana que já foram resolvidos
+      const resolvidosSemana = tickets.filter(t=>ehResolvido(t) && new Date(t.criado_em)>=inicioSemana && new Date(t.criado_em)<sabadoExcl);
       const tmrSemana = mediaTMR(resolvidosSemana);
       const label = inicioSemana.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'–'+sextaSemana.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
       labelsSemana.push(label);
@@ -2965,13 +2971,13 @@ function renderRelatorioGeral() {
       onClick:(evt,elements,chart)=>{
         if(!elements||elements.length===0) return;
         const info=_chartRanges['semana'][elements[0].index]; if(!info) return;
-        const subset=allTickets.filter(t=>t.criado_em && new Date(t.criado_em)>=info.start && new Date(t.criado_em)<info.end);
+        const subset=ticketsValidos().filter(t=>t.criado_em && new Date(t.criado_em)>=info.start && new Date(t.criado_em)<info.end);
         abrirModalChartInfo(info.label, subset.length+' ticket(s) nesta semana', gerarResumoTickets(subset));
       },
       onHover:(evt,elements)=>{ evt.native.target.style.cursor = elements.length>0 ? 'pointer' : 'default'; },
       plugins:{
         legend:{display:false},
-        tooltip:tooltipTMR('na semana')
+        tooltip:tooltipTMR('entre os abertos nesta semana')
       },
       scales:{
         x:{grid:{color:'#1f1f1f'},ticks:{color:'#666'}},
@@ -2992,7 +2998,8 @@ function renderRelatorioGeral() {
     const d = new Date(); d.setDate(1); d.setMonth(d.getMonth()-i); d.setHours(0,0,0,0);
     const dNext = new Date(d); dNext.setMonth(dNext.getMonth()+1);
     const count = tickets.filter(t=>{ if(!t.criado_em) return false; const dt=new Date(t.criado_em); return dt>=d && dt<dNext; }).length;
-    const resolvidosMes = tickets.filter(t=>t.criado_em && t.resolvido_em && new Date(t.resolvido_em)>=d && new Date(t.resolvido_em)<dNext);
+    // Mesma população das barras: tickets ABERTOS neste mês que já foram resolvidos
+    const resolvidosMes = tickets.filter(t=>ehResolvido(t) && new Date(t.criado_em)>=d && new Date(t.criado_em)<dNext);
     const tmrMes = mediaTMR(resolvidosMes);
     const label = MESES[d.getMonth()]+'/'+String(d.getFullYear()).slice(2);
     labelsMes.push(label);
@@ -3015,13 +3022,13 @@ function renderRelatorioGeral() {
       onClick:(evt,elements,chart)=>{
         if(!elements||elements.length===0) return;
         const info=_chartRanges['mes'][elements[0].index]; if(!info) return;
-        const subset=allTickets.filter(t=>t.criado_em && new Date(t.criado_em)>=info.start && new Date(t.criado_em)<info.end);
+        const subset=ticketsValidos().filter(t=>t.criado_em && new Date(t.criado_em)>=info.start && new Date(t.criado_em)<info.end);
         abrirModalChartInfo(info.label, subset.length+' ticket(s) neste mês', gerarResumoTickets(subset));
       },
       onHover:(evt,elements)=>{ evt.native.target.style.cursor = elements.length>0 ? 'pointer' : 'default'; },
       plugins:{
         legend:{display:false},
-        tooltip:tooltipTMR('no mês')
+        tooltip:tooltipTMR('entre os abertos neste mês')
       },
       scales:{
         x:{grid:{color:'#1f1f1f'},ticks:{color:'#666'}},
@@ -3043,7 +3050,7 @@ function renderRelatorioGeral() {
     const h = new Date(t.criado_em).getHours();
     if(h>=HORA_MIN_CHART && h<=HORA_MAX_CHART){
       contagemHora[h-HORA_MIN_CHART]++;
-      if(t.resolvido_em) tmrPorHora[h-HORA_MIN_CHART].push(calcHorasUteis(new Date(t.criado_em),new Date(t.resolvido_em)));
+      if(ehResolvido(t)) tmrPorHora[h-HORA_MIN_CHART].push(horasTicket(t));
     }
   });
   const dataTmrHora = tmrPorHora.map(arr=> arr.length>0 ? arr.reduce((s,v)=>s+v,0)/arr.length : null);
@@ -3062,13 +3069,13 @@ function renderRelatorioGeral() {
       onClick:(evt,elements,chart)=>{
         if(!elements||elements.length===0) return;
         const h=horasRange[elements[0].index];
-        const subset=allTickets.filter(t=>t.criado_em && new Date(t.criado_em).getHours()===h);
+        const subset=ticketsValidos().filter(t=>t.criado_em && new Date(t.criado_em).getHours()===h);
         abrirModalChartInfo(String(h).padStart(2,'0')+'h', subset.length+' ticket(s) abertos neste horário (histórico)', gerarResumoTickets(subset));
       },
       onHover:(evt,elements)=>{ evt.native.target.style.cursor = elements.length>0 ? 'pointer' : 'default'; },
       plugins:{
         legend:{display:false},
-        tooltip:tooltipTMR('neste horário')
+        tooltip:tooltipTMR('entre os abertos neste horário')
       },
       scales:{
         x:{grid:{color:'#1f1f1f'},ticks:{color:'#666',maxRotation:0}},
@@ -3089,7 +3096,7 @@ function renderRelatorioGeral() {
     const dow = new Date(t.criado_em).getDay(); // 0=Dom...6=Sáb
     if(dow>=1 && dow<=5){
       contagemDiaSemana[dow-1]++;
-      if(t.resolvido_em) tmrPorDiaSemana[dow-1].push(calcHorasUteis(new Date(t.criado_em),new Date(t.resolvido_em)));
+      if(ehResolvido(t)) tmrPorDiaSemana[dow-1].push(horasTicket(t));
     }
   });
   const dataTmrDiaSemana = tmrPorDiaSemana.map(arr=> arr.length>0 ? arr.reduce((s,v)=>s+v,0)/arr.length : null);
@@ -3108,13 +3115,13 @@ function renderRelatorioGeral() {
       onClick:(evt,elements,chart)=>{
         if(!elements||elements.length===0) return;
         const idx=elements[0].index; const dowAlvo=idx+1;
-        const subset=allTickets.filter(t=>t.criado_em && new Date(t.criado_em).getDay()===dowAlvo);
+        const subset=ticketsValidos().filter(t=>t.criado_em && new Date(t.criado_em).getDay()===dowAlvo);
         abrirModalChartInfo(DIAS_SEMANA_UTEIS[idx], subset.length+' ticket(s) abertos neste dia (histórico)', gerarResumoTickets(subset));
       },
       onHover:(evt,elements)=>{ evt.native.target.style.cursor = elements.length>0 ? 'pointer' : 'default'; },
       plugins:{
         legend:{display:false},
-        tooltip:tooltipTMR('neste dia')
+        tooltip:tooltipTMR('entre os abertos neste dia')
       },
       scales:{
         x:{grid:{color:'#1f1f1f'},ticks:{color:'#666'}},
@@ -3195,7 +3202,7 @@ function renderRelatorioGeral() {
       onClick:(evt,elements,chart)=>{
         if(!elements||elements.length===0) return;
         const nome=labelsAdminTMR[elements[0].index];
-        const subset=allTickets.filter(t=>t.respondido_por===nome);
+        const subset=ticketsValidos().filter(t=>t.respondido_por===nome);
         abrirModalChartInfo(nome, subset.length+' ticket(s) resolvido(s)', gerarResumoTickets(subset));
       },
       onHover:(evt,elements)=>{ evt.native.target.style.cursor = elements.length>0 ? 'pointer' : 'default'; },
