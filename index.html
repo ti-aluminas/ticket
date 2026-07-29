@@ -1100,6 +1100,9 @@ let filtroData = '', filtroCategoria = 'todas', filtroUsuario = 'todos', filtroR
 let fotosBase64 = [];
 let ticketAberto = null, statusModalSel = null;
 let _rtChannel = null;
+let _rtStatus = 'conectando';
+let _ultimoNumeroVisto = 0;   // maior nº de ticket já notificado (admin)
+let _ultimasRespostas = 0;    // qtd de respostas não lidas já notificadas (solicitante)
 
 // ── CLOCK ──
 setInterval(() => { document.getElementById('clock').textContent = new Date().toLocaleTimeString('pt-BR'); }, 1000);
@@ -1271,7 +1274,7 @@ async function ativarNotificacoes() {
   esconderAvisosNotif();
   if(!notificacaoSuportada()) { showToast('Seu navegador não suporta notificações.','error'); return; }
   const p = await Notification.requestPermission();
-  if(p==='granted'){ localStorage.setItem('aluminas_notif','on'); showToast('Notificações ativadas!','success'); }
+  if(p==='granted'){ localStorage.setItem('aluminas_notif','on'); iniciarKeepAlive(); showToast('Notificações ativadas!','success'); }
   else showToast('Notificações não foram permitidas.','error');
   atualizarBtnNotif();
 }
@@ -1299,10 +1302,43 @@ function atualizarBtnNotif() {
     b.style.opacity = on ? '1' : '.5';
   });
 }
-function notificar(titulo, corpo) {
-  if(!notificacaoAtiva()) return;
+// ── SERVICE WORKER ──
+// Sem ele o Chrome só mostra notificação com a aba viva e o Android nem isso.
+// Precisa do arquivo sw.js na mesma pasta e de https (GitHub Pages serve).
+let _swReg = null;
+async function registrarServiceWorker() {
+  if (!('serviceWorker' in navigator)) return null;
+  if (location.protocol === 'file:') return null;   // file:// não aceita service worker
   try {
-    const n = new Notification(titulo, {body:corpo, tag:'aluminas-ticket', renotify:true});
+    _swReg = await navigator.serviceWorker.register('sw.js');
+    await navigator.serviceWorker.ready;
+  } catch(e) { _swReg = null; console.warn('SW não registrado:', e); }
+  return _swReg;
+}
+registrarServiceWorker();
+
+const ICONE_NOTIF = (document.querySelector('link[rel="icon"]')||{}).href || '';
+let _notifSeq = 0;
+
+async function notificar(titulo, corpo) {
+  if(!notificacaoAtiva()) return;
+  const opts = {
+    body: corpo,
+    tag: 'aluminas-' + (++_notifSeq),  // tag única: dois tickets seguidos não se sobrescrevem
+    renotify: true,
+    requireInteraction: true,          // fica na tela até clicar/fechar, não some em 5s
+    icon: ICONE_NOTIF,
+    badge: ICONE_NOTIF,
+    data: { url: location.href }
+  };
+  // 1) Caminho bom: pelo service worker (aba minimizada, outra janela, Android)
+  try {
+    const reg = _swReg || (('serviceWorker' in navigator) ? await navigator.serviceWorker.getRegistration() : null);
+    if (reg && reg.showNotification) { await reg.showNotification(titulo, opts); return; }
+  } catch(e) { /* cai no fallback abaixo */ }
+  // 2) Fallback: Notification direto (desktop sem SW, ou rodando em file://)
+  try {
+    const n = new Notification(titulo, opts);
     n.onclick = ()=>{
       window.focus();
       // No admin a fila já está na tela; no solicitante leva direto para as respostas
@@ -1310,7 +1346,7 @@ function notificar(titulo, corpo) {
       if(!noAdmin && selectedUser) switchTab('meus');
       n.close();
     };
-  } catch(e) { /* alguns navegadores exigem service worker: ignora */ }
+  } catch(e) { console.warn('Notificação falhou:', e); }
 }
 
 // ── PREVISÃO DE RESPOSTA (baseada nos últimos 7 dias, não no histórico todo) ──
@@ -1434,6 +1470,7 @@ function entrarAdmin(nomeAdmin) {
   loadTickets();
   atualizarBtnSom();
   pedirPermissaoNotificacao('avisoNotifAdm');
+  iniciarKeepAlive();   // impede o Chrome de congelar a aba do admin em segundo plano
 }
 
 function voltarModo() {
@@ -1491,9 +1528,12 @@ function onTicketsRealtimeChange(payload) {
   // Ticket novo chegando enquanto o admin está com o painel aberto
   if (adminVisivel && payload.eventType === 'INSERT' && payload.new) {
     const t = payload.new;
-    if (somAtivo()) bipeTicketNovo();
-    notificar('Novo ticket · '+fmtNum(t.numero), (t.operador||'—')+' · '+(t.categoria||'—'));
-    showToast('Novo ticket de '+(t.operador||'—')+'!','success');
+    if ((t.numero||0) > _ultimoNumeroVisto) {   // se a varredura já avisou, não repete
+      _ultimoNumeroVisto = t.numero||0;
+      if (somAtivo()) bipeTicketNovo();
+      notificar('Novo ticket · '+fmtNum(t.numero), (t.operador||'—')+' · '+(t.categoria||'—'));
+      showToast('Novo ticket de '+(t.operador||'—')+'!','success');
+    }
   }
   if (adminVisivel) {
     agendarRefresh('tickets', ()=>{
@@ -1535,6 +1575,7 @@ function onUsersRealtimeChange() {
 }
 
 function atualizarSyncUI(estado) {
+  _rtStatus = estado;
   const el = document.getElementById('syncStatus');
   if (!el) return;
   if (estado === 'ao-vivo') { el.className = 'sync-badge live'; el.innerHTML = '<span class="dot"></span>ao vivo'; }
@@ -1543,6 +1584,73 @@ function atualizarSyncUI(estado) {
 }
 
 function syncManual() { loadTickets(); showToast('Sincronizado!','success'); }
+
+// ── VIGIA DE CONEXÃO + VARREDURA DE SEGURANÇA ──
+// O Chrome congela aba em segundo plano: o WebSocket cai calado e o evento do
+// Realtime nunca chega. A varredura por tempo tapa esse buraco, e o keep-alive
+// (áudio mudo em loop) impede o navegador de congelar a aba do admin.
+const VARREDURA_MS = 20000;
+let _varreduraTimer = null;
+
+function iniciarVigia() {
+  if (_varreduraTimer) return;
+  _varreduraTimer = setInterval(varrerNovidades, VARREDURA_MS);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ reconectarSeCaiu(); varrerNovidades(); } });
+  window.addEventListener('online', ()=>{ reconectarSeCaiu(); varrerNovidades(); });
+  window.addEventListener('focus', varrerNovidades);
+}
+
+function reconectarSeCaiu() {
+  if (_rtStatus === 'ao-vivo') return;
+  try { if (_rtChannel) sb.removeChannel(_rtChannel); } catch(e) {}
+  _rtChannel = null;
+  iniciarRealtimeSync();
+}
+
+async function varrerNovidades() {
+  if (_rtStatus !== 'ao-vivo') reconectarSeCaiu();
+  const adminVisivel = document.getElementById('adminLayout').style.display !== 'none';
+
+  // Admin: procura ticket com número maior que o último já visto
+  if (adminVisivel) {
+    const {data,error} = await sb.from('tickets')
+      .select('numero,operador,categoria')
+      .gt('numero', _ultimoNumeroVisto)
+      .order('numero',{ascending:false}).limit(5);
+    if (!error && data && data.length) {
+      _ultimoNumeroVisto = data[0].numero;
+      if (somAtivo()) bipeTicketNovo();
+      data.forEach(t=> notificar('Novo ticket · '+fmtNum(t.numero), (t.operador||'—')+' · '+(t.categoria||'—')));
+      loadTickets();
+    }
+    return;
+  }
+
+  // Solicitante: confere se surgiu resposta nova enquanto a aba estava parada
+  if (selectedUser) {
+    await loadMeusTickets(true);
+    const agora = contarNaoLidos();
+    if (agora > _ultimasRespostas && document.getElementById('pane-meus').style.display === 'none') {
+      notificar('Resposta do PCP', agora + (agora>1 ? ' tickets respondidos' : ' ticket respondido'));
+    }
+    _ultimasRespostas = agora;
+  }
+}
+
+// Áudio mudo em loop: enquanto há mídia tocando o Chrome não congela a aba.
+let _keepAlive = null;
+function iniciarKeepAlive() {
+  if (_keepAlive) return;
+  try {
+    _keepAlive = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+    _keepAlive.loop = true; _keepAlive.volume = 0.001;
+    _keepAlive.play().catch(()=>{ /* precisa de um clique antes; tenta de novo no 1º clique */ });
+    document.addEventListener('click', ()=>{ if(_keepAlive && _keepAlive.paused) _keepAlive.play().catch(()=>{}); }, {once:false});
+  } catch(e) { _keepAlive = null; }
+}
+function pararKeepAlive() { if(_keepAlive){ _keepAlive.pause(); _keepAlive = null; } }
+
+iniciarVigia();
 
 // ── NOTIFICAÇÃO DE TICKET NOVO (admin) ──
 const TITULO_BASE = document.title;
@@ -1887,6 +1995,7 @@ async function loadMeusTickets(silencioso) {
   if(error){ if(!silencioso) showToast('Erro: '+error.message,'error'); return; }
   meusTickets = data||[];
   atualizarBadgeMeus();
+  if(paneVisivel) _ultimasRespostas = contarNaoLidos();
   if(paneVisivel) renderMeusTickets();
 }
 
@@ -2046,6 +2155,9 @@ async function loadTickets() {
   const {data,error} = await sb.from('tickets').select('*').order('criado_em',{ascending:false});
   if(error){ showToast('Erro: '+error.message,'error'); return; }
   allTickets = data||[]; atualizarFiltrosDropdowns(); renderTickets();
+  // Marca o teto conhecido para a varredura não avisar de ticket antigo
+  const maior = allTickets.reduce((m,t)=> Math.max(m, t.numero||0), 0);
+  if (maior > _ultimoNumeroVisto) _ultimoNumeroVisto = maior;
 }
 
 function setFilter(f, btn) {
