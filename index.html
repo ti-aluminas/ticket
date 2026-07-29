@@ -1055,6 +1055,14 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
             </div>
           </div>
 
+          <!-- RETRABALHO POR ADMIN -->
+          <div class="anl-charts-grid">
+            <div class="anl-chart-box full">
+              <div class="anl-chart-title">Fechamentos Revertidos por Admin <span>— tickets que ele finalizou e precisaram ser reabertos</span></div>
+              <div id="relRetrabalho"><div class="anl-empty">Sem dados</div></div>
+            </div>
+          </div>
+
           <!-- TEMPO DE RESPOSTA POR SOLICITANTE -->
           <div class="anl-charts-grid">
             <div class="anl-chart-box full">
@@ -1176,14 +1184,22 @@ async function registrarEvento(id, evento) {
 // Retrabalho = fechamento que foi revertido por uma reabertura logo depois.
 // Conta para quem fechou, nao para quem reabriu.
 function retrabalhoPorAdmin(tickets) {
-  const mapa = {};
+  const mapa = {};   // { admin: {qtd, tickets:[numero]} }
+  const soma = (quem, num)=>{
+    if(!quem) return;
+    if(!mapa[quem]) mapa[quem] = {qtd:0, tickets:[]};
+    mapa[quem].qtd++;
+    if(num) mapa[quem].tickets.push(num);
+  };
   tickets.forEach(t=>{
     const h = histTicket(t);
-    for (let i=0; i<h.length-1; i++) {
-      if (h[i].acao==='fechamento' && h[i+1].acao==='reabertura' && h[i].por) {
-        mapa[h[i].por] = (mapa[h[i].por]||0) + 1;
-      }
-    }
+    h.forEach((ev,i)=>{
+      if (ev.acao !== 'reabertura') return;
+      // `revertido_de` é gravado na hora da reabertura e sobrevive mesmo quando
+      // o fechamento anterior é de antes do histórico existir.
+      const anterior = h[i-1] && h[i-1].acao==='fechamento' ? h[i-1].por : null;
+      soma(ev.revertido_de || anterior, t.numero);
+    });
   });
   return mapa;
 }
@@ -2186,6 +2202,8 @@ function cancelarReabrir(id) {
 async function confirmarReabrir(id) {
   const comentario = document.getElementById('coment-reabrir-'+id).value.trim();
   const reabIsoSol = new Date().toISOString();
+  // Guarda quem tinha fechado, antes do update apagar o respondido_por
+  const revAdminSol = (meusTickets.find(x=>x.id===id)||{}).respondido_por || null;
   showOverlay(true);
   const {error} = await sb.from('tickets').update({
     status:'pendente', comentario_admin:null, respondido_por:null,
@@ -2195,7 +2213,7 @@ async function confirmarReabrir(id) {
   }).eq('id',id);
   showOverlay(false);
   if(error){ showToast('Erro: '+error.message,'error'); return; }
-  registrarEvento(id, {acao:'reabertura', por:selectedUser?selectedUser.nome:null, em:reabIsoSol, comentario:comentario||null});
+  registrarEvento(id, {acao:'reabertura', por:selectedUser?selectedUser.nome:null, em:reabIsoSol, comentario:comentario||null, revertido_de:revAdminSol});
   showToast('Ticket reaberto!','success');
   loadMeusTickets();
 }
@@ -2629,7 +2647,8 @@ async function adminReabrir(id) {
   if(error){ showToast('Erro: '+error.message,'error'); return; }
   const idx=allTickets.findIndex(t=>t.id===id);
   if(idx>=0){ Object.assign(allTickets[idx],{status:'pendente',comentario_admin:null,respondido_por:null,resolvido_em:null,reaberto_em:reabIso,reaberto_por:window._adminNome||null}); }
-  registrarEvento(id, {acao:'reabertura', por:window._adminNome||null, em:reabIso});
+  const revAdmin = (allTickets.find(x=>x.id===id)||{}).respondido_por || null;
+  registrarEvento(id, {acao:'reabertura', por:window._adminNome||null, em:reabIso, revertido_de:revAdmin});
   fecharModalTicket(); renderTickets(); showToast('Ticket reaberto!','success');
 }
 
@@ -3022,6 +3041,7 @@ function renderRelatorioGeral() {
     document.getElementById('relCrescimento').textContent='—';
     document.getElementById('relCrescimentoSub').textContent='vs. mês anterior';
     document.getElementById('relAdminList').innerHTML='<div class="anl-empty">Sem dados</div>';
+    document.getElementById('relRetrabalho').innerHTML='<div class="anl-empty">Sem dados</div>';
     document.getElementById('relSolicitanteTMR').innerHTML='<div class="anl-empty">Sem dados</div>';
     document.getElementById('relParadosBody').innerHTML='';
     document.getElementById('relParadosEmpty').style.display='block';
@@ -3357,13 +3377,13 @@ function renderRelatorioGeral() {
   });
   const listaAdmins = Object.entries(adminResolvidos).sort((a,b)=>b[1]-a[1]);
   const maxA = listaAdmins.length>0 ? Math.max(...listaAdmins.map(([,c])=>c),1) : 1;
+  // Fechamentos que precisaram ser refeitos, atribuidos a quem fechou
+  const revert = retrabalhoPorAdmin(ticketsValidos());
   const elA = document.getElementById('relAdminList');
   if(listaAdmins.every(([,c])=>c===0)){ elA.innerHTML='<div class="anl-empty">Sem dados</div>'; }
   else {
-    // Fechamentos que precisaram ser refeitos, atribuidos a quem fechou
-    const revert = retrabalhoPorAdmin(ticketsValidos());
     elA.innerHTML = listaAdmins.map(([nome,cnt])=>{
-      const rv = revert[nome]||0;
+      const rv = (revert[nome]||{}).qtd||0;
       const tagRv = rv>0
         ? `<span title="${rv} fechamento(s) revertido(s) por reabertura" style="color:var(--yellow);font-size:10px;font-weight:700;margin-left:6px">${rv} rev</span>`
         : '';
@@ -3374,6 +3394,31 @@ function renderRelatorioGeral() {
         <span class="anl-user-count">${cnt}</span>
       </div>`;
     }).join('');
+  }
+
+  // ── FECHAMENTOS REVERTIDOS POR ADMIN ──
+  const elR = document.getElementById('relRetrabalho');
+  if (elR) {
+    const listaRev = Object.entries(revert).sort((a,b)=>b[1].qtd-a[1].qtd);
+    if (listaRev.length === 0) {
+      elR.innerHTML = '<div class="anl-empty">Nenhum fechamento revertido no período registrado.</div>';
+    } else {
+      const maxR = Math.max(...listaRev.map(([,v])=>v.qtd), 1);
+      elR.innerHTML = listaRev.map(([nome,v])=>{
+        const total = adminResolvidos[nome] || 0;
+        const pct = total>0 ? (v.qtd/total*100).toFixed(1) : '—';
+        const nums = v.tickets.slice(0,8).map(n=>fmtNum(n)).join(' ');
+        const resto = v.tickets.length>8 ? ' +'+(v.tickets.length-8) : '';
+        return `<div class="anl-user-row" title="${esc(nome)} · ${v.qtd} de ${total} fechamento(s) reabertos">
+          <div class="avatar" style="width:24px;height:24px;font-size:9px;flex-shrink:0">${initials(nome)}</div>
+          <span class="anl-user-name">${esc(nome)}
+            <span style="display:block;font-size:10px;color:var(--text-dim);font-family:'Roboto Mono',monospace">${nums}${resto}</span>
+          </span>
+          <div class="anl-user-bar-wrap"><div class="anl-user-bar-fill" style="width:${Math.round(v.qtd/maxR*100)}%;background:var(--yellow)"></div></div>
+          <span class="anl-user-count" style="color:var(--yellow)">${v.qtd}<span style="color:var(--text-dim);font-weight:400;font-size:10px"> · ${pct}%</span></span>
+        </div>`;
+      }).join('');
+    }
   }
 
   destroyChart('adminTMR');
