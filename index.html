@@ -387,6 +387,11 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .anl-empty{text-align:center;padding:40px;font-size:12px;color:var(--text-dim)}
 
 /* TOP USERS TABLE */
+/* AVISO DE VERSAO DESATUALIZADA */
+#verBanner{display:none;position:fixed;left:0;right:0;bottom:0;z-index:900;background:#b71c1c;color:#fff;padding:12px 16px;font-size:13px;font-family:'Inter',sans-serif;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;box-shadow:0 -4px 16px rgba(0,0,0,.5)}
+#verBanner.show{display:flex}
+#verBanner button{background:#fff;color:#b71c1c;border:none;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;letter-spacing:.04em;text-transform:uppercase}
+
 /* VISIVEL SO PARA O ADMIN DONO (body.dono) */
 .col-dono{display:none}
 body.dono .col-dono{display:table-cell}
@@ -1135,7 +1140,7 @@ body.dono .col-dono{display:table-cell}
           <!-- TEMPO DE EXECUÇÃO POR ADMIN -->
           <div class="anl-charts-grid">
             <div class="anl-chart-box full">
-              <div class="anl-chart-title">Tempo Médio de Execução por Admin <span>— do "assumir" até finalizar, em horas úteis (não conta a espera na fila)</span></div>
+              <div class="anl-chart-title">Tempo Médio de Execução por Admin <span>— do "assumir" até finalizar, em horas úteis · <span id="relMarcoTxt">medindo desde o deploy</span></span></div>
               <div id="relExecAdmin"><div class="anl-empty">Sem dados</div></div>
             </div>
           </div>
@@ -1193,6 +1198,10 @@ body.dono .col-dono{display:table-cell}
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="verBanner">
+  <span><strong>Versão desatualizada.</strong> Esta aba está rodando um arquivo antigo — o que você fizer aqui pode não gravar direito.</span>
+  <button onclick="recarregarForcado()">Atualizar agora</button>
+</div>
 <div class="overlay" id="overlay"><div class="spinner"></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -1201,6 +1210,16 @@ body.dono .col-dono{display:table-cell}
 const SUPABASE_URL = 'https://zeaknzyvlgawtjjdfluc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InplYWtuenl2bGdhd3RqamRmbHVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwMDg3NDgsImV4cCI6MjA5ODU4NDc0OH0.YzYuE6fm6F0wvbDtmCVmWDrMXa7biEbcRZ2a8AfdR7s';
 const ADMINS = {'1964':'João Pedro','2404':'Bernardo','1010':'Huriel'};
+
+// Versao deste arquivo. Trocar a cada deploy — e o que permite uma aba antiga
+// se reconhecer como desatualizada em vez de gravar dados pela metade.
+const APP_VERSION = '2026.07.30-1053';
+
+// Momento em que a medicao de execucao entrou no ar para todos os admins
+// (deploy #21, commit 94ae5b8, GitHub Pages). Tudo que foi resolvido antes
+// disso nao tem como ter marca de "assumido" — e ticket anterior a regra,
+// nao descuido de ninguem. Depois disso, a ausencia de marca vira diagnostico.
+const MARCO_EXECUCAO = new Date('2026-07-30T10:53:00-03:00');
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ── STATE ──
@@ -1213,6 +1232,36 @@ let _rtChannel = null;
 let _rtStatus = 'conectando';
 let _ultimoNumeroVisto = 0;   // maior nº de ticket já notificado (admin)
 let _ultimasRespostas = 0;    // qtd de respostas não lidas já notificadas (solicitante)
+
+// ── CHECAGEM DE VERSAO ──
+// O GitHub Pages entrega o index.html com cache; uma aba aberta ha horas segue
+// rodando codigo velho e gravando menos campos do que deveria. Aqui a propria
+// aba busca o arquivo publicado ignorando cache e se compara com ele.
+function recarregarForcado() {
+  location.replace(location.pathname + '?v=' + Date.now());
+}
+
+async function checarVersao() {
+  // file:// (uso no Android) e about: nao tem o que buscar
+  if(!location.protocol.startsWith('http')) return;
+  try {
+    const url = location.pathname + '?_v=' + Date.now();
+    const r = await fetch(url, {cache:'no-store'});
+    if(!r.ok) return;
+    const txt = await r.text();
+    const m = txt.match(/const APP_VERSION = '([^']+)'/);
+    if(!m) return;
+    const banner = document.getElementById('verBanner');
+    if(banner) banner.classList.toggle('show', m[1] !== APP_VERSION);
+  } catch(e) { /* offline ou bloqueado: segue em silencio */ }
+}
+
+// Checa ao abrir, ao voltar para a aba e de 10 em 10 minutos
+(function ligarVersao(){
+  checarVersao();
+  setInterval(checarVersao, 10*60*1000);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) checarVersao(); });
+})();
 
 // ── CLOCK ──
 setInterval(() => { document.getElementById('clock').textContent = new Date().toLocaleTimeString('pt-BR'); }, 1000);
@@ -1351,6 +1400,29 @@ function fechamentoDireto(t) {
     if(h[i].acao === 'fechamento') return h[i].direto === true;
   }
   return false;
+}
+
+// Ticket resolvido antes do marco: a medicao de execucao nem existia ainda.
+function anteriorAoMarco(t) {
+  const ref = t.resolvido_em || t.andamento_em || t.criado_em;
+  return ref ? new Date(ref) < MARCO_EXECUCAO : false;
+}
+
+// Classifica por que um ticket nao tem tempo de execucao.
+//   'ok'      -> tem marca, da pra medir
+//   'legado'  -> resolvido antes do marco, esperado
+//   'direto'  -> finalizado sem passar por Em Andamento
+//   'cache'   -> resolvido depois do marco sem marca nem flag: quase sempre
+//                aba antiga em cache, vale pedir Ctrl+Shift+R para o admin
+function situacaoExecucao(t) {
+  if(t.andamento_em) return 'ok';
+  // Em andamento sem marca: ou foi assumido antes do deploy, ou a aba de quem
+  // assumiu esta com codigo antigo. Nos dois casos nao da para medir e vale
+  // avisar, entao esse caso vem antes da checagem do marco.
+  if(t.status === 'andamento') return 'cache';
+  if(anteriorAoMarco(t)) return 'legado';
+  if(fechamentoDireto(t)) return 'direto';
+  return ehResolvido(t) ? 'cache' : 'legado';
 }
 
 // Início da contagem de TMR. Se o ticket foi reaberto, o relógio recomeça na
@@ -2559,9 +2631,12 @@ function renderTickets() {
       let execHtml = '—';
       if(ehDono()){
         if(!t.andamento_em){
-          execHtml = fechamentoDireto(t)
+          const sit = situacaoExecucao(t);
+          execHtml = sit==='direto'
             ? `<span style="color:var(--yellow);font-size:10px;font-weight:700" title="Finalizado sem passar por Em Andamento">DIRETO</span>`
-            : `<span style="color:var(--text-dim)" title="Ticket sem marca de 'assumido'">—</span>`;
+            : sit==='cache'
+              ? `<span style="color:#ff8a80;font-size:10px;font-weight:700" title="Resolvido após o marco sem gravar nada — provável cache antigo">?</span>`
+              : `<span style="color:var(--text-dim)" title="Anterior à medição de execução">—</span>`;
         } else if(t.status==='andamento'){
           execHtml = `<span class="tmr-live" data-start="${t.andamento_em}" style="color:var(--blue);font-family:'Roboto Mono',monospace;font-weight:600" title="Assumido por ${esc(t.respondido_por||'—')} em ${fmtDataHora(t.andamento_em)||'—'}">--:--:--</span>`;
         } else {
@@ -2628,10 +2703,14 @@ function renderTmExec(t) {
     // Tickets trabalhados antes da coluna existir ou que ninguém assumiu ainda
     if(t.status==='pendente' || t.status==='cancelado'){ limpar(); return; }
     wrap.style.display='block';
-    const txt = fechamentoDireto(t)
-      ? `<strong style="color:var(--yellow)">Finalizado direto da fila.</strong> ${esc(t.respondido_por||'O admin')} resolveu sem clicar em "Assumir Ticket", então não há marca de início — o ticket nunca passou por Em Andamento. O TMR de ${fmtHorasUteis(ehResolvido(t)?horasTicket(t):null)} é o único tempo disponível aqui.`
-      : `Sem marca de "assumido". Este ticket foi trabalhado antes do registro de execução existir — só o TMR está disponível para ele.`;
-    wrap.innerHTML = tit + `<div class="exec-nodata">${txt}</div>`;
+    const tmrTxt = fmtHorasUteis(ehResolvido(t)?horasTicket(t):null);
+    const marcoTxt = MARCO_EXECUCAO.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    const casos = {
+      legado: `Ticket anterior à medição. A execução passou a ser registrada em <strong>${marcoTxt}</strong> e este aqui já estava resolvido — só o TMR de ${tmrTxt} existe para ele.`,
+      direto: `<strong style="color:var(--yellow)">Finalizado direto da fila.</strong> ${esc(t.respondido_por||'O admin')} resolveu sem clicar em "Assumir Ticket", então o ticket nunca passou por Em Andamento. O TMR de ${tmrTxt} é o único tempo disponível.`,
+      cache:  `<strong style="color:#ff8a80">Assumido sem gravar a marca.</strong> Ou o clique em "Assumir" aconteceu antes de ${marcoTxt}, ou a aba de ${esc(t.respondido_por||'quem assumiu')} está com a versão antiga em cache. Peça um Ctrl+Shift+R — enquanto isso, este ticket não entra na medição.`
+    };
+    wrap.innerHTML = tit + `<div class="exec-nodata">${casos[situacaoExecucao(t)] || casos.legado}</div>`;
     return;
   }
 
@@ -3611,17 +3690,19 @@ function renderRelatorioGeral() {
   // ── TEMPO MÉDIO DE EXECUÇÃO POR ADMIN ──
   {
     const elE = document.getElementById('relExecAdmin');
+    const elM = document.getElementById('relMarcoTxt');
+    if(elM) elM.textContent = 'medindo desde ' + MARCO_EXECUCAO.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
     if(elE){
-      const mapa = {};   // { admin: {soma, qtd, pior, piorNum, direto} }
+      const mapa = {};   // { admin: {soma, qtd, pior, piorNum, direto, cache} }
       const chave = t => t.respondido_por || 'Sem responsável';
-      const slot = a => (mapa[a] = mapa[a] || {soma:0, qtd:0, pior:0, piorNum:null, direto:0});
+      const slot = a => (mapa[a] = mapa[a] || {soma:0, qtd:0, pior:0, piorNum:null, direto:0, cache:0});
       resolvidosHist.forEach(t=>{
+        const sit = situacaoExecucao(t);
+        if(sit==='legado') return;              // anterior ao marco: fora da conta
+        if(sit==='direto'){ slot(chave(t)).direto++; return; }
+        if(sit==='cache'){  slot(chave(t)).cache++;  return; }
         const h = horasExecucao(t);
-        if(h===null){
-          // Sem marca de assumido: se foi fechamento direto, conta a parte
-          if(fechamentoDireto(t)) slot(chave(t)).direto++;
-          return;
-        }
+        if(h===null) return;
         const v = slot(chave(t));
         v.soma += h; v.qtd++;
         if(h > v.pior){ v.pior = h; v.piorNum = t.numero; }
@@ -3630,16 +3711,15 @@ function renderRelatorioGeral() {
         .map(([nome,v])=>({nome, media: v.qtd ? v.soma/v.qtd : null, ...v}))
         .sort((a,b)=>(b.media===null?-1:b.media)-(a.media===null?-1:a.media));
       if(lista.length===0){
-        elE.innerHTML = '<div class="anl-empty">Sem dados ainda. A marca de execução só existe nos tickets assumidos a partir desta versão.</div>';
+        elE.innerHTML = '<div class="anl-empty">Nenhum ticket finalizado desde que a medição entrou no ar.</div>';
       } else {
         const maxE = Math.max(...lista.map(x=>x.media||0), 0.01);
         elE.innerHTML = lista.map(x=>{
-          const tagDireto = x.direto>0
-            ? `<span style="color:var(--yellow)"> · ${x.direto} finalizado(s) direto</span>`
-            : '';
+          const tags = (x.direto>0 ? ` · <span style="color:var(--yellow)">${x.direto} direto(s)</span>` : '')
+                     + (x.cache>0  ? ` · <span style="color:#ff8a80">${x.cache} sem registro</span>` : '');
           const sub = x.qtd>0
-            ? `${x.qtd} ticket(s) com marca · maior: ${fmtHorasUteis(x.pior)}${x.piorNum?' ('+fmtNum(x.piorNum)+')':''}${tagDireto}`
-            : `nenhum ticket assumido${tagDireto}`;
+            ? `${x.qtd} ticket(s) medido(s) · maior: ${fmtHorasUteis(x.pior)}${x.piorNum?' ('+fmtNum(x.piorNum)+')':''}${tags}`
+            : `nenhum ticket assumido${tags}`;
           return `<div class="anl-user-row" title="${esc(x.nome)}">
           <div class="avatar" style="width:24px;height:24px;font-size:9px;flex-shrink:0">${initials(x.nome||'?')}</div>
           <span class="anl-user-name">${esc(x.nome)}
