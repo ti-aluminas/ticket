@@ -1213,13 +1213,13 @@ const ADMINS = {'1964':'João Pedro','2404':'Bernardo','1010':'Huriel'};
 
 // Versao deste arquivo. Trocar a cada deploy — e o que permite uma aba antiga
 // se reconhecer como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.07.30-1053';
+const APP_VERSION = '2026.07.30-1230';
 
-// Momento em que a medicao de execucao entrou no ar para todos os admins
-// (deploy #21, commit 94ae5b8, GitHub Pages). Tudo que foi resolvido antes
-// disso nao tem como ter marca de "assumido" — e ticket anterior a regra,
-// nao descuido de ninguem. Depois disso, a ausencia de marca vira diagnostico.
-const MARCO_EXECUCAO = new Date('2026-07-30T10:53:00-03:00');
+// Momento em que a medicao de execucao passa a valer. Fica em 12:30 de
+// 30/07/2026 e nao no horario do deploy (10:53) porque as duas horas seguintes
+// foram de transicao — admin com aba antiga fechando ticket sem gravar marca.
+// Contar dali sujaria a media com ticket que nunca teve chance de ser medido.
+const MARCO_EXECUCAO = new Date('2026-07-30T12:30:00-03:00');
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ── STATE ──
