@@ -387,6 +387,16 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .anl-empty{text-align:center;padding:40px;font-size:12px;color:var(--text-dim)}
 
 /* TOP USERS TABLE */
+/* VISIVEL SO PARA O ADMIN DONO (body.dono) */
+.col-dono{display:none}
+body.dono .col-dono{display:table-cell}
+.dono-tag{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid rgba(192,146,42,.35);background:rgba(192,146,42,.08);padding:1px 5px;margin-left:8px;vertical-align:2px}
+.exec-box{border:1px solid rgba(100,181,246,.25);background:rgba(100,181,246,.05);padding:11px 13px;margin-bottom:14px}
+.exec-tit{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);margin-bottom:10px}
+.exec-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+.exec-nodata{font-size:11px;color:var(--text-dim);line-height:1.5}
+.exec-sub{color:var(--text-dim);font-size:10px;font-weight:400}
+@media(max-width:640px){.exec-grid{grid-template-columns:1fr}}
 .anl-user-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)}
 .anl-user-row:last-child{border-bottom:none}
 .anl-user-name{font-size:13px;font-weight:500;flex:1}
@@ -621,6 +631,8 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
       </div>
       <div style="margin-bottom:14px"><div class="tm-label">Demanda</div><div class="tm-val" id="tmDemanda">—</div></div>
       <div id="tmObsWrap" style="display:none;margin-bottom:14px"><div class="tm-label">Observação</div><div class="tm-val" id="tmObs">—</div></div>
+      <!-- BLOCO DE EXECUCAO: renderizado somente para o admin dono -->
+      <div id="tmExecWrap" class="exec-box" style="display:none"></div>
       <div id="tmFotosWrap" style="display:none"><div class="tm-label" style="margin-bottom:8px">Fotos</div><div class="tm-fotos" id="tmFotos"></div></div>
     </div>
     <div class="tm-foot" id="tmFoot"></div>
@@ -929,7 +941,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
             <table class="admin-table">
               <thead><tr>
                 <th>#</th><th>Usuário</th><th>Categoria</th><th>Demanda</th>
-                <th>Abertura</th><th>Resolução</th><th>TMR</th><th>Fotos</th><th>Status</th>
+                <th>Abertura</th><th>Resolução</th><th>TMR</th><th class="col-dono">Execução</th><th>Fotos</th><th>Status</th>
               </tr></thead>
               <tbody id="ticketsList"></tbody>
             </table>
@@ -1106,6 +1118,28 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
             <div class="anl-empty" id="relParadosEmpty" style="display:none">Nenhum ticket parado.</div>
           </div>
 
+          <!-- EM EXECUÇÃO AGORA -->
+          <div class="anl-chart-box full" style="margin-bottom:16px">
+            <div class="anl-chart-title">Em Execução Agora <span>— quem assumiu, quando colocou em andamento e há quanto tempo está trabalhando</span></div>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead><tr>
+                  <th>#</th><th>Ticket</th><th>Solicitante</th><th>Admin</th><th>Em andamento desde</th><th>Esperou na fila</th><th>Trabalhando há</th>
+                </tr></thead>
+                <tbody id="relExecAgoraBody"></tbody>
+              </table>
+            </div>
+            <div class="anl-empty" id="relExecAgoraEmpty" style="display:none">Nenhum ticket em execução neste momento.</div>
+          </div>
+
+          <!-- TEMPO DE EXECUÇÃO POR ADMIN -->
+          <div class="anl-charts-grid">
+            <div class="anl-chart-box full">
+              <div class="anl-chart-title">Tempo Médio de Execução por Admin <span>— do "assumir" até finalizar, em horas úteis (não conta a espera na fila)</span></div>
+              <div id="relExecAdmin"><div class="anl-empty">Sem dados</div></div>
+            </div>
+          </div>
+
           <!-- DESEMPENHO POR ADMIN -->
           <div class="anl-charts-grid">
             <div class="anl-chart-box">
@@ -1270,6 +1304,54 @@ function retrabalhoPorAdmin(tickets) {
 // Reabertura pode vir do solicitante (com comentário) ou do admin (sem).
 // Só o reaberto_em existe nas duas rotas, então ele é a marca oficial.
 function foiReaberto(t) { return !!(t.reaberto_em || t.reaberto_comentario); }
+
+// ── EXECUÇÃO (visão exclusiva do dono do sistema) ──
+// TMR mede a espera do solicitante. Execução mede só o trecho em que o admin
+// estava de fato com o ticket na mão: de `andamento_em` até `resolvido_em`.
+function ehDono() { return window._adminNome === 'João Pedro'; }
+
+// Momento em que alguém assumiu o ticket (null nos tickets anteriores à coluna)
+function inicioExecucao(t) {
+  if(!t || !t.andamento_em) return null;
+  const d = new Date(t.andamento_em);
+  return isNaN(d) ? null : d;
+}
+// Fim da execução: a resolução, ou agora se o admin ainda está trabalhando
+function fimExecucao(t) {
+  if(!t) return null;
+  if(t.resolvido_em){ const d = new Date(t.resolvido_em); return isNaN(d) ? null : d; }
+  return t.status==='andamento' ? new Date() : null;
+}
+// Horas úteis de execução (null quando não há marca de "assumido")
+function horasExecucao(t) {
+  const ini = inicioExecucao(t), fim = fimExecucao(t);
+  if(!ini || !fim || fim <= ini) return ini && fim ? 0 : null;
+  return calcHorasUteis(ini, fim);
+}
+// Horas úteis que o ticket ficou na fila antes de alguém assumir
+function horasFila(t) {
+  const ini = inicioExecucao(t);
+  if(!ini) return null;
+  return calcHorasUteis(inicioTMR(t), ini);
+}
+// Tempo corrido (relógio de parede) da execução, em ms
+function msExecucao(t) {
+  const ini = inicioExecucao(t), fim = fimExecucao(t);
+  if(!ini || !fim) return null;
+  return fim - ini;
+}
+
+// Fechamento "direto": o admin finalizou sem nunca clicar em Assumir Ticket.
+// A marca vive no ultimo evento de fechamento do historico, entao so existe
+// para tickets fechados a partir desta versao — nos antigos devolve false e o
+// painel os trata como "sem registro" em vez de inventar um diagnostico.
+function fechamentoDireto(t) {
+  const h = histTicket(t);
+  for(let i = h.length-1; i >= 0; i--){
+    if(h[i].acao === 'fechamento') return h[i].direto === true;
+  }
+  return false;
+}
 
 // Início da contagem de TMR. Se o ticket foi reaberto, o relógio recomeça na
 // reabertura — senão o tempo em que ele já estava resolvido entrava na conta.
@@ -1591,6 +1673,8 @@ function entrarAdmin(nomeAdmin) {
   setModeBadge('Admin · '+nomeAdmin,'adm');
   document.getElementById('headerSub').textContent = 'Painel do Admin · PCP';
   document.getElementById('atab-relatorio').style.display = (nomeAdmin === 'João Pedro') ? '' : 'none';
+  // body.dono libera a coluna Execução e o bloco de execução no modal
+  document.body.classList.toggle('dono', nomeAdmin === 'João Pedro');
   loadTickets();
   atualizarBtnSom();
   pedirPermissaoNotificacao('avisoNotifAdm');
@@ -1602,6 +1686,10 @@ function voltarModo() {
   Object.keys(_anlCharts).forEach(k=>{ _anlCharts[k].destroy(); delete _anlCharts[k]; });
   switchAdminTab('tickets');
   localStorage.removeItem('aluminas_admin');
+  window._adminNome = null;
+  document.body.classList.remove('dono');
+  const execW = document.getElementById('tmExecWrap');
+  if(execW){ execW.style.display='none'; execW.innerHTML=''; }
   selectedUser = null; fotosBase64 = [];
   meusTickets = []; _timerEls = [];
   document.getElementById('mtList').innerHTML = '';
@@ -2271,6 +2359,7 @@ async function confirmarReabrir(id) {
   const {error} = await sb.from('tickets').update({
     status:'pendente', comentario_admin:null, respondido_por:null,
     resolvido_em:null, reaberto_comentario:comentario||null,
+    andamento_em:null,         // zera o relogio da execucao
     reaberto_em: reabIsoSol,   // zera o relogio do TMR
     reaberto_por: selectedUser ? selectedUser.nome : null
   }).eq('id',id);
@@ -2449,7 +2538,7 @@ function renderTickets() {
   grupos.forEach((grupo, cat)=>{
     const color=catColors[cat]||paleta[i++%paleta.length];
     const hr=document.createElement('tr'); hr.className='cat-group-header';
-    hr.innerHTML=`<td colspan="9"><span style="display:inline-block;width:8px;height:8px;background:${color};margin-right:8px;vertical-align:middle"></span>${esc(cat)} <span style="color:var(--text-dim);font-weight:400">(${grupo.length})</span></td>`;
+    hr.innerHTML=`<td colspan="10"><span style="display:inline-block;width:8px;height:8px;background:${color};margin-right:8px;vertical-align:middle"></span>${esc(cat)} <span style="color:var(--text-dim);font-weight:400">(${grupo.length})</span></td>`;
     frag.appendChild(hr);
     grupo.forEach(t=>{
       const tr=document.createElement('tr'); tr.onclick=()=>abrirTicketModal(t);
@@ -2466,6 +2555,19 @@ function renderTickets() {
       } else {
         tmrHtml = '—';
       }
+      // Coluna Execução: só o dono recebe conteúdo (e o CSS ainda esconde a coluna)
+      let execHtml = '—';
+      if(ehDono()){
+        if(!t.andamento_em){
+          execHtml = fechamentoDireto(t)
+            ? `<span style="color:var(--yellow);font-size:10px;font-weight:700" title="Finalizado sem passar por Em Andamento">DIRETO</span>`
+            : `<span style="color:var(--text-dim)" title="Ticket sem marca de 'assumido'">—</span>`;
+        } else if(t.status==='andamento'){
+          execHtml = `<span class="tmr-live" data-start="${t.andamento_em}" style="color:var(--blue);font-family:'Roboto Mono',monospace;font-weight:600" title="Assumido por ${esc(t.respondido_por||'—')} em ${fmtDataHora(t.andamento_em)||'—'}">--:--:--</span>`;
+        } else {
+          execHtml = `<span style="color:#64b5f6;font-weight:600" title="Do 'assumir' até finalizar">${fmtHorasUteis(horasExecucao(t))}</span>`;
+        }
+      }
       tr.innerHTML=`
         <td class="td-id">${fmtNum(t.numero)}</td>
         <td class="td-op">${esc(t.operador)}</td>
@@ -2474,6 +2576,7 @@ function renderTickets() {
         <td class="td-time">${t.data}<br>${t.horario}</td>
         <td class="td-time" style="color:${t.resolvido_em?'#69f0ae':'var(--text-dim)'}">${res}</td>
         <td class="td-time">${tmrHtml}</td>
+        <td class="td-time col-dono">${execHtml}</td>
         <td class="td-time">${nF>0?ICO.clipe+' '+nF:'—'}</td>
         <td><span class="sbadge ${t.status}">${stLabel(t.status)}</span>${t.status==='andamento'&&t.respondido_por?`<div class="sbadge-quem">${esc(t.respondido_por)}</div>`:''}</td>`;
       frag.appendChild(tr);
@@ -2506,8 +2609,47 @@ function abrirTicketModal(t) {
       arr.forEach((s,i)=>{ const img=document.createElement('img'); img.className='tm-thumb'; img.src=s; img.onclick=()=>abrirImg(s,'Foto '+(i+1)); fotosEl.appendChild(img); });
     } else { fotosW.style.display='none'; }
   }catch(e){fotosW.style.display='none';} } else { fotosW.style.display='none'; }
+  renderTmExec(t);
   renderTmFooter(t);
   document.getElementById('modalTicket').classList.add('show');
+}
+
+// Bloco "Execução" do modal. Sai vazio para qualquer admin que não seja o dono.
+function renderTmExec(t) {
+  const wrap = document.getElementById('tmExecWrap');
+  if(!wrap) return;
+  const limpar = ()=>{ wrap.style.display='none'; wrap.innerHTML=''; };
+  if(!ehDono() || !t){ limpar(); return; }
+
+  const tit = `<div class="exec-tit">Execução <span class="dono-tag">só você vê</span></div>`;
+  const ini = inicioExecucao(t);
+
+  if(!ini){
+    // Tickets trabalhados antes da coluna existir ou que ninguém assumiu ainda
+    if(t.status==='pendente' || t.status==='cancelado'){ limpar(); return; }
+    wrap.style.display='block';
+    const txt = fechamentoDireto(t)
+      ? `<strong style="color:var(--yellow)">Finalizado direto da fila.</strong> ${esc(t.respondido_por||'O admin')} resolveu sem clicar em "Assumir Ticket", então não há marca de início — o ticket nunca passou por Em Andamento. O TMR de ${fmtHorasUteis(ehResolvido(t)?horasTicket(t):null)} é o único tempo disponível aqui.`
+      : `Sem marca de "assumido". Este ticket foi trabalhado antes do registro de execução existir — só o TMR está disponível para ele.`;
+    wrap.innerHTML = tit + `<div class="exec-nodata">${txt}</div>`;
+    return;
+  }
+
+  const emAndamento = t.status==='andamento';
+  const hExec = horasExecucao(t);
+  const ms = msExecucao(t);
+  const valorExec = emAndamento
+    ? `<span class="tmr-live" data-start="${t.andamento_em}" style="font-family:'Roboto Mono',monospace">--:--:--</span> <span class="exec-sub">· ${fmtHorasUteis(hExec)} úteis</span>`
+    : `${fmtHorasUteis(hExec)} <span class="exec-sub">· ${ms!==null?formatarElapsed(ms):'—'} corrido</span>`;
+
+  wrap.style.display='block';
+  wrap.innerHTML = tit + `<div class="exec-grid">
+      <div><div class="tm-label">Assumido por</div><div class="tm-val">${esc(t.respondido_por||'—')}</div></div>
+      <div><div class="tm-label">Colocado em andamento</div><div class="tm-val">${fmtDataHora(t.andamento_em, true)||'—'}</div></div>
+      <div><div class="tm-label">Esperou na fila</div><div class="tm-val" style="color:var(--yellow)">${fmtHorasUteis(horasFila(t))}</div></div>
+      <div><div class="tm-label">${emAndamento?'Trabalhando há':'Tempo de execução'}</div><div class="tm-val" style="color:var(--blue)">${valorExec}</div></div>
+    </div>`;
+  atualizarTimersPendentes(true);
 }
 
 function renderTmFooter(t) {
@@ -2577,7 +2719,13 @@ function renderTmFooter(t) {
   }
 }
 
-function fecharModalTicket() { document.getElementById('modalTicket').classList.remove('show'); ticketAberto=null; }
+function fecharModalTicket() {
+  document.getElementById('modalTicket').classList.remove('show');
+  ticketAberto=null;
+  const execW = document.getElementById('tmExecWrap');
+  if(execW){ execW.style.display='none'; execW.innerHTML=''; }
+  atualizarTimersPendentes(true);   // solta a referência do cronômetro do modal
+}
 
 function abrirTicketPorId(id) {
   const t = (allTickets||[]).find(x=>x.id===id);
@@ -2675,12 +2823,14 @@ function tmSelStatus(s) {
 
 async function marcarAndamento(id) {
   const admin = window._adminNome || null;
-  const {error} = await sb.from('tickets').update({status:'andamento', respondido_por:admin}).eq('id',id);
+  // Marca oficial do início da execução: usada pela coluna Execução e pelo relatório
+  const andIso = new Date().toISOString();
+  const {error} = await sb.from('tickets').update({status:'andamento', respondido_por:admin, andamento_em:andIso}).eq('id',id);
   if(error){ showToast('Erro: '+error.message,'error'); return; }
   const idx=allTickets.findIndex(t=>t.id===id);
   if(idx>=0){
-    Object.assign(allTickets[idx], {status:'andamento', respondido_por:admin});
-    ticketAberto=allTickets[idx]; renderTmFooter(ticketAberto);
+    Object.assign(allTickets[idx], {status:'andamento', respondido_por:admin, andamento_em:andIso});
+    ticketAberto=allTickets[idx]; renderTmExec(ticketAberto); renderTmFooter(ticketAberto);
     document.getElementById('tmBadge').textContent=stLabel('andamento');
     document.getElementById('tmBadge').className='sbadge andamento';
   }
@@ -2700,16 +2850,17 @@ async function tmEnviar() {
   if(error){ showToast('Erro: '+error.message,'error'); document.getElementById('tm-send').disabled=false; return; }
   const idx=allTickets.findIndex(t=>t.id===ticketAberto.id);
   if(idx>=0){ Object.assign(allTickets[idx],{status:statusModalSel,comentario_admin:comentario||null,respondido_por:window._adminNome||null,resolvido_em:iso}); }
-  registrarEvento(ticketAberto.id, {acao:'fechamento', por:window._adminNome||null, em:iso, status:statusModalSel});
+  registrarEvento(ticketAberto.id, {acao:'fechamento', por:window._adminNome||null, em:iso, status:statusModalSel, direto: !ticketAberto.andamento_em});
   fecharModalTicket(); renderTickets(); showToast('Resposta enviada!','success');
 }
 
 async function adminReabrir(id) {
   const reabIso = new Date().toISOString();
-  const {error} = await sb.from('tickets').update({status:'pendente',comentario_admin:null,respondido_por:null,resolvido_em:null,reaberto_em:reabIso,reaberto_por:window._adminNome||null}).eq('id',id);
+  // andamento_em zera junto: a execução recomeça quando alguém assumir de novo
+  const {error} = await sb.from('tickets').update({status:'pendente',comentario_admin:null,respondido_por:null,resolvido_em:null,andamento_em:null,reaberto_em:reabIso,reaberto_por:window._adminNome||null}).eq('id',id);
   if(error){ showToast('Erro: '+error.message,'error'); return; }
   const idx=allTickets.findIndex(t=>t.id===id);
-  if(idx>=0){ Object.assign(allTickets[idx],{status:'pendente',comentario_admin:null,respondido_por:null,resolvido_em:null,reaberto_em:reabIso,reaberto_por:window._adminNome||null}); }
+  if(idx>=0){ Object.assign(allTickets[idx],{status:'pendente',comentario_admin:null,respondido_por:null,resolvido_em:null,andamento_em:null,reaberto_em:reabIso,reaberto_por:window._adminNome||null}); }
   const revAdmin = (allTickets.find(x=>x.id===id)||{}).respondido_por || null;
   registrarEvento(id, {acao:'reabertura', por:window._adminNome||null, em:reabIso, revertido_de:revAdmin});
   fecharModalTicket(); renderTickets(); showToast('Ticket reaberto!','success');
@@ -3108,6 +3259,9 @@ function renderRelatorioGeral() {
     document.getElementById('relSolicitanteTMR').innerHTML='<div class="anl-empty">Sem dados</div>';
     document.getElementById('relParadosBody').innerHTML='';
     document.getElementById('relParadosEmpty').style.display='block';
+    document.getElementById('relExecAgoraBody').innerHTML='';
+    document.getElementById('relExecAgoraEmpty').style.display='block';
+    document.getElementById('relExecAdmin').innerHTML='<div class="anl-empty">Sem dados</div>';
     renderRelatorioTabela();
     return;
   }
@@ -3424,6 +3578,78 @@ function renderRelatorioGeral() {
           <td>${stLabel(t.status)}</td>
         </tr>`;
       }).join('');
+    }
+  }
+
+  // ── EM EXECUÇÃO AGORA ──
+  {
+    const bodyE = document.getElementById('relExecAgoraBody');
+    const emptyE = document.getElementById('relExecAgoraEmpty');
+    if(bodyE && emptyE){
+      const emExec = tickets.filter(t=>t.status==='andamento' && t.andamento_em);
+      emExec.sort((a,b)=> new Date(a.andamento_em) - new Date(b.andamento_em)); // mais antigo primeiro
+      if(emExec.length===0){ bodyE.innerHTML=''; emptyE.style.display='block'; }
+      else {
+        emptyE.style.display='none';
+        bodyE.innerHTML = emExec.map((t,i)=>`<tr onclick="abrirTicketPorId('${t.id}')">
+          <td>${i+1}</td>
+          <td class="td-id">${fmtNum(t.numero)}</td>
+          <td>${esc(t.operador||'—')}</td>
+          <td>${esc(t.respondido_por||'—')}</td>
+          <td class="td-time">${fmtDataHora(t.andamento_em)||'—'}</td>
+          <td class="td-time" style="color:var(--yellow)">${fmtHorasUteis(horasFila(t))}</td>
+          <td class="td-time">
+            <span class="tmr-live" data-start="${t.andamento_em}" style="color:var(--blue);font-family:'Roboto Mono',monospace;font-weight:600">--:--:--</span>
+            <span class="exec-sub">· ${fmtHorasUteis(horasExecucao(t))} úteis</span>
+          </td>
+        </tr>`).join('');
+        atualizarTimersPendentes(true);
+      }
+    }
+  }
+
+  // ── TEMPO MÉDIO DE EXECUÇÃO POR ADMIN ──
+  {
+    const elE = document.getElementById('relExecAdmin');
+    if(elE){
+      const mapa = {};   // { admin: {soma, qtd, pior, piorNum, direto} }
+      const chave = t => t.respondido_por || 'Sem responsável';
+      const slot = a => (mapa[a] = mapa[a] || {soma:0, qtd:0, pior:0, piorNum:null, direto:0});
+      resolvidosHist.forEach(t=>{
+        const h = horasExecucao(t);
+        if(h===null){
+          // Sem marca de assumido: se foi fechamento direto, conta a parte
+          if(fechamentoDireto(t)) slot(chave(t)).direto++;
+          return;
+        }
+        const v = slot(chave(t));
+        v.soma += h; v.qtd++;
+        if(h > v.pior){ v.pior = h; v.piorNum = t.numero; }
+      });
+      const lista = Object.entries(mapa)
+        .map(([nome,v])=>({nome, media: v.qtd ? v.soma/v.qtd : null, ...v}))
+        .sort((a,b)=>(b.media===null?-1:b.media)-(a.media===null?-1:a.media));
+      if(lista.length===0){
+        elE.innerHTML = '<div class="anl-empty">Sem dados ainda. A marca de execução só existe nos tickets assumidos a partir desta versão.</div>';
+      } else {
+        const maxE = Math.max(...lista.map(x=>x.media||0), 0.01);
+        elE.innerHTML = lista.map(x=>{
+          const tagDireto = x.direto>0
+            ? `<span style="color:var(--yellow)"> · ${x.direto} finalizado(s) direto</span>`
+            : '';
+          const sub = x.qtd>0
+            ? `${x.qtd} ticket(s) com marca · maior: ${fmtHorasUteis(x.pior)}${x.piorNum?' ('+fmtNum(x.piorNum)+')':''}${tagDireto}`
+            : `nenhum ticket assumido${tagDireto}`;
+          return `<div class="anl-user-row" title="${esc(x.nome)}">
+          <div class="avatar" style="width:24px;height:24px;font-size:9px;flex-shrink:0">${initials(x.nome||'?')}</div>
+          <span class="anl-user-name">${esc(x.nome)}
+            <span style="display:block;font-size:10px;color:var(--text-dim)">${sub}</span>
+          </span>
+          <div class="anl-user-bar-wrap"><div class="anl-user-bar-fill" style="width:${Math.round((x.media||0)/maxE*100)}%;background:var(--blue)"></div></div>
+          <span class="anl-user-count" style="color:${x.media===null?'var(--text-dim)':'var(--blue)'}">${fmtHorasUteis(x.media)}</span>
+        </div>`;
+        }).join('');
+      }
     }
   }
 
