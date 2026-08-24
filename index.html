@@ -414,14 +414,14 @@ body.dono .col-dono{display:table-cell}
 .tm-head{padding:15px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
 .tm-head h3{font-size:15px;font-weight:700;flex:1}
 .tm-close{background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1}
-.tm-body{padding:20px;overflow-y:auto;flex:1}
+.tm-body{padding:20px;overflow-y:auto;flex:1 1 auto;min-height:180px}
 .tm-row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
 .tm-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px}
 .tm-val{font-size:13px;line-height:1.6}
 .tm-fotos{display:flex;gap:8px;flex-wrap:wrap}
 .tm-thumb{width:68px;height:68px;object-fit:cover;border:1px solid var(--border);cursor:pointer}
 .tm-thumb:hover{border-color:var(--accent)}
-.tm-foot{padding:16px 20px;border-top:1px solid var(--border);flex-shrink:0;background:var(--surface2)}
+.tm-foot{padding:16px 20px;border-top:1px solid var(--border);flex:0 0 auto;max-height:55vh;overflow-y:auto;background:var(--surface2)}
 .tm-resp-btns{display:flex;gap:8px;margin-bottom:10px}
 .tm-rbtn{flex:1;padding:9px;font-size:12px;font-weight:700;border:2px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s;letter-spacing:.04em;text-transform:uppercase}
 .tm-rbtn.ok:hover,.tm-rbtn.ok.sel{border-color:#69f0ae;background:rgba(27,94,32,.25);color:#69f0ae}
@@ -437,6 +437,13 @@ body.dono .col-dono{display:table-cell}
 .hist-ev{display:flex;gap:8px;align-items:flex-start;padding:4px 0}
 .hist-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:6px}
 .hist-txt{color:var(--text-muted);font-size:11px}
+.hist-box summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);font-weight:600}
+.hist-box summary::-webkit-details-marker{display:none}
+.hist-box summary::after{content:'▸';margin-left:auto;font-size:11px;transition:transform .15s}
+.hist-box[open] summary::after{transform:rotate(90deg)}
+.hist-box summary .hist-qtd{background:rgba(249,168,37,.14);color:var(--yellow);padding:1px 6px;font-size:10px;font-weight:700}
+.hist-box details-body{display:block}
+.hist-list{margin-top:8px}
 
 /* IMG MODAL */
 .img-modal{background:var(--surface);border:1px solid var(--border);max-width:600px;max-height:90vh;width:100%;overflow:hidden;display:flex;flex-direction:column}
@@ -636,6 +643,8 @@ body.dono .col-dono{display:table-cell}
       </div>
       <div style="margin-bottom:14px"><div class="tm-label">Demanda</div><div class="tm-val" id="tmDemanda">—</div></div>
       <div id="tmObsWrap" style="display:none;margin-bottom:14px"><div class="tm-label">Observação</div><div class="tm-val" id="tmObs">—</div></div>
+      <!-- HISTORICO: fica no corpo, nao no rodape, para nao espremer a Demanda -->
+      <div id="tmHistWrap" style="display:none"></div>
       <!-- BLOCO DE EXECUCAO: renderizado somente para o admin dono -->
       <div id="tmExecWrap" class="exec-box" style="display:none"></div>
       <div id="tmFotosWrap" style="display:none"><div class="tm-label" style="margin-bottom:8px">Fotos</div><div class="tm-fotos" id="tmFotos"></div></div>
@@ -1213,7 +1222,7 @@ const ADMINS = {'1964':'João Pedro','2404':'Bernardo','1010':'Huriel','2424':'M
 
 // Versao deste arquivo. Trocar a cada deploy — e o que permite uma aba antiga
 // se reconhecer como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.07.30-1230';
+const APP_VERSION = '2026.08.24-1130';
 
 // Momento em que a medicao de execucao passa a valer. Fica em 12:30 de
 // 30/07/2026 e nao no horario do deploy (10:53) porque as duas horas seguintes
@@ -2684,6 +2693,7 @@ function abrirTicketModal(t) {
       arr.forEach((s,i)=>{ const img=document.createElement('img'); img.className='tm-thumb'; img.src=s; img.onclick=()=>abrirImg(s,'Foto '+(i+1)); fotosEl.appendChild(img); });
     } else { fotosW.style.display='none'; }
   }catch(e){fotosW.style.display='none';} } else { fotosW.style.display='none'; }
+  renderTmHist(t);
   renderTmExec(t);
   renderTmFooter(t);
   document.getElementById('modalTicket').classList.add('show');
@@ -2731,16 +2741,22 @@ function renderTmExec(t) {
   atualizarTimersPendentes(true);
 }
 
-function renderTmFooter(t) {
-  const foot=document.getElementById('tmFoot');
-  const resolStr=fmtDataHora(t.resolvido_em, true);
+// Caixa de reabertura + linha do tempo. Mora no corpo do modal (e nao no rodape)
+// porque o rodape nao encolhe: com 3 ou 4 passagens ele empurrava a Demanda
+// para fora da area visivel e o admin reabria sem saber o que foi pedido.
+function renderTmHist(t) {
+  const wrap = document.getElementById('tmHistWrap');
+  if(!wrap) return;
   const reabQuem = t.reaberto_por ? ' por '+esc(t.reaberto_por) : '';
   const reabQuando = t.reaberto_em ? ' · '+fmtDataHora(t.reaberto_em) : '';
-  // Linha do tempo: mostra cada passagem quando o ticket teve mais de uma
   const hist = histTicket(t);
-  const timeline = hist.length > 1 ? `<div class="hist-box">
-      <strong>Passagens deste ticket</strong>
-      ${hist.map(ev=>{
+
+  // Linha do tempo: mostra cada passagem quando o ticket teve mais de uma.
+  // Recolhida por padrao a partir de 3 eventos — o que importa na hora de
+  // trabalhar o ticket e a demanda, nao o historico.
+  const timeline = hist.length > 1 ? `<details class="hist-box" ${hist.length<=2?'open':''}>
+      <summary>Passagens deste ticket <span class="hist-qtd">${hist.length}</span></summary>
+      <div class="hist-list">${hist.map(ev=>{
         const eFech = ev.acao==='fechamento';
         const rot = eFech ? ('Finalizado · '+stLabel(ev.status)) : 'Reaberto';
         const cor = eFech ? 'var(--green)' : 'var(--yellow)';
@@ -2748,11 +2764,22 @@ function renderTmFooter(t) {
           <span class="hist-dot" style="background:${cor}"></span>
           <span class="hist-txt"><strong style="color:${cor}">${rot}</strong> · ${esc(ev.por||'—')} · ${fmtDataHora(ev.em)||'—'}${ev.comentario?'<br><span style="opacity:.65">'+esc(ev.comentario)+'</span>':''}</span>
         </div>`;
-      }).join('')}
-    </div>` : '';
-  const reabertoBox = (foiReaberto(t)
+      }).join('')}</div>
+    </details>` : '';
+
+  const reabertoBox = foiReaberto(t)
     ? `<div class="reaberto-box"><strong>Reaberto${reabQuem}${reabQuando}</strong>${t.reaberto_comentario ? esc(t.reaberto_comentario) : '<span style="opacity:.6">Sem comentário. TMR recontado a partir da reabertura.</span>'}</div>`
-    : '') + timeline;
+    : '';
+
+  const html = reabertoBox + timeline;
+  wrap.innerHTML = html;
+  wrap.style.display = html ? 'block' : 'none';
+}
+
+function renderTmFooter(t) {
+  const foot=document.getElementById('tmFoot');
+  const resolStr=fmtDataHora(t.resolvido_em, true);
+  const reabertoBox = '';   // migrou para renderTmHist(), no corpo do modal
 
   if(t.status==='pendente'||t.status==='andamento'){
     const quem = t.respondido_por;
@@ -2803,6 +2830,8 @@ function fecharModalTicket() {
   ticketAberto=null;
   const execW = document.getElementById('tmExecWrap');
   if(execW){ execW.style.display='none'; execW.innerHTML=''; }
+  const histW = document.getElementById('tmHistWrap');
+  if(histW){ histW.style.display='none'; histW.innerHTML=''; }
   atualizarTimersPendentes(true);   // solta a referência do cronômetro do modal
 }
 
