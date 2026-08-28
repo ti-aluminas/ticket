@@ -43,6 +43,11 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .mbadge.adm{background:rgba(67,160,71,.15);border:1px solid rgba(67,160,71,.3);color:var(--green)}
 .btn-sair{font-size:11px;color:var(--text-muted);background:none;border:1px solid var(--border);padding:4px 10px;cursor:pointer;font-family:'Inter',sans-serif}
 .btn-sair:hover{color:var(--text);border-color:var(--border-light)}
+.btn-custom{display:none;align-items:center;gap:6px;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);background:rgba(192,146,42,.1);border:1px solid rgba(192,146,42,.35);padding:4px 11px;cursor:pointer;font-family:'Inter',sans-serif;text-decoration:none;transition:background .15s}
+.btn-custom.show{display:inline-flex}
+.btn-custom:hover{background:rgba(192,146,42,.2)}
+.btn-custom svg{width:13px;height:13px}
+@media(max-width:680px){.btn-custom .rot{display:none}.btn-custom{padding:4px 8px}}
 
 /* MODE SCREEN */
 .mode-screen{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 20px}
@@ -541,6 +546,10 @@ body.dono .col-dono{display:table-cell}
   <div class="hr">
     <div class="clock" id="clock">--:--:--</div>
     <div class="mbadge" id="modeBadge" style="display:none"></div>
+    <a class="btn-custom" id="btnCustom" href="custom.html" target="_blank" rel="noopener" title="Abrir o sistema de customizáveis">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+      <span class="rot">Customizáveis</span>
+    </a>
     <button class="btn-sair" id="btnSair" style="display:none" onclick="voltarModo()">Sair</button>
   </div>
 </header>
@@ -1222,7 +1231,7 @@ const ADMINS = {'1964':'João Pedro','2404':'Bernardo','1010':'Huriel','2424':'M
 
 // Versao deste arquivo. Trocar a cada deploy — e o que permite uma aba antiga
 // se reconhecer como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.08.24-1130';
+const APP_VERSION = '2026.08.28-1520';
 
 // Momento em que a medicao de execucao passa a valer. Fica em 12:30 de
 // 30/07/2026 e nao no horario do deploy (10:53) porque as duas horas seguintes
@@ -1752,6 +1761,7 @@ function entrarAdmin(nomeAdmin) {
   document.getElementById('tabsBar').style.display = 'none';
   document.getElementById('adminLayout').style.display = 'flex';
   setModeBadge('Admin · '+nomeAdmin,'adm');
+  document.getElementById('btnCustom').classList.add('show');
   document.getElementById('headerSub').textContent = 'Painel do Admin · PCP';
   document.getElementById('atab-relatorio').style.display = (nomeAdmin === 'João Pedro') ? '' : 'none';
   // body.dono libera a coluna Execução e o bloco de execução no modal
@@ -1778,6 +1788,7 @@ function voltarModo() {
   document.getElementById('mainPage').style.display = 'none';
   document.getElementById('modeScreen').style.display = 'flex';
   document.getElementById('modeBadge').style.display = 'none';
+  document.getElementById('btnCustom').classList.remove('show');
   document.getElementById('btnSair').style.display = 'none';
   document.getElementById('tabsBar').style.display = 'none';
   document.getElementById('emptyState').style.display = 'flex';
