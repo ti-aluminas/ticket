@@ -39,6 +39,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .mbadge{font-size:11px;font-weight:600;padding:4px 10px;letter-spacing:.06em;text-transform:uppercase}
 .mbadge.n1{background:rgba(192,146,42,.15);border:1px solid rgba(192,146,42,.3);color:var(--accent)}
 .mbadge.n2{background:rgba(100,181,246,.15);border:1px solid rgba(100,181,246,.3);color:var(--blue)}
+.mbadge.amb{background:rgba(192,146,42,.15);border:1px solid rgba(192,146,42,.3);color:var(--accent);box-shadow:inset 3px 0 0 var(--blue)}
 .mbadge.adm{background:rgba(67,160,71,.15);border:1px solid rgba(67,160,71,.3);color:var(--green)}
 .btn-sair{font-size:11px;color:var(--text-muted);background:none;border:1px solid var(--border);padding:4px 10px;cursor:pointer;font-family:'Inter',sans-serif}
 .btn-sair:hover{color:var(--text);border-color:var(--border-light)}
@@ -487,7 +488,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // Trocar a cada deploy — e o que permite uma aba antiga se reconhecer
 // como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.08.28-1830';
+const APP_VERSION = '2026.08.28-1915';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -587,8 +588,8 @@ function showToast(msg, type='success'){
 function overlay(on){ document.getElementById('overlay').classList.toggle('show', !!on); }
 const nChecks = p => CHECKS.reduce((n,[k]) => n + (p[k]?1:0), 0);
 const nomeDe  = id => (usuarios.find(u=>u.id===id)||{}).nome || '—';
-const podeN1  = () => user && (user.papel==='admin' || user.papel==='nivel1');
-const podeN2  = () => user && (user.papel==='admin' || user.papel==='nivel2');
+const podeN1  = () => user && ['admin','nivel1','ambos'].includes(user.papel);
+const podeN2  = () => user && ['admin','nivel2','ambos'].includes(user.papel);
 const meu     = p => p.assumido_por === user.id;
 
 // ── RESUMO NA TELA DE CÓDIGO ──
@@ -657,8 +658,9 @@ async function abrirApp(){
   document.getElementById('modeScreen').style.display = 'none';
   document.getElementById('appLayout').style.display = 'flex';
   const badge = document.getElementById('modeBadge');
-  badge.className = 'mbadge ' + {admin:'adm', nivel1:'n1', nivel2:'n2'}[user.papel];
-  badge.textContent = user.nome + ' · ' + {admin:'Admin', nivel1:'Nível 1', nivel2:'Nível 2'}[user.papel];
+  badge.className = 'mbadge ' + ({admin:'adm', nivel1:'n1', nivel2:'n2', ambos:'amb'}[user.papel] || 'n1');
+  badge.textContent = user.nome + ' · '
+    + ({admin:'Admin', nivel1:'Nível 1', nivel2:'Nível 2', ambos:'Níveis 1 e 2'}[user.papel] || user.papel);
   badge.style.display = '';
   document.getElementById('btnSair').style.display = '';
   // body.adm libera a coluna Tempo, o bloco de rastreabilidade e os KPIs de tempo
