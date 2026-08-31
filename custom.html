@@ -211,12 +211,11 @@ body:not(.adm) .so-adm{display:none !important}
 /* Botão armado: segundo clique confirma uma ação que pula a conferência */
 .btn-armado{background:#b71c1c;color:#fff}
 .btn-armado:hover{background:#c62828}
-/* Faixas de prioridade vindas do relatório de vendas */
-.pri{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 6px;display:inline-block;white-space:nowrap}
-.pri3{background:rgba(229,57,53,.16);color:#ff8a80;border:1px solid rgba(229,57,53,.35)}
-.pri2{background:rgba(249,168,37,.15);color:var(--yellow);border:1px solid rgba(249,168,37,.3)}
-.pri1{background:rgba(136,136,136,.12);color:var(--text-muted);border:1px solid var(--border-light)}
-.pri0{color:var(--text-dim);border:1px solid var(--border);background:none}
+/* Prioridade em estrelas, calculada a partir do relatório de vendas */
+.pri{font-size:12px;letter-spacing:.5px;white-space:nowrap;line-height:1}
+.pri i{color:var(--accent);font-style:normal}
+.pri u{color:var(--border-light);text-decoration:none}
+.pri.zero u{color:#333}
 .tag-atalho{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:2px 7px;background:rgba(249,168,37,.15);color:var(--yellow);border:1px solid rgba(249,168,37,.3)}
 
 /* PAINEL */
@@ -382,10 +381,12 @@ body:not(.adm) .so-adm{display:none !important}
         <select class="filter-select" id="fResp"><option value="">Todos responsáveis</option></select>
         <select class="filter-select" id="fPri">
           <option value="">Todas prioridades</option>
-          <option value="3">Alta</option>
-          <option value="2">Média</option>
-          <option value="1">Baixa</option>
-          <option value="0">Sem venda</option>
+          <option value="5">★★★★★</option>
+          <option value="4">★★★★</option>
+          <option value="3">★★★</option>
+          <option value="2">★★</option>
+          <option value="1">★</option>
+          <option value="0">Sem estrela</option>
         </select>
         <select class="filter-select" id="fOrg"><option value="">Todos organizadores</option></select>
         <select class="filter-select" id="fOrd">
@@ -404,7 +405,7 @@ body:not(.adm) .so-adm{display:none !important}
         <table class="admin-table">
           <thead><tr>
             <th style="width:118px">Código</th>
-            <th style="width:78px">Prior.</th>
+            <th style="width:86px">Prior.</th>
             <th>Produto</th>
             <th style="width:78px">Peso</th>
             <th style="width:126px">Conferência</th>
@@ -511,7 +512,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // Trocar a cada deploy — e o que permite uma aba antiga se reconhecer
 // como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.08.31-1340';
+const APP_VERSION = '2026.08.31-1520';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -527,9 +528,14 @@ const CHECKS = [
   ['chk_componentes',   'Componentes filhos'],
 ];
 const STATUS_LABEL = {pendente:'Pendente', liberado:'Liberado', em_lancamento:'Em lançamento', concluido:'Concluído'};
-// Faixas de prioridade vindas do relatório de vendas. Número maior fura fila.
-const PRI_LABEL = {0:'Sem venda', 1:'Baixa', 2:'Média', 3:'Alta'};
-const priLabel = n => PRI_LABEL[n||0] || ('P'+n);
+// Prioridade em estrelas, de 0 a 5. Número maior fura fila.
+const PRI_MAX = 5;
+const priN = n => Math.max(0, Math.min(PRI_MAX, Number(n) || 0));
+const priLabel = n => { const v = priN(n); return v ? v + (v===1 ? ' estrela' : ' estrelas') : 'sem estrela'; };
+const priEstrelas = n => {
+  const v = priN(n);
+  return `<span class="pri${v?'':' zero'}" title="${priLabel(v)}"><i>${'★'.repeat(v)}</i><u>${'☆'.repeat(PRI_MAX-v)}</u></span>`;
+};
 
 // ── HORAS ÚTEIS — mesmo expediente do sistema de tickets ──
 // Seg a qui: 08:00–17:30 · Sex: 07:30–16:30 · Sáb/dom: não conta.
@@ -798,7 +804,7 @@ function renderFila(){
       : '<span style="color:#555">—</span>';
     return `<tr onclick="abrirItem('${esc(p.codigo)}')">
       <td class="td-cod">${esc(p.codigo)}</td>
-      <td><span class="pri pri${p.prioridade||0}">${priLabel(p.prioridade)}</span></td>
+      <td>${priEstrelas(p.prioridade)}</td>
       <td><div class="td-nome">${esc(p.nome)}</div><div class="td-orgs">${esc((p.organizadores||[]).join(' · '))}</div></td>
       <td class="td-num">${peso}</td>
       <td><div class="strip" title="${nChecks(p)} de 8">${segs}</div></td>
@@ -848,7 +854,7 @@ function exportarLista(){
                    'Horas ate assumir','Horas execucao','Horas ciclo'] : []);
   const num = v => v==null ? '' : String(v.toFixed(2)).replace('.',',');
   const linhas = lista.map(p=>[
-    p.codigo, p.nome, (p.organizadores||[]).join(' | '), priLabel(p.prioridade),
+    p.codigo, p.nome, (p.organizadores||[]).join(' | '), priN(p.prioridade),
     p.peso_bruto??'', STATUS_LABEL[p.status], nChecks(p)+'/8',
     p.liberado_por?nomeDe(p.liberado_por):'',
     p.assumido_por?nomeDe(p.assumido_por):'',
@@ -950,7 +956,7 @@ function desenharItem(){
     <div class="field so-adm" style="margin-bottom:18px">
       <label for="iPri">Prioridade — ajuste manual</label>
       <select id="iPri" class="filter-select" style="max-width:none;padding:9px 11px">
-        ${[3,2,1,0].map(v=>`<option value="${v}" ${(p.prioridade||0)===v?'selected':''}>${priLabel(v)}</option>`).join('')}
+        ${[5,4,3,2,1,0].map(v=>`<option value="${v}" ${priN(p.prioridade)===v?'selected':''}>${'★'.repeat(v)||'—'} ${priLabel(v)}</option>`).join('')}
       </select>
     </div>` : '';
 
@@ -1261,7 +1267,9 @@ function analisar(txt){
 // As faixas saem do acumulado de pedidos: os itens que somam metade dos pedidos
 // do período são Alta, até 80% é Média, o resto é Baixa. Quem não vendeu vai a zero.
 const PESO_FREQ = 0.5, PESO_QTD = 0.3, PESO_FAT = 0.2;
-const CORTE_ALTA = 50, CORTE_MEDIA = 80;
+// Percentual acumulado de pedidos que separa cada estrela. Quem vendeu mas
+// ficou fora de todos os cortes recebe 1 estrela; quem não vendeu fica em zero.
+const CORTES = [30, 55, 75, 90];   // 5★ · 4★ · 3★ · 2★
 
 function analisarVendas(linhas, iCab, cab){
   const iV = cab.findIndex(c=>/venda/.test(c));
@@ -1308,7 +1316,9 @@ function analisarVendas(linhas, iCab, cab){
   for(const c of ordenado){
     acumulado += ag.get(c).vendas;
     const p = acumulado/totalVendas*100;
-    faixa.set(c, p <= CORTE_ALTA ? 3 : p <= CORTE_MEDIA ? 2 : 1);
+    let e = 1;
+    for(let i=0;i<CORTES.length;i++) if(p <= CORTES[i]){ e = PRI_MAX - i; break; }
+    faixa.set(c, e);
   }
 
   // Todo item do catálogo entra no resultado: quem não vendeu volta para zero,
@@ -1323,7 +1333,7 @@ function analisarVendas(linhas, iCab, cab){
               d:`${detalhe} — ${priLabel(p.prioridade)} → ${priLabel(pri)}`});
   }
   fora.forEach(c=>res.push({codigo:c, nome:'', r:'descartado', d:'vendeu mas não está no catálogo'}));
-  res._faixas = {3:0, 2:0, 1:0, 0:0};
+  res._faixas = {5:0, 4:0, 3:0, 2:0, 1:0, 0:0};
   produtos.forEach(p=>res._faixas[faixa.get(p.codigo) || 0]++);
   return res;
 }
@@ -1379,8 +1389,8 @@ function mostrarPreview(res){
   const f = res._faixas;
   document.getElementById('impResumo').innerHTML =
     (modoImport==='vendas'
-      ? `<b>Relatório de vendas</b> · faixas calculadas: <b>${f[3]}</b> alta · <b>${f[2]}</b> média · `
-        + `<b>${f[1]}</b> baixa · ${f[0]} sem venda &nbsp;|&nbsp; <b>${n('atualizado')}</b> mudam · `
+      ? `<b>Relatório de vendas</b> · ` + [5,4,3,2,1].map(v=>`<b>${f[v]}</b> ${'★'.repeat(v)}`).join(' · ')
+        + ` · ${f[0]} sem estrela &nbsp;|&nbsp; <b>${n('atualizado')}</b> mudam · `
       : modoImport==='prioridade'
       ? `<b>Prioridades</b> · <b>${res.length}</b> linhas · <b>${n('atualizado')}</b> mudam de faixa · `
       : `<b>Catálogo</b> · <b>${res.length}</b> linhas · <b>${n('novo')}</b> novos · <b>${n('atualizado')}</b> atualizados · `)
