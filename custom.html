@@ -389,7 +389,7 @@ body:not(.adm) .so-adm{display:none !important}
         </select>
         <select class="filter-select" id="fOrg"><option value="">Todos organizadores</option></select>
         <select class="filter-select" id="fOrd">
-          <option value="pri">Prioridade</option>
+          <option value="pri" selected>Prioridade</option>
           <option value="cod">Código</option>
           <option value="nome">Nome</option>
           <option value="prog">Progresso</option>
@@ -454,8 +454,9 @@ body:not(.adm) .so-adm{display:none !important}
       <div class="drop" id="drop">
         <strong>Solte o CSV aqui ou <em>clique para escolher</em></strong>
         <p><b>Catálogo</b> — relatório de customizáveis do Pontta. Só entram códigos numéricos.<br>
-        <b>Prioridades</b> — planilha com a coluna Prioridade. Atualiza só a faixa, não mexe em conferência.<br>
-        O tipo do arquivo é reconhecido pelo cabeçalho.</p>
+        <b>Vendas</b> — relatório "Itens de tabela vendido no período", direto do Pontta. O sistema calcula as faixas sozinho.<br>
+        <b>Prioridades</b> — planilha com a coluna Prioridade já pronta.<br>
+        O tipo é reconhecido pelo cabeçalho. Nenhum deles mexe em conferência.</p>
         <input type="file" id="arquivo" accept=".csv,text/csv">
       </div>
       <div id="preview" style="display:none">
@@ -510,7 +511,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // Trocar a cada deploy — e o que permite uma aba antiga se reconhecer
 // como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.08.29-1450';
+const APP_VERSION = '2026.08.31-1340';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -570,7 +571,7 @@ const tCiclo  = p => horasEntre(p.liberado_em,  p.concluido_em);
 let user = null;
 let produtos = [], usuarios = [];
 let itemAberto = null, pendenteImport = null;
-let filtroStatus = '', filtroBusca = '', filtroResp = '', filtroOrg = '', filtroPri = '', ordem = 'cod';
+let filtroStatus = '', filtroBusca = '', filtroResp = '', filtroOrg = '', filtroPri = '', ordem = 'pri';
 let modoImport = 'catalogo';
 let _rtChannel = null;
 
@@ -829,12 +830,12 @@ document.querySelectorAll('.admin-tab-btn').forEach(b=>{
 });
 
 function limparFiltros(){
-  filtroStatus=''; filtroBusca=''; filtroResp=''; filtroOrg=''; filtroPri=''; ordem='cod';
+  filtroStatus=''; filtroBusca=''; filtroResp=''; filtroOrg=''; filtroPri=''; ordem='pri';
   document.querySelectorAll('.filter-btn[data-st]').forEach(x=>x.classList.toggle('active', !x.dataset.st));
   document.getElementById('fBusca').value='';
   document.getElementById('fResp').value=''; document.getElementById('fOrg').value='';
   document.getElementById('fPri').value='';
-  document.getElementById('fOrd').value='cod';
+  document.getElementById('fOrd').value='pri';
   renderFila();
 }
 
@@ -945,7 +946,16 @@ function desenharItem(){
 
   const podeMarcar = n2 && assumido && (souEu || user.papel==='admin');
 
+  const blocoPri = user.papel==='admin' ? `
+    <div class="field so-adm" style="margin-bottom:18px">
+      <label for="iPri">Prioridade — ajuste manual</label>
+      <select id="iPri" class="filter-select" style="max-width:none;padding:9px 11px">
+        ${[3,2,1,0].map(v=>`<option value="${v}" ${(p.prioridade||0)===v?'selected':''}>${priLabel(v)}</option>`).join('')}
+      </select>
+    </div>` : '';
+
   document.getElementById('mBody').innerHTML = `
+    ${blocoPri}
     ${blocoN1}
     <div class="divider"><span>Nível 2 · lançamento &nbsp;·&nbsp; ${nChecks(p)}/8</span></div>
     ${avisoN2}
@@ -986,6 +996,10 @@ function desenharItem(){
   });
   const o2 = document.getElementById('iObs2');
   if(o2 && podeMarcar) o2.onchange = salvarObs2;
+  const sp = document.getElementById('iPri');
+  if(sp) sp.onchange = ()=>gravar({prioridade: Number(sp.value)}, 'mudou prioridade',
+                                  'prioridade', priLabel(itemAberto.prioridade), priLabel(Number(sp.value)),
+                                  'Prioridade alterada.');
 
   sb.from('historico').select('*').eq('produto_codigo', p.codigo)
     .order('criado_em',{ascending:false}).limit(25)
@@ -1228,8 +1242,90 @@ function analisar(txt){
   const cab = linhas[iCab].map(c=>(c||'').trim().toLowerCase());
   const iPri = cab.findIndex(c=>/priorid/.test(c));
   if(iPri >= 0){ modoImport = 'prioridade'; return analisarPrioridades(linhas, iCab, iPri); }
+  if(cab.some(c=>/venda/.test(c)) && cab.some(c=>/quantidade/.test(c))){
+    modoImport = 'vendas'; return analisarVendas(linhas, iCab, cab);
+  }
   modoImport = 'catalogo';
   return analisarCatalogo(linhas, iCab);
+}
+
+// Relatório "Itens de tabela vendido no período", cru do Pontta.
+// O sistema faz a conta inteira: consolida as linhas repetidas do mesmo código,
+// pontua cada item e distribui nas faixas. Ninguém precisa preparar planilha.
+//
+// A nota é composta — frequência 50%, quantidade 30%, faturamento 20% — e usa
+// a POSIÇÃO de cada item, não o valor bruto. Isso é o que impede um lançamento
+// errado (uma banqueta de R$ 400 mil) de distorcer a lista: ele vira o primeiro
+// colocado em faturamento e nada além disso.
+//
+// As faixas saem do acumulado de pedidos: os itens que somam metade dos pedidos
+// do período são Alta, até 80% é Média, o resto é Baixa. Quem não vendeu vai a zero.
+const PESO_FREQ = 0.5, PESO_QTD = 0.3, PESO_FAT = 0.2;
+const CORTE_ALTA = 50, CORTE_MEDIA = 80;
+
+function analisarVendas(linhas, iCab, cab){
+  const iV = cab.findIndex(c=>/venda/.test(c));
+  const iQ = cab.findIndex(c=>/quantidade/.test(c));
+  const iT = cab.findIndex(c=>/^total/.test(c));
+  if(iV < 0 || iQ < 0) throw new Error('não achei as colunas de vendas e quantidade');
+
+  // "R$ 1.206.140,01" com espaço fino no meio
+  const brl = s => {
+    const n = parseFloat(String(s||'').replace(/[R$\u00a0\s.]/g,'').replace(',','.'));
+    return isNaN(n) ? 0 : n;
+  };
+
+  const mapa = new Map(produtos.map(p=>[p.codigo,p]));
+  const ag = new Map(); const fora = new Set();
+  for(const l of linhas.slice(iCab+1)){
+    const codigo = (l[0]||'').trim();
+    if(!codigo || !/^\d+$/.test(codigo)) continue;
+    if(!mapa.has(codigo)){ fora.add(codigo); continue; }
+    const a = ag.get(codigo) || {vendas:0, qtd:0, total:0};
+    a.vendas += parseInt(l[iV],10) || 0;
+    a.qtd    += parseInt(l[iQ],10) || 0;
+    a.total  += iT >= 0 ? brl(l[iT]) : 0;
+    ag.set(codigo, a);
+  }
+  if(!ag.size) throw new Error('nenhum código do relatório bate com o catálogo cadastrado');
+
+  // posição relativa (0 a 1) de cada valor dentro da sua coluna
+  const posicao = vals => {
+    const o = [...vals].sort((a,b)=>a-b);
+    return v => { let lo=0, hi=o.length;
+      while(lo<hi){ const m=(lo+hi)>>1; if(o[m]<v) lo=m+1; else hi=m; }
+      return o.length ? lo/o.length : 0; };
+  };
+  const cods = [...ag.keys()];
+  const pV = posicao(cods.map(c=>ag.get(c).vendas));
+  const pQ = posicao(cods.map(c=>ag.get(c).qtd));
+  const pT = posicao(cods.map(c=>ag.get(c).total));
+  const nota = c => PESO_FREQ*pV(ag.get(c).vendas) + PESO_QTD*pQ(ag.get(c).qtd) + PESO_FAT*pT(ag.get(c).total);
+
+  const ordenado = cods.sort((a,b)=>nota(b)-nota(a));
+  const totalVendas = cods.reduce((s,c)=>s+ag.get(c).vendas, 0) || 1;
+  const faixa = new Map(); let acumulado = 0;
+  for(const c of ordenado){
+    acumulado += ag.get(c).vendas;
+    const p = acumulado/totalVendas*100;
+    faixa.set(c, p <= CORTE_ALTA ? 3 : p <= CORTE_MEDIA ? 2 : 1);
+  }
+
+  // Todo item do catálogo entra no resultado: quem não vendeu volta para zero,
+  // senão a faixa da semana passada fica pendurada num item que parou de vender.
+  const res = [];
+  for(const p of produtos){
+    const pri = faixa.get(p.codigo) || 0;
+    const v = ag.get(p.codigo);
+    const detalhe = v ? `${v.vendas} vendas · ${v.qtd} un` : 'sem venda no período';
+    if((p.prioridade||0) === pri){ res.push({codigo:p.codigo, nome:p.nome, r:'inalterado', d:''}); continue; }
+    res.push({codigo:p.codigo, nome:p.nome, pri, r:'atualizado',
+              d:`${detalhe} — ${priLabel(p.prioridade)} → ${priLabel(pri)}`});
+  }
+  fora.forEach(c=>res.push({codigo:c, nome:'', r:'descartado', d:'vendeu mas não está no catálogo'}));
+  res._faixas = {3:0, 2:0, 1:0, 0:0};
+  produtos.forEach(p=>res._faixas[faixa.get(p.codigo) || 0]++);
+  return res;
 }
 
 // Só mexe na faixa de prioridade. Não cria produto, não toca em conferência.
@@ -1280,8 +1376,12 @@ function analisarCatalogo(linhas, iCab){
 function mostrarPreview(res){
   pendenteImport = res;
   const n = r => res.filter(x=>x.r===r).length;
+  const f = res._faixas;
   document.getElementById('impResumo').innerHTML =
-    (modoImport==='prioridade'
+    (modoImport==='vendas'
+      ? `<b>Relatório de vendas</b> · faixas calculadas: <b>${f[3]}</b> alta · <b>${f[2]}</b> média · `
+        + `<b>${f[1]}</b> baixa · ${f[0]} sem venda &nbsp;|&nbsp; <b>${n('atualizado')}</b> mudam · `
+      : modoImport==='prioridade'
       ? `<b>Prioridades</b> · <b>${res.length}</b> linhas · <b>${n('atualizado')}</b> mudam de faixa · `
       : `<b>Catálogo</b> · <b>${res.length}</b> linhas · <b>${n('novo')}</b> novos · <b>${n('atualizado')}</b> atualizados · `)
     + `${n('inalterado')} sem mudança · ${n('duplicado')} duplicados · ${n('descartado')} descartados`;
@@ -1319,7 +1419,7 @@ function cancelarImport(){
 
 async function aplicarImport(){
   if(!pendenteImport) return;
-  if(modoImport === 'prioridade') return aplicarPrioridades();
+  if(modoImport === 'prioridade' || modoImport === 'vendas') return aplicarPrioridades();
   const btn = document.getElementById('btnAplicar');
   btn.disabled = true; overlay(true);
   const novos = pendenteImport.filter(x=>x.r==='novo');
@@ -1376,7 +1476,8 @@ async function aplicarPrioridades(){
     }
     await sb.from('importacoes').insert({
       usuario_id: user.id,
-      arquivo: 'prioridades · ' + ((document.getElementById('arquivo').files[0]||{}).name || 'csv'),
+      arquivo: (modoImport==='vendas' ? 'vendas · ' : 'prioridades · ')
+             + ((document.getElementById('arquivo').files[0]||{}).name || 'csv'),
       total_linhas: pendenteImport.length,
       novos: 0, atualizados: mudam.length,
       inalterados: pendenteImport.filter(x=>x.r==='inalterado').length,
