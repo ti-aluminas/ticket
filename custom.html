@@ -208,6 +208,16 @@ body:not(.adm) .so-adm{display:none !important}
 .btn-sec{background:none;border:1px solid var(--border);color:var(--text-muted);padding:10px 16px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif}
 .btn-sec:hover{border-color:var(--border-light);color:var(--text)}
 .btn-danger:hover{border-color:#ff8a80;color:#ff8a80}
+/* Botão armado: segundo clique confirma uma ação que pula a conferência */
+.btn-armado{background:#b71c1c;color:#fff}
+.btn-armado:hover{background:#c62828}
+/* Faixas de prioridade vindas do relatório de vendas */
+.pri{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 6px;display:inline-block;white-space:nowrap}
+.pri3{background:rgba(229,57,53,.16);color:#ff8a80;border:1px solid rgba(229,57,53,.35)}
+.pri2{background:rgba(249,168,37,.15);color:var(--yellow);border:1px solid rgba(249,168,37,.3)}
+.pri1{background:rgba(136,136,136,.12);color:var(--text-muted);border:1px solid var(--border-light)}
+.pri0{color:var(--text-dim);border:1px solid var(--border);background:none}
+.tag-atalho{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:2px 7px;background:rgba(249,168,37,.15);color:var(--yellow);border:1px solid rgba(249,168,37,.3)}
 
 /* PAINEL */
 .anl-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
@@ -370,8 +380,16 @@ body:not(.adm) .so-adm{display:none !important}
       <div class="filter-row">
         <input class="filter-search" id="fBusca" placeholder="Buscar por código, nome ou organizador…">
         <select class="filter-select" id="fResp"><option value="">Todos responsáveis</option></select>
+        <select class="filter-select" id="fPri">
+          <option value="">Todas prioridades</option>
+          <option value="3">Alta</option>
+          <option value="2">Média</option>
+          <option value="1">Baixa</option>
+          <option value="0">Sem venda</option>
+        </select>
         <select class="filter-select" id="fOrg"><option value="">Todos organizadores</option></select>
         <select class="filter-select" id="fOrd">
+          <option value="pri">Prioridade</option>
           <option value="cod">Código</option>
           <option value="nome">Nome</option>
           <option value="prog">Progresso</option>
@@ -386,6 +404,7 @@ body:not(.adm) .so-adm{display:none !important}
         <table class="admin-table">
           <thead><tr>
             <th style="width:118px">Código</th>
+            <th style="width:78px">Prior.</th>
             <th>Produto</th>
             <th style="width:78px">Peso</th>
             <th style="width:126px">Conferência</th>
@@ -417,6 +436,7 @@ body:not(.adm) .so-adm{display:none !important}
         <div class="anl-box full so-adm">
           <div class="anl-title">Etapas do fluxo · tempo em horas úteis</div>
           <table><thead><tr><th>Etapa</th><th style="width:34%"></th><th class="n">Média</th><th class="n">Mediana</th><th class="n">Pior</th><th class="n">Itens</th></tr></thead><tbody id="pEtapas"></tbody></table>
+          <div class="meta" style="margin-top:12px" id="pAtalho"></div>
         </div>
         <div class="anl-box full">
           <div class="anl-title">Concluídos por dia · últimos 21 dias</div>
@@ -433,7 +453,9 @@ body:not(.adm) .so-adm{display:none !important}
     <section class="tabview" id="tv-importar">
       <div class="drop" id="drop">
         <strong>Solte o CSV aqui ou <em>clique para escolher</em></strong>
-        <p>Relatório de customizáveis exportado do Pontta.<br>Só entram códigos numéricos — os alfanuméricos são descartados automaticamente.</p>
+        <p><b>Catálogo</b> — relatório de customizáveis do Pontta. Só entram códigos numéricos.<br>
+        <b>Prioridades</b> — planilha com a coluna Prioridade. Atualiza só a faixa, não mexe em conferência.<br>
+        O tipo do arquivo é reconhecido pelo cabeçalho.</p>
         <input type="file" id="arquivo" accept=".csv,text/csv">
       </div>
       <div id="preview" style="display:none">
@@ -488,7 +510,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // Trocar a cada deploy — e o que permite uma aba antiga se reconhecer
 // como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.08.28-1915';
+const APP_VERSION = '2026.08.29-1450';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -504,6 +526,9 @@ const CHECKS = [
   ['chk_componentes',   'Componentes filhos'],
 ];
 const STATUS_LABEL = {pendente:'Pendente', liberado:'Liberado', em_lancamento:'Em lançamento', concluido:'Concluído'};
+// Faixas de prioridade vindas do relatório de vendas. Número maior fura fila.
+const PRI_LABEL = {0:'Sem venda', 1:'Baixa', 2:'Média', 3:'Alta'};
+const priLabel = n => PRI_LABEL[n||0] || ('P'+n);
 
 // ── HORAS ÚTEIS — mesmo expediente do sistema de tickets ──
 // Seg a qui: 08:00–17:30 · Sex: 07:30–16:30 · Sáb/dom: não conta.
@@ -545,7 +570,8 @@ const tCiclo  = p => horasEntre(p.liberado_em,  p.concluido_em);
 let user = null;
 let produtos = [], usuarios = [];
 let itemAberto = null, pendenteImport = null;
-let filtroStatus = '', filtroBusca = '', filtroResp = '', filtroOrg = '', ordem = 'cod';
+let filtroStatus = '', filtroBusca = '', filtroResp = '', filtroOrg = '', filtroPri = '', ordem = 'cod';
+let modoImport = 'catalogo';
 let _rtChannel = null;
 
 // ── CHECAGEM DE VERSAO ──
@@ -591,6 +617,9 @@ const nomeDe  = id => (usuarios.find(u=>u.id===id)||{}).nome || '—';
 const podeN1  = () => user && ['admin','nivel1','ambos'].includes(user.papel);
 const podeN2  = () => user && ['admin','nivel2','ambos'].includes(user.papel);
 const meu     = p => p.assumido_por === user.id;
+// O atalho fecha o item sem conferência, então fica com quem atua nos dois
+// níveis — hoje você e o Bernardo.
+const podeAtalho = () => podeN1() && podeN2();
 
 // ── RESUMO NA TELA DE CÓDIGO ──
 (async function resumoPreLogin(){
@@ -730,11 +759,14 @@ function filtrar(){
     if(filtroStatus && p.status !== filtroStatus) return false;
     if(filtroResp === '0' && p.assumido_por) return false;
     if(filtroResp && filtroResp !== '0' && String(p.assumido_por) !== filtroResp) return false;
+    if(filtroPri !== '' && String(p.prioridade||0) !== filtroPri) return false;
     if(filtroOrg && !(p.organizadores||[]).includes(filtroOrg)) return false;
     if(q && !((p.codigo+' '+p.nome+' '+(p.organizadores||[]).join(' ')).toLowerCase().includes(q))) return false;
     return true;
   });
-  if(ordem==='nome')        out.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  if(ordem==='pri')         out.sort((a,b)=>(b.prioridade||0)-(a.prioridade||0)
+                                          || a.codigo.localeCompare(b.codigo,undefined,{numeric:true}));
+  else if(ordem==='nome')   out.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
   else if(ordem==='prog')   out.sort((a,b)=>nChecks(b)-nChecks(a) || a.codigo.localeCompare(b.codigo));
   else if(ordem==='rec')    out.sort((a,b)=>(b.atualizado_em||'').localeCompare(a.atualizado_em||''));
   else if(ordem==='espera') out.sort((a,b)=>(a.liberado_em||'9999').localeCompare(b.liberado_em||'9999'));
@@ -765,6 +797,7 @@ function renderFila(){
       : '<span style="color:#555">—</span>';
     return `<tr onclick="abrirItem('${esc(p.codigo)}')">
       <td class="td-cod">${esc(p.codigo)}</td>
+      <td><span class="pri pri${p.prioridade||0}">${priLabel(p.prioridade)}</span></td>
       <td><div class="td-nome">${esc(p.nome)}</div><div class="td-orgs">${esc((p.organizadores||[]).join(' · '))}</div></td>
       <td class="td-num">${peso}</td>
       <td><div class="strip" title="${nChecks(p)} de 8">${segs}</div></td>
@@ -784,6 +817,7 @@ document.querySelectorAll('.filter-btn[data-st]').forEach(b=>{
 document.getElementById('fBusca').oninput = e=>{ filtroBusca = e.target.value; renderFila(); };
 document.getElementById('fResp').onchange = e=>{ filtroResp = e.target.value; renderFila(); };
 document.getElementById('fOrg').onchange  = e=>{ filtroOrg  = e.target.value; renderFila(); };
+document.getElementById('fPri').onchange  = e=>{ filtroPri  = e.target.value; renderFila(); };
 document.getElementById('fOrd').onchange  = e=>{ ordem      = e.target.value; renderFila(); };
 document.querySelectorAll('.admin-tab-btn').forEach(b=>{
   b.onclick = ()=>{
@@ -795,10 +829,11 @@ document.querySelectorAll('.admin-tab-btn').forEach(b=>{
 });
 
 function limparFiltros(){
-  filtroStatus=''; filtroBusca=''; filtroResp=''; filtroOrg=''; ordem='cod';
+  filtroStatus=''; filtroBusca=''; filtroResp=''; filtroOrg=''; filtroPri=''; ordem='cod';
   document.querySelectorAll('.filter-btn[data-st]').forEach(x=>x.classList.toggle('active', !x.dataset.st));
   document.getElementById('fBusca').value='';
   document.getElementById('fResp').value=''; document.getElementById('fOrg').value='';
+  document.getElementById('fPri').value='';
   document.getElementById('fOrd').value='cod';
   renderFila();
 }
@@ -806,13 +841,13 @@ function limparFiltros(){
 function exportarLista(){
   const lista = filtrar();
   const adm = user.papel === 'admin';
-  const cab = ['Codigo','Nome','Organizadores','Peso bruto','Status','Conferencias',
+  const cab = ['Codigo','Nome','Organizadores','Prioridade','Peso bruto','Status','Conferencias',
                'Liberado por','Assumido por','Concluido por']
     .concat(adm ? ['Liberado em','Assumido em','Concluido em',
                    'Horas ate assumir','Horas execucao','Horas ciclo'] : []);
   const num = v => v==null ? '' : String(v.toFixed(2)).replace('.',',');
   const linhas = lista.map(p=>[
-    p.codigo, p.nome, (p.organizadores||[]).join(' | '),
+    p.codigo, p.nome, (p.organizadores||[]).join(' | '), priLabel(p.prioridade),
     p.peso_bruto??'', STATUS_LABEL[p.status], nChecks(p)+'/8',
     p.liberado_por?nomeDe(p.liberado_por):'',
     p.assumido_por?nomeDe(p.assumido_por):'',
@@ -934,6 +969,7 @@ function desenharItem(){
 
   document.getElementById('mFoot').innerHTML = `
     <span class="sbadge ${p.status}">${STATUS_LABEL[p.status]}</span>
+    ${p.via_atalho ? '<span class="tag-atalho" title="fechado sem passar pela conferência">atalho</span>' : ''}
     <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
       ${n1 && !p.liberado_em ? '<button class="btn-primary" onclick="salvarN1(true)">Liberar</button>' : ''}
       ${n1 &&  p.liberado_em && !assumido ? '<button class="btn-sec btn-danger" onclick="desliberar()">Retirar liberação</button>' : ''}
@@ -941,6 +977,8 @@ function desenharItem(){
       ${n2 && p.liberado_em && !assumido ? '<button class="btn-primary" onclick="assumir()">Assumir</button>' : ''}
       ${n2 && assumido && !souEu && p.status!=='concluido' ? '<button class="btn-sec" onclick="assumir()">Assumir mesmo assim</button>' : ''}
       ${n2 && assumido && souEu && p.status!=='concluido' ? '<button class="btn-sec btn-danger" onclick="largar()">Devolver à fila</button>' : ''}
+      ${podeAtalho() && p.status!=='concluido' ? '<button class="btn-primary" id="btnPronto" onclick="marcarPronto()">Marcar como pronto</button>' : ''}
+      ${podeAtalho() && p.via_atalho ? '<button class="btn-sec btn-danger" onclick="desfazerAtalho()">Desfazer atalho</button>' : ''}
     </span>`;
 
   document.querySelectorAll('#mBody .chk input').forEach(cb=>{
@@ -1028,8 +1066,39 @@ function largar(){
          'Item devolvido à fila.');
 }
 
+// Fecha o item numa ação só. Dois cliques: o primeiro arma, o segundo confirma —
+// é destrutivo o bastante para não merecer um clique solto.
+function marcarPronto(){
+  const btn = document.getElementById('btnPronto');
+  if(btn && btn.dataset.armado !== '1'){
+    btn.dataset.armado = '1';
+    btn.textContent = 'Confirmar?';
+    btn.classList.add('btn-armado');
+    clearTimeout(btn._t);
+    btn._t = setTimeout(()=>{
+      if(!btn.isConnected) return;
+      btn.dataset.armado = ''; btn.textContent = 'Marcar como pronto';
+      btn.classList.remove('btn-armado');
+    }, 4000);
+    return;
+  }
+  const agora = new Date().toISOString();
+  const body = {via_atalho:true, concluido_por:user.id};
+  CHECKS.forEach(([k])=>body[k] = true);
+  if(!itemAberto.liberado_em){ body.liberado_por = user.id; body.liberado_em = agora; }
+  if(!itemAberto.assumido_em){ body.assumido_por = user.id; body.assumido_em = agora; }
+  gravar(body, 'marcou como pronto (atalho)', null, null, null, 'Item marcado como pronto.');
+}
+
+// Volta o item para a fila com as conferências zeradas, mantendo a liberação.
+function desfazerAtalho(){
+  const body = {via_atalho:false, assumido_por:null, assumido_em:null, concluido_por:null};
+  CHECKS.forEach(([k])=>body[k] = false);
+  gravar(body, 'desfez o atalho', null, null, null, 'Atalho desfeito. O item voltou para a fila.');
+}
+
 async function marcar(campo, valor){
-  const body = {[campo]: valor};
+  const body = {[campo]: valor, via_atalho: false};
   if(CHECKS.every(([k]) => k===campo ? valor : itemAberto[k])) body.concluido_por = user.id;
   await gravar(body, valor?'marcou':'desmarcou', campo, !valor, valor);
   if(itemAberto && itemAberto.status==='concluido') showToast('Item concluído.');
@@ -1088,6 +1157,11 @@ function renderPainel(){
       <td class="n">${fmtH(e.pior)}</td><td class="n">${e.n}</td></tr>`;
   }).join('');
 
+  const nAtalho = produtos.filter(p=>p.via_atalho).length;
+  document.getElementById('pAtalho').innerHTML = nAtalho
+    ? `<b>${nAtalho}</b> de ${conc} concluídos foram marcados como prontos direto, sem passar pela conferência.`
+    : 'Nenhum item fechado por atalho — todos passaram pelas 8 conferências.';
+
   document.getElementById('pPessoa').innerHTML = usuarios.map(u=>{
     const lib = produtos.filter(p=>p.liberado_por===u.id).length;
     const cur = produtos.filter(p=>p.assumido_por===u.id && p.status==='em_lancamento').length;
@@ -1145,10 +1219,42 @@ function parseCSV(txt){
   return linhas;
 }
 
+// Roteia pelo cabeçalho: com coluna "Prioridade" é a planilha de vendas,
+// senão é o relatório de catálogo do Pontta.
 function analisar(txt){
   const linhas = parseCSV(txt);
   const iCab = linhas.findIndex(l => /c[oó]digo/i.test((l[0]||'').trim()));
   if(iCab < 0) throw new Error('não achei a linha de cabeçalho com a coluna "Código"');
+  const cab = linhas[iCab].map(c=>(c||'').trim().toLowerCase());
+  const iPri = cab.findIndex(c=>/priorid/.test(c));
+  if(iPri >= 0){ modoImport = 'prioridade'; return analisarPrioridades(linhas, iCab, iPri); }
+  modoImport = 'catalogo';
+  return analisarCatalogo(linhas, iCab);
+}
+
+// Só mexe na faixa de prioridade. Não cria produto, não toca em conferência.
+function analisarPrioridades(linhas, iCab, iPri){
+  const mapa = new Map(produtos.map(p=>[p.codigo,p]));
+  const vistos = new Set(); const res = [];
+  for(const l of linhas.slice(iCab+1)){
+    const codigo = (l[0]||'').trim();
+    if(!codigo) continue;
+    const nome = (l[1]||'').trim();
+    if(!/^\d+$/.test(codigo)){ res.push({codigo,nome,r:'descartado',d:'código não é numérico'}); continue; }
+    if(vistos.has(codigo)){ res.push({codigo,nome,r:'duplicado',d:'repetido no arquivo'}); continue; }
+    vistos.add(codigo);
+    const ex = mapa.get(codigo);
+    if(!ex){ res.push({codigo,nome,r:'descartado',d:'não está cadastrado — importe o catálogo antes'}); continue; }
+    const pri = parseInt((l[iPri]||'').trim(), 10);
+    if(isNaN(pri) || pri < 0){ res.push({codigo,nome:ex.nome,r:'descartado',d:'prioridade inválida'}); continue; }
+    if((ex.prioridade||0) === pri){ res.push({codigo,nome:ex.nome,r:'inalterado',d:''}); continue; }
+    res.push({codigo, nome:ex.nome, pri, r:'atualizado',
+              d:`${priLabel(ex.prioridade)} → ${priLabel(pri)}`});
+  }
+  return res;
+}
+
+function analisarCatalogo(linhas, iCab){
   const dados = linhas.slice(iCab+1).filter(l=>(l[0]||'').trim());
   const mapa = new Map(produtos.map(p=>[p.codigo,p]));
   const vistos = new Set(); const res = [];
@@ -1175,7 +1281,9 @@ function mostrarPreview(res){
   pendenteImport = res;
   const n = r => res.filter(x=>x.r===r).length;
   document.getElementById('impResumo').innerHTML =
-    `<b>${res.length}</b> linhas · <b>${n('novo')}</b> novos · <b>${n('atualizado')}</b> atualizados · `
+    (modoImport==='prioridade'
+      ? `<b>Prioridades</b> · <b>${res.length}</b> linhas · <b>${n('atualizado')}</b> mudam de faixa · `
+      : `<b>Catálogo</b> · <b>${res.length}</b> linhas · <b>${n('novo')}</b> novos · <b>${n('atualizado')}</b> atualizados · `)
     + `${n('inalterado')} sem mudança · ${n('duplicado')} duplicados · ${n('descartado')} descartados`;
   const mostrar = res.filter(x=>x.r!=='inalterado');
   document.getElementById('prevBody').innerHTML = mostrar.length
@@ -1204,13 +1312,14 @@ function lerArquivo(f){
 }
 
 function cancelarImport(){
-  pendenteImport = null;
+  pendenteImport = null; modoImport = 'catalogo';
   document.getElementById('preview').style.display = 'none';
   document.getElementById('arquivo').value = '';
 }
 
 async function aplicarImport(){
   if(!pendenteImport) return;
+  if(modoImport === 'prioridade') return aplicarPrioridades();
   const btn = document.getElementById('btnAplicar');
   btn.disabled = true; overlay(true);
   const novos = pendenteImport.filter(x=>x.r==='novo');
@@ -1244,6 +1353,43 @@ async function aplicarImport(){
     showToast(`${novos.length} novos e ${upd.length} atualizados.`);
     cancelarImport();
     await carregar();
+    carregarHistImport();
+  } catch(e){
+    showToast('Falhou: ' + e.message, 'error');
+  } finally { btn.disabled = false; overlay(false); }
+}
+
+// 608 linhas viram poucas chamadas: agrupa por faixa e manda um update por faixa.
+async function aplicarPrioridades(){
+  const btn = document.getElementById('btnAplicar');
+  btn.disabled = true; overlay(true);
+  const mudam = pendenteImport.filter(x=>x.r==='atualizado');
+  try {
+    const porFaixa = {};
+    mudam.forEach(x=>{ (porFaixa[x.pri] = porFaixa[x.pri] || []).push(x.codigo); });
+    for(const [pri, codigos] of Object.entries(porFaixa)){
+      for(let i=0;i<codigos.length;i+=200){
+        const {error} = await sb.from('produtos')
+          .update({prioridade: Number(pri)}).in('codigo', codigos.slice(i,i+200));
+        if(error) throw error;
+      }
+    }
+    await sb.from('importacoes').insert({
+      usuario_id: user.id,
+      arquivo: 'prioridades · ' + ((document.getElementById('arquivo').files[0]||{}).name || 'csv'),
+      total_linhas: pendenteImport.length,
+      novos: 0, atualizados: mudam.length,
+      inalterados: pendenteImport.filter(x=>x.r==='inalterado').length,
+      duplicados: pendenteImport.filter(x=>x.r==='duplicado'||x.r==='descartado').length,
+    });
+    // Reflete na tela sem recarregar os 608 do servidor
+    mudam.forEach(x=>{
+      const p = produtos.find(y=>y.codigo===x.codigo);
+      if(p) p.prioridade = x.pri;
+    });
+    renderTudo();
+    showToast(mudam.length + ' itens mudaram de prioridade.');
+    cancelarImport();
     carregarHistImport();
   } catch(e){
     showToast('Falhou: ' + e.message, 'error');
