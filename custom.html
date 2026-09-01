@@ -254,6 +254,28 @@ body:not(.adm) .so-adm{display:none !important}
 .chart-col.hoje .chart-lab{color:var(--accent);font-weight:600}
 .chart-col.fds .chart-lab{color:#3a3a3a}
 
+/* Liberação em lote: uma linha por item, tudo pelo teclado */
+.lib-barra{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--surface2);border:1px solid var(--border);padding:11px 14px;margin-bottom:14px}
+.lib-cont{font-family:'Roboto Mono',monospace;font-size:13px}
+.lib-cont b{color:var(--accent)}
+.lib-cont .feitos{color:#69f0ae}
+.lib-dica{font-size:11px;color:var(--text-dim)}
+.lib-busca{min-width:280px;flex:1}
+.lib-barra .lib-cont{margin-left:auto;white-space:nowrap}
+.lib-dica kbd{font-family:'Roboto Mono',monospace;background:var(--bg);border:1px solid var(--border-light);padding:1px 5px;font-size:10px;color:var(--text-muted)}
+.lib-input{width:104px;background:var(--bg);border:1px solid var(--border-light);color:var(--text);padding:6px 9px;
+  font-family:'Roboto Mono',monospace;font-size:13px;text-align:right;outline:none}
+.lib-input:focus{border-color:var(--accent);background:rgba(192,146,42,.06)}
+.lib-input.erro{border-color:#ff8a80;background:rgba(183,28,28,.1)}
+.lib-input:disabled{color:var(--text-dim);background:var(--surface)}
+#tbLiberar tr{cursor:default}
+#tbLiberar tr.salvando{opacity:.5}
+#tbLiberar tr.ok td{background:rgba(27,94,32,.22)}
+#tbLiberar tr.falhou td{background:rgba(183,28,28,.15)}
+.lib-mark{font-family:'Roboto Mono',monospace;font-size:11px;color:var(--text-dim);width:20px;display:inline-block}
+.lib-mark.ok{color:#69f0ae}
+.lib-mark.err{color:#ff8a80}
+
 /* Composição por prioridade: uma barra que continua informando mesmo com
    0% concluído, porque mede a importância comercial da família. */
 .stack{display:flex;height:9px;background:var(--border);overflow:hidden;min-width:70px}
@@ -399,6 +421,7 @@ body:not(.adm) .so-adm{display:none !important}
     <div class="admin-tabs">
       <button class="admin-tab-btn active" data-tab="fila">Fila</button>
       <button class="admin-tab-btn" data-tab="painel">Painel</button>
+      <button class="admin-tab-btn" data-tab="liberar" id="tabLiberar">Liberar em lote</button>
       <button class="admin-tab-btn" data-tab="importar" id="tabImportar">Importar</button>
     </div>
 
@@ -465,7 +488,7 @@ body:not(.adm) .so-adm{display:none !important}
           <div class="anl-title">Progresso por prioridade</div>
           <table><thead><tr><th>Estrelas</th><th style="width:34%"></th><th class="n">Feito</th><th class="n">Total</th><th class="n">%</th></tr></thead><tbody id="pPrioridade"></tbody></table>
         </div>
-        <div class="anl-box">
+        <div class="anl-box so-adm">
           <div class="anl-title">Projeção de término</div>
           <div id="pProjecao"></div>
         </div>
@@ -502,6 +525,42 @@ body:not(.adm) .so-adm{display:none !important}
             <th class="n">Feito</th>
           </tr></thead><tbody id="pOrg"></tbody></table>
           <div class="stack-leg" id="pOrgLeg"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- LIBERAR EM LOTE ---------- -->
+    <section class="tabview" id="tv-liberar">
+      <div class="lib-barra">
+        <input class="filter-search lib-busca" id="libBusca" placeholder="Buscar por nome, código ou organizador…">
+        <select class="filter-select" id="libPri">
+          <option value="">Todas prioridades</option>
+          <option value="5">★★★★★</option>
+          <option value="4">★★★★</option>
+          <option value="3">★★★</option>
+          <option value="2">★★</option>
+          <option value="1">★</option>
+          <option value="0">Sem estrela</option>
+        </select>
+        <select class="filter-select" id="libOrg"><option value="">Todos organizadores</option></select>
+        <button class="filter-clear-btn" onclick="limparLib()">Limpar</button>
+        <span class="lib-cont" id="libCont"></span>
+      </div>
+      <div class="lib-dica" style="margin:-6px 0 14px">
+        Digite o peso e tecle <kbd>Enter</kbd> — libera e pula para o próximo. <kbd>Tab</kbd> pula sem liberar.
+      </div>
+      <div class="admin-table-wrap" style="max-height:calc(100vh - 250px);overflow-y:auto">
+        <table class="admin-table">
+          <thead><tr>
+            <th style="width:100px">Código</th>
+            <th style="width:86px">Prior.</th>
+            <th>Produto</th>
+            <th style="width:150px">Peso bruto (kg)</th>
+          </tr></thead>
+          <tbody id="tbLiberar"></tbody>
+        </table>
+        <div class="no-itens" id="libVazio" style="display:none">
+          <strong>Nada pendente</strong>Todos os itens deste filtro já foram liberados.
         </div>
       </div>
     </section>
@@ -600,7 +659,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // Trocar a cada deploy — e o que permite uma aba antiga se reconhecer
 // como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.09.01-1420';
+const APP_VERSION = '2026.09.01-1905';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -809,6 +868,7 @@ async function abrirApp(){
   // body.adm libera a coluna Tempo, o bloco de rastreabilidade e os KPIs de tempo
   document.body.classList.toggle('adm', user.papel === 'admin');
   if(user.papel !== 'admin') document.getElementById('tabImportar').style.display = 'none';
+  if(!podeN1()) document.getElementById('tabLiberar').style.display = 'none';
   await carregar();
   ligarRealtime();
 }
@@ -829,7 +889,7 @@ async function carregar(){
     showToast('Não consegui carregar: ' + e.message, 'error');
   } finally { overlay(false); }
 }
-function renderTudo(){ renderKpis(); renderFila(); renderPainel(); }
+function renderTudo(){ renderKpis(); renderFila(); renderPainel(); renderLiberar(); }
 
 function montarSelects(){
   const fr = document.getElementById('fResp');
@@ -839,9 +899,12 @@ function montarSelects(){
   const set = new Set();
   produtos.forEach(p => (p.organizadores||[]).forEach(o=>set.add(o)));
   const fo = document.getElementById('fOrg');
-  fo.innerHTML = '<option value="">Todos organizadores</option>'
+  const opcoes = '<option value="">Todos organizadores</option>'
     + [...set].sort().map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join('');
+  fo.innerHTML = opcoes;
   fo.value = filtroOrg;
+  const lo = document.getElementById('libOrg');
+  const antes = lo.value; lo.innerHTML = opcoes; lo.value = antes;
 }
 
 // ── KPIs DA SIDEBAR ──
@@ -959,6 +1022,11 @@ document.querySelectorAll('.admin-tab-btn').forEach(b=>{
     document.querySelectorAll('.tabview').forEach(v=>v.classList.remove('active'));
     b.classList.add('active');
     document.getElementById('tv-'+b.dataset.tab).classList.add('active');
+    if(b.dataset.tab === 'liberar'){
+      renderLiberar();
+      const p = document.querySelector('#tbLiberar .lib-input');
+      if(p) p.focus();
+    }
   };
 });
 
@@ -997,6 +1065,112 @@ function exportarLista(){
   a.click();
   showToast(lista.length + ' itens exportados.');
 }
+
+// ── LIBERAÇÃO EM LOTE ──
+// Uma linha por item pendente, com o campo de peso já na tabela. Enter grava e
+// pula para o próximo: para liberar cem itens, abrir e fechar modal é o gargalo.
+let _libFeitos = 0;
+
+function pendentesLib(){
+  const q = (document.getElementById('libBusca').value||'').trim().toLowerCase();
+  const pr = document.getElementById('libPri').value;
+  const og = document.getElementById('libOrg').value;
+  return produtos.filter(p=>{
+    if(p.status !== 'pendente') return false;
+    if(pr !== '' && String(priN(p.prioridade)) !== pr) return false;
+    if(og && !(p.organizadores||[]).includes(og)) return false;
+    if(q && !((p.codigo+' '+p.nome+' '+(p.organizadores||[]).join(' ')).toLowerCase().includes(q))) return false;
+    return true;
+  }).sort((a,b)=>priN(b.prioridade)-priN(a.prioridade)
+               || a.codigo.localeCompare(b.codigo,undefined,{numeric:true}));
+}
+
+function contadorLib(){
+  const n = produtos.filter(p=>p.status==='pendente').length;
+  document.getElementById('libCont').innerHTML =
+    `<b>${n}</b> pendentes` + (_libFeitos ? ` · <span class="feitos">${_libFeitos} liberados agora</span>` : '');
+}
+
+function renderLiberar(){
+  const el = document.getElementById('tbLiberar');
+  if(!el) return;
+  const lista = pendentesLib();
+  document.getElementById('libVazio').style.display = lista.length ? 'none' : '';
+  el.innerHTML = lista.map(p=>`<tr data-c="${esc(p.codigo)}">
+    <td class="td-cod">${esc(p.codigo)}</td>
+    <td>${priEstrelas(p.prioridade)}</td>
+    <td><div class="td-nome">${esc(p.nome)}</div><div class="td-orgs">${esc((p.organizadores||[]).join(' · '))}</div></td>
+    <td><input class="lib-input" type="text" inputmode="decimal" autocomplete="off"
+               data-c="${esc(p.codigo)}" placeholder="0,00"><span class="lib-mark"></span></td>
+  </tr>`).join('');
+  el.querySelectorAll('.lib-input').forEach(inp=>{
+    inp.onkeydown = e=>{
+      if(e.key !== 'Enter') return;
+      e.preventDefault();
+      const prox = proximoLib(inp);
+      liberarLinha(inp.dataset.c, inp);   // não espera a resposta: o foco anda na hora
+      if(prox) prox.focus();
+    };
+  });
+  contadorLib();
+}
+
+function proximoLib(atual){
+  const todos = [...document.querySelectorAll('#tbLiberar .lib-input')];
+  for(let i=todos.indexOf(atual)+1; i<todos.length; i++) if(!todos[i].disabled) return todos[i];
+  return null;
+}
+
+async function liberarLinha(cod, inp){
+  const peso = parseFloat(String(inp.value).replace(',','.'));
+  if(!(peso > 0)){ inp.classList.add('erro'); inp.value=''; return; }
+  inp.classList.remove('erro');
+  inp.disabled = true;
+  const tr = inp.closest('tr');
+  const marca = tr.querySelector('.lib-mark');
+  tr.classList.add('salvando'); marca.textContent = '…';
+  try {
+    const {data, error} = await sb.from('produtos').update({
+      peso_bruto: peso, liberado_por: user.id, liberado_em: new Date().toISOString(),
+    }).eq('codigo', cod).select();
+    if(error) throw error;
+    const i = produtos.findIndex(p=>p.codigo===cod);
+    if(i>=0) produtos[i] = {...produtos[i], ...data[0]};
+    logar(cod, 'liberou', 'peso_bruto', null, peso);
+    tr.classList.remove('salvando'); tr.classList.add('ok');
+    marca.textContent = '✓'; marca.className = 'lib-mark ok';
+    _libFeitos++;
+    contadorLib(); renderKpis(); renderFila(); renderPainel();
+    setTimeout(()=>{ if(tr.parentNode) tr.remove(); }, 1200);
+  } catch(e){
+    tr.classList.remove('salvando'); tr.classList.add('falhou');
+    marca.textContent = '!'; marca.className = 'lib-mark err';
+    inp.disabled = false;
+    showToast('Não liberou ' + cod + ': ' + e.message, 'error');
+  }
+}
+
+function limparLib(){
+  document.getElementById('libBusca').value = '';
+  document.getElementById('libPri').value   = '';
+  document.getElementById('libOrg').value   = '';
+  renderLiberar();
+  const p = document.querySelector('#tbLiberar .lib-input');
+  if(p) p.focus();
+}
+
+['libBusca','libPri','libOrg'].forEach(id=>{
+  const el = document.getElementById(id);
+  el.addEventListener('input', renderLiberar);
+  el.addEventListener('change', renderLiberar);
+});
+// Buscou, tecla Enter e já cai no campo de peso do primeiro resultado.
+document.getElementById('libBusca').addEventListener('keydown', e=>{
+  if(e.key !== 'Enter') return;
+  e.preventDefault();
+  const p = document.querySelector('#tbLiberar .lib-input');
+  if(p) p.focus();
+});
 
 // ── MODAL DO PRODUTO ──
 function abrirItem(cod){
