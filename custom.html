@@ -133,7 +133,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 
 /* TIRA DE CONFERÊNCIA — 8 blocos */
 .strip{display:flex;gap:2px}
-.strip i{width:12px;height:15px;background:var(--border);display:block;transition:background .15s}
+.strip i{width:10px;height:15px;background:var(--border);display:block;transition:background .15s}
 .strip i.ok{background:#69f0ae}
 .strip i.na{background:var(--border-light)}
 
@@ -443,7 +443,7 @@ body:not(.adm) .so-adm{display:none !important}
             <th style="width:86px">Prior.</th>
             <th>Produto</th>
             <th style="width:78px">Peso</th>
-            <th style="width:126px">Conferência</th>
+            <th style="width:138px">Conferência</th>
             <th class="so-adm" style="width:86px">Tempo</th>
             <th style="width:122px">Status</th>
             <th style="width:110px">Responsável</th>
@@ -555,7 +555,7 @@ body:not(.adm) .so-adm{display:none !important}
           <th style="width:100px">Código</th>
           <th style="width:86px">Prior.</th>
           <th>Produto</th>
-          <th style="width:120px">Conferência</th>
+          <th style="width:138px">Conferência</th>
           <th class="so-adm" style="width:84px">Tempo</th>
           <th style="width:118px">Status</th>
           <th style="width:100px">Resp.</th>
@@ -600,7 +600,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // Trocar a cada deploy — e o que permite uma aba antiga se reconhecer
 // como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.09.01-1030';
+const APP_VERSION = '2026.09.01-1420';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -614,7 +614,12 @@ const CHECKS = [
   ['chk_servicos',      'Serviços'],
   ['chk_sku',           'SKU'],
   ['chk_componentes',   'Componentes filhos'],
+  ['chk_volume',        'Volume'],
+  ['chk_estoque',       'Estoque'],
 ];
+// Quantidade de conferências. Tudo que mostra "x/10" lê daqui, para acrescentar
+// um check no futuro ser só mexer na lista acima.
+const N_CHECKS = CHECKS.length;
 const STATUS_LABEL = {pendente:'Pendente', liberado:'Liberado', em_lancamento:'Em lançamento', concluido:'Concluído'};
 // Prioridade em estrelas, de 0 a 5. Número maior fura fila.
 const PRI_MAX = 5;
@@ -907,7 +912,7 @@ function linhaProduto(p, comPeso){
     <td>${priEstrelas(p.prioridade)}</td>
     <td><div class="td-nome">${esc(p.nome)}</div><div class="td-orgs">${esc((p.organizadores||[]).join(' · '))}</div></td>
     ${comPeso ? `<td class="td-num">${peso}</td>` : ''}
-    <td><div class="strip" title="${nChecks(p)} de 8">${segs}</div></td>
+    <td><div class="strip" title="${nChecks(p)} de ${N_CHECKS}">${segs}</div></td>
     <td class="so-adm">${celulaTempo(p)}</td>
     <td><span class="sbadge ${p.status}">${STATUS_LABEL[p.status]}</span></td>
     <td class="td-quem">${p.assumido_por ? esc(nomeDe(p.assumido_por).split(' ')[0]) : '<span style="color:#555">—</span>'}</td>
@@ -977,7 +982,7 @@ function exportarLista(){
   const num = v => v==null ? '' : String(v.toFixed(2)).replace('.',',');
   const linhas = lista.map(p=>[
     p.codigo, p.nome, (p.organizadores||[]).join(' | '), priN(p.prioridade),
-    p.peso_bruto??'', STATUS_LABEL[p.status], nChecks(p)+'/8',
+    p.peso_bruto??'', STATUS_LABEL[p.status], nChecks(p)+'/'+N_CHECKS,
     p.liberado_por?nomeDe(p.liberado_por):'',
     p.assumido_por?nomeDe(p.assumido_por):'',
     p.concluido_por?nomeDe(p.concluido_por):'',
@@ -1090,7 +1095,7 @@ function desenharItem(){
   document.getElementById('mBody').innerHTML = `
     ${blocoPri}
     ${blocoN1}
-    <div class="divider"><span>Nível 2 · lançamento &nbsp;·&nbsp; ${nChecks(p)}/8</span></div>
+    <div class="divider"><span>Nível 2 · lançamento &nbsp;·&nbsp; ${nChecks(p)}/${N_CHECKS}</span></div>
     ${avisoN2}
     ${CHECKS.map(([k,rot])=>`
       <label class="chk ${p[k]?'done':''} ${podeMarcar?'':'lock'}">
@@ -1417,7 +1422,7 @@ function renderPainel(){
   const nAtalho = produtos.filter(p=>p.via_atalho).length;
   document.getElementById('pAtalho').innerHTML = nAtalho
     ? `<b>${nAtalho}</b> de ${conc.length} concluídos foram marcados como prontos direto, sem passar pela conferência.`
-    : 'Nenhum item fechado por atalho — todos passaram pelas 8 conferências.';
+    : `Nenhum item fechado por atalho — todos passaram pelas ${N_CHECKS} conferências.`;
 
   // ── Parados na fila ──
   const agora = new Date().toISOString();
