@@ -240,9 +240,44 @@ body:not(.adm) .so-adm{display:none !important}
 .mbar{height:6px;background:var(--border);overflow:hidden;min-width:56px}
 .mbar i{display:block;height:100%;background:#69f0ae}
 .mbar.y i{background:var(--yellow)}
-.spark{display:flex;align-items:flex-end;gap:3px;height:74px}
-.spark div{flex:1;background:var(--blue);min-height:2px;opacity:.75}
-.spark div:hover{opacity:1}
+/* Gráfico diário com rótulo e valor — a versão anterior era uma faixa de
+   barras sem escala, ilegível quando quase todo dia é zero. */
+.chart{display:flex;align-items:stretch;gap:4px;height:132px}
+.chart-col{flex:1;display:flex;flex-direction:column;min-width:0}
+.chart-col.temItem{cursor:pointer}
+.chart-top{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:3px}
+.chart-val{font-family:'Roboto Mono',monospace;font-size:10px;color:var(--text-muted);text-align:center;height:12px;line-height:12px}
+.chart-bar{background:var(--blue);min-height:2px;opacity:.8;transition:opacity .15s}
+.chart-col.temItem:hover .chart-bar{opacity:1}
+.chart-col.fds .chart-bar{background:var(--border-light)}
+.chart-lab{font-family:'Roboto Mono',monospace;font-size:9px;color:var(--text-dim);text-align:center;margin-top:6px;padding-top:5px;border-top:1px solid var(--border)}
+.chart-col.hoje .chart-lab{color:var(--accent);font-weight:600}
+.chart-col.fds .chart-lab{color:#3a3a3a}
+
+/* Composição por prioridade: uma barra que continua informando mesmo com
+   0% concluído, porque mede a importância comercial da família. */
+.stack{display:flex;height:9px;background:var(--border);overflow:hidden;min-width:70px}
+.stack i{display:block;height:100%}
+.s5{background:#e8b53a}.s4{background:#c0922a}.s3{background:#8f6d20}
+.s2{background:#5e4816}.s1{background:#3d3010}.s0{background:#2a2a2a}
+.stack-leg{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:10px;color:var(--text-dim)}
+.stack-leg span{display:flex;align-items:center;gap:5px}
+.stack-leg b{width:9px;height:9px;display:block}
+/* Blocos que abrem a lista dos itens por trás do número */
+.anl-kpi.clic{cursor:pointer;transition:border-color .15s,background .15s}
+.anl-kpi.clic:hover{border-color:var(--border-light);background:#262626}
+.anl-box tr.clic{cursor:pointer}
+.anl-box tr.clic:hover td{background:#262626}
+.anl-kpi-sub .lupa{color:var(--text-dim);font-size:10px;margin-left:5px}
+/* Projeção */
+.proj{display:flex;flex-direction:column;gap:14px}
+.proj-linha{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.proj-linha:last-child{border-bottom:none;padding-bottom:0}
+.proj-rot{font-size:11px;color:var(--text-muted)}
+.proj-val{font-family:'Roboto Mono',monospace;font-weight:600;font-size:19px;color:var(--accent)}
+.proj-val.calmo{color:var(--text);font-size:15px}
+#modalItem{z-index:320}
+.pri-cel{display:flex;align-items:center;gap:8px}
 
 /* IMPORTAR */
 .drop{border:2px dashed var(--border);background:var(--surface2);padding:34px 20px;text-align:center;cursor:pointer;transition:border-color .15s;position:relative}
@@ -427,25 +462,46 @@ body:not(.adm) .so-adm{display:none !important}
       <div class="anl-kpi-row so-adm" id="anlTempos"></div>
       <div class="anl-grid">
         <div class="anl-box">
+          <div class="anl-title">Progresso por prioridade</div>
+          <table><thead><tr><th>Estrelas</th><th style="width:34%"></th><th class="n">Feito</th><th class="n">Total</th><th class="n">%</th></tr></thead><tbody id="pPrioridade"></tbody></table>
+        </div>
+        <div class="anl-box">
+          <div class="anl-title">Projeção de término</div>
+          <div id="pProjecao"></div>
+        </div>
+        <div class="anl-box">
           <div class="anl-title">Produção por pessoa</div>
           <table><thead><tr><th>Pessoa</th><th class="n">Liberou</th><th class="n">Em curso</th><th class="n">Concluiu</th><th class="n so-adm">Médio</th><th class="n so-adm">Somado</th></tr></thead><tbody id="pPessoa"></tbody></table>
         </div>
         <div class="anl-box">
           <div class="anl-title">Conferências que mais faltam</div>
-          <table><thead><tr><th>Item</th><th style="width:42%"></th><th class="n">Faltam</th></tr></thead><tbody id="pChecks"></tbody></table>
+          <table><thead><tr><th>Item</th><th style="width:38%"></th><th class="n">Faltam</th></tr></thead><tbody id="pChecks"></tbody></table>
+          <div class="meta" style="margin-top:10px" id="pChecksBase"></div>
         </div>
         <div class="anl-box full so-adm">
           <div class="anl-title">Etapas do fluxo · tempo em horas úteis</div>
           <table><thead><tr><th>Etapa</th><th style="width:34%"></th><th class="n">Média</th><th class="n">Mediana</th><th class="n">Pior</th><th class="n">Itens</th></tr></thead><tbody id="pEtapas"></tbody></table>
           <div class="meta" style="margin-top:12px" id="pAtalho"></div>
         </div>
-        <div class="anl-box full">
-          <div class="anl-title">Concluídos por dia · últimos 21 dias</div>
-          <div class="spark" id="pRitmo"></div>
+        <div class="anl-box full so-adm">
+          <div class="anl-title">Parados na fila há mais tempo</div>
+          <table><thead><tr><th style="width:100px">Código</th><th>Produto</th><th style="width:90px">Prioridade</th><th class="n">Liberado em</th><th class="n">Esperando</th></tr></thead><tbody id="pParados"></tbody></table>
         </div>
         <div class="anl-box full">
-          <div class="anl-title">Por organizador · 15 maiores</div>
-          <table><thead><tr><th>Organizador</th><th style="width:36%"></th><th class="n">Feito</th></tr></thead><tbody id="pOrg"></tbody></table>
+          <div class="anl-title">Concluídos por dia · últimos 21 dias</div>
+          <div class="chart" id="pRitmo"></div>
+          <div class="meta" style="margin-top:12px" id="pRitmoResumo"></div>
+        </div>
+        <div class="anl-box full">
+          <div class="anl-title">Por organizador · onde está o trabalho que mais importa</div>
+          <table><thead><tr>
+            <th>Organizador</th>
+            <th style="width:26%">Composição por prioridade</th>
+            <th class="n">4-5 ★</th>
+            <th class="n">Falta</th>
+            <th class="n">Feito</th>
+          </tr></thead><tbody id="pOrg"></tbody></table>
+          <div class="stack-leg" id="pOrgLeg"></div>
         </div>
       </div>
     </section>
@@ -483,6 +539,38 @@ body:not(.adm) .so-adm{display:none !important}
   </div>
 </div>
 
+<!-- ===================== MODAL DE LISTA (drill-down) ===================== -->
+<div class="modal-bg" id="modalLista">
+  <div class="modal-box wide" style="max-width:900px">
+    <div class="mhead">
+      <div>
+        <div class="eyebrow" id="lCount"></div>
+        <h3 id="lTitulo"></h3>
+      </div>
+      <button class="mclose" onclick="fecharLista()">&times;</button>
+    </div>
+    <div class="mbody" style="padding:0">
+      <table class="admin-table">
+        <thead><tr>
+          <th style="width:100px">Código</th>
+          <th style="width:86px">Prior.</th>
+          <th>Produto</th>
+          <th style="width:120px">Conferência</th>
+          <th class="so-adm" style="width:84px">Tempo</th>
+          <th style="width:118px">Status</th>
+          <th style="width:100px">Resp.</th>
+        </tr></thead>
+        <tbody id="lBody"></tbody>
+      </table>
+      <div class="no-itens" id="lVazio" style="display:none">Nenhum item neste grupo.</div>
+    </div>
+    <div class="mfoot">
+      <span class="meta">Clique numa linha para abrir o item.</span>
+      <span style="margin-left:auto"><button class="btn-sec" onclick="fecharLista()">Fechar</button></span>
+    </div>
+  </div>
+</div>
+
 <!-- ===================== MODAL DO PRODUTO ===================== -->
 <div class="modal-bg" id="modalItem">
   <div class="modal-box wide">
@@ -512,7 +600,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // Trocar a cada deploy — e o que permite uma aba antiga se reconhecer
 // como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.08.31-1520';
+const APP_VERSION = '2026.09.01-1030';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -567,6 +655,20 @@ function calcHorasUteis(inicio, fim){
 function fmtH(h){
   if(h===null||h===undefined||isNaN(h)) return '—';
   return h<1 ? Math.round(h*60)+'min' : h<MEDIA_JORNADA ? h.toFixed(1)+'h' : (h/MEDIA_JORNADA).toFixed(1)+'d';
+}
+const ehDiaUtil = d => !!EXPEDIENTE[d.getDay()];
+const DIAS_SEMANA = Object.keys(EXPEDIENTE).length;   // 5
+function contarDiasUteis(de, ate){          // inclusive nas duas pontas
+  let n=0, g=0;
+  const c=new Date(de); c.setHours(0,0,0,0);
+  const f=new Date(ate); f.setHours(0,0,0,0);
+  while(c<=f && g++<3000){ if(ehDiaUtil(c)) n++; c.setDate(c.getDate()+1); }
+  return n;
+}
+function somarDiasUteis(base, n){
+  const d=new Date(base); let g=0;
+  while(n>0 && g++<30000){ d.setDate(d.getDate()+1); if(ehDiaUtil(d)) n--; }
+  return d;
 }
 const horasEntre = (a,b) => (a&&b) ? calcHorasUteis(new Date(a), new Date(b)) : null;
 const tEspera = p => horasEntre(p.liberado_em,  p.assumido_em);
@@ -793,27 +895,47 @@ function celulaTempo(p){
   return '<span class="td-tempo">—</span>';
 }
 
+// Uma linha de produto. Usada pela fila e pelo modal de lista, para as duas
+// tabelas nunca divergirem.
+function linhaProduto(p, comPeso){
+  const segs = CHECKS.map(([k])=>`<i class="${p[k]?'ok':''}"></i>`).join('');
+  const peso = p.peso_bruto!=null
+    ? Number(p.peso_bruto).toLocaleString('pt-BR',{minimumFractionDigits:2})
+    : '<span style="color:#555">—</span>';
+  return `<tr onclick="abrirItem('${esc(p.codigo)}')">
+    <td class="td-cod">${esc(p.codigo)}</td>
+    <td>${priEstrelas(p.prioridade)}</td>
+    <td><div class="td-nome">${esc(p.nome)}</div><div class="td-orgs">${esc((p.organizadores||[]).join(' · '))}</div></td>
+    ${comPeso ? `<td class="td-num">${peso}</td>` : ''}
+    <td><div class="strip" title="${nChecks(p)} de 8">${segs}</div></td>
+    <td class="so-adm">${celulaTempo(p)}</td>
+    <td><span class="sbadge ${p.status}">${STATUS_LABEL[p.status]}</span></td>
+    <td class="td-quem">${p.assumido_por ? esc(nomeDe(p.assumido_por).split(' ')[0]) : '<span style="color:#555">—</span>'}</td>
+  </tr>`;
+}
+
 function renderFila(){
   const lista = filtrar();
   document.getElementById('resCount').innerHTML = `<b>${lista.length}</b> / ${produtos.length}`;
   document.getElementById('semItens').style.display = lista.length ? 'none' : '';
-  document.getElementById('tbody').innerHTML = lista.map(p=>{
-    const segs = CHECKS.map(([k])=>`<i class="${p[k]?'ok':''}"></i>`).join('');
-    const peso = p.peso_bruto!=null
-      ? Number(p.peso_bruto).toLocaleString('pt-BR',{minimumFractionDigits:2})
-      : '<span style="color:#555">—</span>';
-    return `<tr onclick="abrirItem('${esc(p.codigo)}')">
-      <td class="td-cod">${esc(p.codigo)}</td>
-      <td>${priEstrelas(p.prioridade)}</td>
-      <td><div class="td-nome">${esc(p.nome)}</div><div class="td-orgs">${esc((p.organizadores||[]).join(' · '))}</div></td>
-      <td class="td-num">${peso}</td>
-      <td><div class="strip" title="${nChecks(p)} de 8">${segs}</div></td>
-      <td class="so-adm">${celulaTempo(p)}</td>
-      <td><span class="sbadge ${p.status}">${STATUS_LABEL[p.status]}</span></td>
-      <td class="td-quem">${p.assumido_por ? esc(nomeDe(p.assumido_por).split(' ')[0]) : '<span style="color:#555">—</span>'}</td>
-    </tr>`;
-  }).join('');
+  document.getElementById('tbody').innerHTML = lista.map(p=>linhaProduto(p, true)).join('');
 }
+
+// ── MODAL DE LISTA ──
+// Todo número do painel abre o conjunto de itens que o produziu. Sem isso um
+// indicador é só um número em que se acredita ou não.
+let _lista = [];
+function abrirLista(titulo, itens){
+  _lista = itens.slice().sort((a,b)=>(b.prioridade||0)-(a.prioridade||0)
+                                  || a.codigo.localeCompare(b.codigo,undefined,{numeric:true}));
+  document.getElementById('lTitulo').textContent = titulo;
+  document.getElementById('lCount').textContent = _lista.length + (_lista.length===1?' item':' itens');
+  document.getElementById('lVazio').style.display = _lista.length ? 'none' : '';
+  document.getElementById('lBody').innerHTML = _lista.map(p=>linhaProduto(p, false)).join('');
+  document.getElementById('modalLista').classList.add('show');
+}
+function fecharLista(){ document.getElementById('modalLista').classList.remove('show'); }
+document.getElementById('modalLista').onclick = e=>{ if(e.target.id==='modalLista') fecharLista(); };
 
 document.querySelectorAll('.filter-btn[data-st]').forEach(b=>{
   b.onclick = ()=>{
@@ -883,7 +1005,12 @@ function fecharItem(){
   itemAberto = null;
 }
 document.getElementById('modalItem').onclick = e=>{ if(e.target.id==='modalItem') fecharItem(); };
-document.addEventListener('keydown', e=>{ if(e.key==='Escape') fecharItem(); });
+document.addEventListener('keydown', e=>{
+  if(e.key !== 'Escape') return;
+  // Fecha o modal do item antes do de lista, para o Esc devolver ao passo anterior
+  if(document.getElementById('modalItem').classList.contains('show')) fecharItem();
+  else fecharLista();
+});
 
 // Linha do tempo do item: cada marco com quem fez e quanto durou até ali.
 function blocoRastro(p){
@@ -1143,32 +1270,142 @@ function estat(arr){
 
 function renderPainel(){
   const t = produtos.length, c = s=>produtos.filter(p=>p.status===s).length;
-  const conc = c('concluido'), pct = t ? Math.round(conc/t*1000)/10 : 0;
-  const semana = new Date(); semana.setDate(semana.getDate()-semana.getDay());
-  const feitoSemana = produtos.filter(p=>p.concluido_em && new Date(p.concluido_em)>=semana).length;
-  const restam = t - conc;
+  const conc = produtos.filter(p=>p.status==='concluido');
+  const pct = t ? Math.round(conc.length/t*1000)/10 : 0;
+  const semana = new Date(); semana.setDate(semana.getDate()-semana.getDay()); semana.setHours(0,0,0,0);
+  const daSemana = produtos.filter(p=>p.concluido_em && new Date(p.concluido_em)>=semana);
+  const faltam = produtos.filter(p=>p.status!=='concluido');
 
-  document.getElementById('anlKpis').innerHTML = [
-    ['Concluído', pct+'%', 'accent', conc+' de '+t],
-    ['Faltam', restam, 'yellow', restam ? 'produtos a fechar' : 'tudo em dia'],
-    ['Esta semana', feitoSemana, 'green', 'itens concluídos'],
-    ['Em lançamento', c('em_lancamento'), 'blue', 'assumidos agora'],
-  ].map(([l,v,cl,s])=>`<div class="anl-kpi"><div class="anl-kpi-label">${l}</div><div class="anl-kpi-val ${cl}">${v}</div><div class="anl-kpi-sub">${s}</div></div>`).join('');
+  // ── KPIs, todos abrindo a lista por trás ──
+  const kpi = (rot,val,cor,sub,titulo,itens)=>
+    `<div class="anl-kpi clic" onclick='abrirLista(${JSON.stringify(titulo)}, _kpi[${itens}])'>
+       <div class="anl-kpi-label">${rot}</div>
+       <div class="anl-kpi-val ${cor}">${val}</div>
+       <div class="anl-kpi-sub">${sub}<span class="lupa">ver itens</span></div>
+     </div>`;
+  window._kpi = [conc, faltam, daSemana, produtos.filter(p=>p.status==='em_lancamento')];
+  document.getElementById('anlKpis').innerHTML =
+      kpi('Concluído', pct+'%', 'accent', conc.length+' de '+t, 'Concluídos', 0)
+    + kpi('Faltam', faltam.length, 'yellow', 'produtos a fechar', 'Ainda não concluídos', 1)
+    + kpi('Esta semana', daSemana.length, 'green', 'itens concluídos', 'Concluídos nesta semana', 2)
+    + kpi('Em lançamento', c('em_lancamento'), 'blue', 'assumidos agora', 'Em lançamento', 3);
 
+  // ── Tempos (admin) ──
   const eEspera = estat(produtos.map(tEspera));
   const eExec   = estat(produtos.map(tExec));
   const eCiclo  = estat(produtos.map(tCiclo));
-  document.getElementById('anlTempos').innerHTML = [
-    ['Espera na fila', eEspera ? fmtH(eEspera.media) : '—', 'yellow', 'liberar até assumir'],
-    ['Execução média', eExec ? fmtH(eExec.media) : '—', 'blue', 'assumir até concluir'],
-    ['Ciclo médio', eCiclo ? fmtH(eCiclo.media) : '—', 'accent', 'liberar até concluir'],
-    ['Horas somadas', eExec ? eExec.soma.toFixed(1)+'h' : '—', 'green', 'lançamento acumulado'],
-  ].map(([l,v,cl,s])=>`<div class="anl-kpi"><div class="anl-kpi-label">${l}</div><div class="anl-kpi-val ${cl}">${v}</div><div class="anl-kpi-sub">${s}</div></div>`).join('');
+  const naFila  = produtos.filter(p=>p.status==='liberado');
+  window._kpiT = [naFila, conc, conc, conc];
+  const kpiT = (rot,val,cor,sub,titulo,i)=>
+    `<div class="anl-kpi clic" onclick='abrirLista(${JSON.stringify(titulo)}, _kpiT[${i}])'>
+       <div class="anl-kpi-label">${rot}</div>
+       <div class="anl-kpi-val ${cor}">${val}</div>
+       <div class="anl-kpi-sub">${sub}<span class="lupa">ver itens</span></div>
+     </div>`;
+  document.getElementById('anlTempos').innerHTML =
+      kpiT('Espera na fila', eEspera ? fmtH(eEspera.media) : '—', 'yellow',
+           naFila.length ? naFila.length+' esperando agora' : 'liberar até assumir', 'Esperando na fila', 0)
+    + kpiT('Execução média', eExec ? fmtH(eExec.media) : '—', 'blue', 'assumir até concluir', 'Concluídos', 1)
+    + kpiT('Ciclo médio', eCiclo ? fmtH(eCiclo.media) : '—', 'accent', 'liberar até concluir', 'Concluídos', 2)
+    + kpiT('Horas somadas', eExec ? eExec.soma.toFixed(1)+'h' : '—', 'green', 'lançamento acumulado', 'Concluídos', 3);
 
+  // ── Progresso por prioridade ──
+  // O ranking de vendas só vale se der para ver o avanço dentro de cada faixa.
+  document.getElementById('pPrioridade').innerHTML = [5,4,3,2,1,0].map(v=>{
+    const g = produtos.filter(p=>priN(p.prioridade)===v);
+    if(!g.length) return '';
+    const f = g.filter(p=>p.status==='concluido').length;
+    const w = g.length ? f/g.length*100 : 0;
+    return `<tr class="clic" onclick='abrirLista("Prioridade ${priLabel(v)}", produtos.filter(p=>priN(p.prioridade)===${v}))'>
+      <td>${priEstrelas(v)}</td>
+      <td><div class="mbar"><i style="width:${w}%"></i></div></td>
+      <td class="n">${f}</td><td class="n">${g.length}</td>
+      <td class="n" style="color:${w>=50?'#69f0ae':w>0?'var(--yellow)':'var(--text-dim)'}">${w.toFixed(0)}%</td></tr>`;
+  }).join('');
+
+  // ── Projeção ──
+  // A janela vai da PRIMEIRA conclusão até hoje, no máximo 4 semanas. Dividir
+  // por 4 semanas fixas quando o trabalho começou anteontem afunda o ritmo por
+  // um motivo artificial — o denominador precisa ser o tempo que de fato passou.
+  // A conta é em dias úteis, mesmo expediente do resto do sistema.
+  const hoje = new Date();
+  const teto = new Date(); teto.setDate(teto.getDate()-27); teto.setHours(0,0,0,0);
+  const marcos = produtos.map(p=>p.concluido_em).filter(Boolean).sort();
+  const primeira = marcos.length ? new Date(marcos[0]) : null;
+  const janela = (primeira && primeira > teto) ? primeira : teto;
+  const naJanela = produtos.filter(p=>p.concluido_em && new Date(p.concluido_em) >= janela).length;
+  const diasUteis = Math.max(1, contarDiasUteis(janela, hoje));
+  const porDiaUtil = naJanela/diasUteis;
+  const box = document.getElementById('pProjecao');
+
+  if(!naJanela){
+    box.innerHTML = '<div class="meta">Nenhuma conclusão registrada — ainda não dá para projetar.</div>';
+  } else {
+    const porSemana = porDiaUtil * DIAS_SEMANA;
+    const diasFalta = Math.ceil(faltam.length / porDiaUtil);
+    const semanas   = diasFalta / DIAS_SEMANA;
+    const fim = somarDiasUteis(hoje, diasFalta);
+    // Poucos dias medidos torna a extrapolação instável nos dois sentidos:
+    // um dia bom vira meta anual, um dia fraco vira previsão de anos.
+    const firme = diasUteis >= 10 && naJanela >= 20;
+    box.innerHTML = `<div class="proj">
+      <div class="proj-linha"><span class="proj-rot">Ritmo medido</span>
+        <span class="proj-val calmo">${porDiaUtil.toFixed(1)} / dia útil</span></div>
+      <div class="proj-linha"><span class="proj-rot">Equivale a</span>
+        <span class="proj-val calmo">${porSemana.toFixed(0)} / semana</span></div>
+      <div class="proj-linha"><span class="proj-rot">Faltam</span>
+        <span class="proj-val calmo">${faltam.length} itens</span></div>
+      <div class="proj-linha"><span class="proj-rot">Nesse ritmo, termina em</span>
+        <span class="proj-val">${semanas < 1 ? 'menos de 1 semana'
+          : semanas < 9 ? Math.ceil(semanas)+' semanas'
+          : Math.round(semanas/4.33)+' meses'}</span></div>
+      <div class="proj-linha"><span class="proj-rot">Data estimada</span>
+        <span class="proj-val calmo">${fim.toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'})}</span></div>
+    </div>
+    <div class="meta" style="margin-top:12px">
+      Base: <b>${naJanela}</b> ${naJanela===1?'conclusão':'conclusões'} em
+      <b>${diasUteis}</b> ${diasUteis===1?'dia útil':'dias úteis'},
+      desde ${janela.toLocaleDateString('pt-BR')}.
+      ${firme ? '' : '<br>Amostra curta — a data ainda vai variar bastante a cada dia.'}
+    </div>`;
+  }
+
+  // ── Por pessoa ──
+  document.getElementById('pPessoa').innerHTML = usuarios.map(u=>{
+    const lib = produtos.filter(p=>p.liberado_por===u.id);
+    const cur = produtos.filter(p=>p.assumido_por===u.id && p.status==='em_lancamento');
+    const fim = produtos.filter(p=>p.concluido_por===u.id);
+    const e   = estat(fim.map(tExec));
+    const cel = (n,itens,titulo)=> n
+      ? `<td class="n clic" onclick='event.stopPropagation();abrirLista(${JSON.stringify(titulo)}, ${itens})'>${n}</td>`
+      : '<td class="n">—</td>';
+    return `<tr>
+      <td>${esc(u.nome)}</td>
+      ${cel(lib.length, `produtos.filter(p=>p.liberado_por===${u.id})`, u.nome+' · liberados')}
+      ${cel(cur.length, `produtos.filter(p=>p.assumido_por===${u.id}&&p.status==="em_lancamento")`, u.nome+' · em curso')}
+      ${cel(fim.length, `produtos.filter(p=>p.concluido_por===${u.id})`, u.nome+' · concluídos')}
+      <td class="n so-adm">${e?fmtH(e.media):'—'}</td>
+      <td class="n so-adm">${e?e.soma.toFixed(1)+'h':'—'}</td></tr>`;
+  }).join('');
+
+  // ── Conferências que faltam ──
+  // A base são os itens efetivamente assumidos. Incluir os que ninguém pegou
+  // ainda achatava tudo perto de zero e escondia o sinal.
+  const base = produtos.filter(p=>p.assumido_em);
+  document.getElementById('pChecksBase').textContent = base.length
+    ? 'Entre os ' + base.length + ' itens já assumidos.'
+    : 'Nenhum item assumido ainda — nada a medir aqui.';
+  document.getElementById('pChecks').innerHTML = CHECKS.map(([k,rot])=>{
+    const falta = base.filter(p=>!p[k]).length;
+    return {k, rot, falta, w: base.length ? (base.length-falta)/base.length*100 : 0};
+  }).sort((a,b)=>b.falta-a.falta)
+    .map(x=>`<tr class="clic" onclick='abrirLista("Falta conferir: ${x.rot}", produtos.filter(p=>p.assumido_em&&!p.${x.k}))'>
+      <td>${x.rot}</td><td><div class="mbar y"><i style="width:${x.w}%"></i></div></td>
+      <td class="n">${x.falta||'—'}</td></tr>`).join('');
+
+  // ── Etapas do fluxo ──
   document.getElementById('pEtapas').innerHTML = [
-    ['Espera na fila', eEspera],
-    ['Execução', eExec],
-    ['Ciclo completo', eCiclo],
+    ['Espera na fila', eEspera], ['Execução', eExec], ['Ciclo completo', eCiclo],
   ].map(([rot,e])=>{
     if(!e) return `<tr><td>${rot}</td><td colspan="5" style="color:#555">sem dado ainda</td></tr>`;
     const w = eCiclo && eCiclo.media ? Math.min(100, e.media/eCiclo.media*100) : 0;
@@ -1179,43 +1416,85 @@ function renderPainel(){
 
   const nAtalho = produtos.filter(p=>p.via_atalho).length;
   document.getElementById('pAtalho').innerHTML = nAtalho
-    ? `<b>${nAtalho}</b> de ${conc} concluídos foram marcados como prontos direto, sem passar pela conferência.`
+    ? `<b>${nAtalho}</b> de ${conc.length} concluídos foram marcados como prontos direto, sem passar pela conferência.`
     : 'Nenhum item fechado por atalho — todos passaram pelas 8 conferências.';
 
-  document.getElementById('pPessoa').innerHTML = usuarios.map(u=>{
-    const lib = produtos.filter(p=>p.liberado_por===u.id).length;
-    const cur = produtos.filter(p=>p.assumido_por===u.id && p.status==='em_lancamento').length;
-    const fim = produtos.filter(p=>p.concluido_por===u.id);
-    const e   = estat(fim.map(tExec));
-    return `<tr><td>${esc(u.nome)}</td><td class="n">${lib||'—'}</td><td class="n">${cur||'—'}</td>
-      <td class="n">${fim.length||'—'}</td><td class="n so-adm">${e?fmtH(e.media):'—'}</td>
-      <td class="n so-adm">${e?e.soma.toFixed(1)+'h':'—'}</td></tr>`;
-  }).join('');
+  // ── Parados na fila ──
+  const agora = new Date().toISOString();
+  const parados = naFila.slice().sort((a,b)=>(a.liberado_em||'').localeCompare(b.liberado_em||'')).slice(0,8);
+  document.getElementById('pParados').innerHTML = parados.length
+    ? parados.map(p=>`<tr class="clic" onclick="abrirItem('${esc(p.codigo)}')">
+        <td class="td-cod">${esc(p.codigo)}</td>
+        <td class="td-nome">${esc(p.nome)}</td>
+        <td>${priEstrelas(p.prioridade)}</td>
+        <td class="n">${fmtDataHora(p.liberado_em)}</td>
+        <td class="n" style="color:var(--yellow)">${fmtH(horasEntre(p.liberado_em, agora))}</td></tr>`).join('')
+    : '<tr><td colspan="5" style="color:#555;padding:12px 0">Nada parado — tudo que foi liberado já está com alguém.</td></tr>';
 
-  const alvo = produtos.filter(p=>p.status!=='pendente');
-  document.getElementById('pChecks').innerHTML = CHECKS.map(([k,rot])=>{
-    const falta = alvo.filter(p=>!p[k]).length;
-    return {rot, falta, w: alvo.length ? (alvo.length-falta)/alvo.length*100 : 0};
-  }).sort((a,b)=>b.falta-a.falta)
-    .map(x=>`<tr><td>${x.rot}</td><td><div class="mbar y"><i style="width:${x.w}%"></i></div></td><td class="n">${x.falta}</td></tr>`).join('');
-
+  // ── Ritmo diário ──
+  // Com rótulo de data e o valor em cima. Fim de semana em cinza, porque zero
+  // no sábado não é queda de produtividade.
   const dias = [];
   for(let i=20;i>=0;i--){
     const d = new Date(); d.setDate(d.getDate()-i);
-    const iso = d.toISOString().slice(0,10);
-    dias.push({iso, n: produtos.filter(p=>(p.concluido_em||'').slice(0,10)===iso).length});
+    d.setHours(0,0,0,0);
+    const iso = new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+    const fds = d.getDay()===0 || d.getDay()===6;
+    dias.push({d, iso, fds, hoje:i===0, n: produtos.filter(p=>(p.concluido_em||'').slice(0,10)===iso).length});
   }
-  const mx = Math.max(1, ...dias.map(d=>d.n));
-  document.getElementById('pRitmo').innerHTML = dias.map(d=>
-    `<div style="height:${d.n/mx*100}%" title="${d.iso.split('-').reverse().slice(0,2).join('/')}: ${d.n}"></div>`).join('');
+  const mx = Math.max(1, ...dias.map(x=>x.n));
+  document.getElementById('pRitmo').innerHTML = dias.map(x=>{
+    const rot = String(x.d.getDate()).padStart(2,'0');
+    const cls = (x.n?'temItem ':'') + (x.fds?'fds ':'') + (x.hoje?'hoje':'');
+    const clique = x.n
+      ? ` onclick='abrirLista("Concluídos em ${x.d.toLocaleDateString("pt-BR")}", produtos.filter(p=>(p.concluido_em||"").slice(0,10)===${JSON.stringify(x.iso)}))'`
+      : '';
+    return `<div class="chart-col ${cls}"${clique} title="${x.d.toLocaleDateString('pt-BR')}: ${x.n}">
+      <div class="chart-top">
+        <span class="chart-val">${x.n||''}</span>
+        <div class="chart-bar" style="height:${x.n/mx*100}%"></div>
+      </div>
+      <div class="chart-lab">${rot}</div>
+    </div>`;
+  }).join('');
 
+  const somaPeriodo = dias.reduce((s,x)=>s+x.n,0);
+  const uteis = dias.filter(x=>!x.fds);
+  const melhor = dias.reduce((a,b)=>b.n>a.n?b:a, dias[0]);
+  document.getElementById('pRitmoResumo').innerHTML = somaPeriodo
+    ? `<b>${somaPeriodo}</b> no período · média de <b>${(somaPeriodo/uteis.length).toFixed(1)}</b> por dia útil · `
+      + `melhor dia <b>${melhor.d.toLocaleDateString('pt-BR')}</b> com ${melhor.n}`
+    : 'Nenhuma conclusão nos últimos 21 dias.';
+
+  // ── Por organizador ──
+  // A barra de "% concluído" era inútil com quase nada pronto: quinze barras
+  // vazias e iguais. Aqui ela mostra a composição por prioridade, que responde
+  // a pergunta que interessa — por qual família começar.
   const mapa = {};
   produtos.forEach(p=>(p.organizadores||[]).forEach(o=>{
-    mapa[o] = mapa[o] || {t:0,c:0}; mapa[o].t++; if(p.status==='concluido') mapa[o].c++;
+    const m = mapa[o] = mapa[o] || {t:0, c:0, alta:0, e:[0,0,0,0,0,0]};
+    m.t++;
+    m.e[priN(p.prioridade)]++;
+    if(priN(p.prioridade) >= 4) m.alta++;
+    if(p.status==='concluido') m.c++;
   }));
   document.getElementById('pOrg').innerHTML = Object.entries(mapa)
-    .sort((a,b)=>b[1].t-a[1].t).slice(0,15)
-    .map(([o,v])=>`<tr><td>${esc(o)}</td><td><div class="mbar"><i style="width:${v.c/v.t*100}%"></i></div></td><td class="n">${v.c}/${v.t}</td></tr>`).join('');
+    .sort((a,b)=> b[1].alta - a[1].alta || b[1].t - a[1].t).slice(0,15)
+    .map(([o,v])=>{
+      const barra = [5,4,3,2,1,0].map(n=>{
+        const w = v.e[n]/v.t*100;
+        return w ? `<i class="s${n}" style="width:${w}%" title="${v.e[n]} com ${priLabel(n)}"></i>` : '';
+      }).join('');
+      return `<tr class="clic" onclick='abrirLista("Organizador: "+${JSON.stringify(o)}, produtos.filter(p=>(p.organizadores||[]).includes(${JSON.stringify(o)})))'>
+        <td>${esc(o)}</td>
+        <td><div class="stack">${barra}</div></td>
+        <td class="n" style="color:${v.alta?'var(--accent)':'var(--text-dim)'}">${v.alta||'—'}</td>
+        <td class="n">${v.t - v.c}</td>
+        <td class="n" style="color:${v.c?'#69f0ae':'var(--text-dim)'}">${v.c}/${v.t}</td></tr>`;
+    }).join('');
+  document.getElementById('pOrgLeg').innerHTML =
+    'Ordenado pelas famílias com mais itens de 4 e 5 estrelas. &nbsp; '
+    + [5,4,3,2,1,0].map(n=>`<span><b class="s${n}"></b>${n?n+'★':'sem'}</span>`).join('');
 }
 
 // ── IMPORTAÇÃO ──
