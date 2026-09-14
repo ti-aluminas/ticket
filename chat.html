@@ -520,7 +520,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const ADMINS = {'1964':'João Pedro','2404':'Bernardo','1010':'Huriel','2424':'Marco Túlio','1987':'Robson Adeilton','2469':'Ramon'};
 
 // Trocar a cada deploy. E o que faz uma aba velha se reconhecer desatualizada.
-const APP_VERSION = '2026.09.14-0009';
+const APP_VERSION = '2026.09.14-0010';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -541,6 +541,7 @@ let codModo = 'entrar';          // 'entrar' | 'criar'
 let codUserPend = null;          // usuario escolhido, esperando o codigo
 let usersCodigos = [];           // painel do PCP
 let userPickerFim = 'login';     // 'login' | 'destino'
+let erroUsers = null;
 const rascunhos = {};            // texto por digitar, guardado por conversa
 
 const FILTROS_PCP = [
@@ -1170,9 +1171,12 @@ async function abrirModalPessoas(){
   if(!c || c._rascunho) return;
   $('modalPessoas').classList.add('show');
   $('pessoasBody').innerHTML = '<div class="vazio">Carregando...</div>';
+  erroUsers = null;
+  // Nao guardar lista vazia: senao uma falha de rede vira "nao ha ninguem".
   if(!allUsers.length){
-    const {data} = await sb.from('ticket_users').select('*').order('nome');
-    allUsers = data||[];
+    const {data, error} = await sb.from('ticket_users').select('*').order('nome');
+    if(error) erroUsers = error.message;
+    else allUsers = data||[];
   }
   renderPessoas();
 }
@@ -1202,27 +1206,32 @@ function renderPessoas(){
 
   const jaTem = n => lista.some(p=>p.nome===n) || n===c.solicitante || n===c.assumido_por;
 
-  // O comercial so chama gente do comercial: quem do PCP atende e' decisao do PCP.
+  // Uma lista so, com busca. Separado em dois grupos, o segundo ficava abaixo
+  // da dobra da janela e parecia nao existir.
+  const chamaveis = [];
   if(modo==='pcp'){
-    const livres = Object.values(ADMINS).filter(n=>!jaTem(n));
-    if(livres.length){
-      h += '<div class="grp-label">Chamar alguém do PCP</div><div class="user-list">';
-      h += livres.map(n=>`<div class="pess-add" onclick="adicionarPcp('${esc(n).replace(/'/g,"&#39;")}')">
-          <span class="avatar">${esc(initials(n))}</span><span class="pess-nome">${esc(n)}</span>
-          <span class="pess-tag">chamar</span></div>`).join('');
-      h += '</div>';
-    }
+    // O comercial nao escolhe quem do PCP atende — isso e' assumir/transferir.
+    Object.values(ADMINS).filter(n=>!jaTem(n))
+      .forEach(n=>chamaveis.push({chave:n, nome:n, lado:'pcp'}));
   }
+  allUsers.filter(u=>!jaTem(u.nome) && String(u.id)!==String(c.user_id))
+    .forEach(u=>chamaveis.push({chave:u.id, nome:u.nome, lado:'comercial'}));
 
-  const livresCom = allUsers.filter(u=>!jaTem(u.nome) && String(u.id)!==String(c.user_id));
-  h += '<div class="grp-label">Chamar alguém do comercial</div>';
+  h += '<div class="grp-label">Chamar mais alguém</div>';
   h += '<input class="user-search" id="pessBusca" placeholder="Buscar pelo nome..." oninput="filtrarPess()">';
-  h += '<div class="user-list" id="pessLista" style="max-height:220px">';
-  h += livresCom.length
-    ? livresCom.map(u=>`<div class="pess-add" data-n="${esc(u.nome.toLowerCase())}" onclick="adicionarComercial('${u.id}')">
-        <span class="avatar">${esc(initials(u.nome))}</span><span class="pess-nome">${esc(u.nome)}</span>
-        <span class="pess-tag">chamar</span></div>`).join('')
-    : '<div class="vazio">Todo mundo já está na conversa.</div>';
+  h += '<div class="user-list" id="pessLista" style="max-height:260px">';
+  if(erroUsers){
+    h += '<div class="vazio">Não deu para carregar a lista de pessoas.<br>'+esc(erroUsers)+'</div>';
+  } else if(!chamaveis.length){
+    h += '<div class="vazio">Todo mundo já está na conversa.</div>';
+  } else {
+    h += chamaveis.map(x=>`<div class="pess-add" data-n="${esc(x.nome.toLowerCase())}"
+        onclick="adicionarPessoa('${x.lado}','${esc(String(x.chave)).replace(/'/g,"&#39;")}')">
+        <span class="avatar">${esc(initials(x.nome))}</span>
+        <span class="pess-nome">${esc(x.nome)}</span>
+        <span class="pess-tag">${x.lado==='pcp'?'PCP':'Comercial'}</span>
+      </div>`).join('');
+  }
   h += '</div>';
   $('pessoasBody').innerHTML = h;
 }
@@ -1252,18 +1261,19 @@ async function salvarPessoas(novaLista, textoSistema){
   return true;
 }
 
-async function adicionarPcp(nome){
-  const c = chamadoAberto;
-  const nova = parts(c).concat([{id:null, nome, lado:'pcp', por:meuNome(), em:nowIso()}]);
-  if(await salvarPessoas(nova, '<b>'+esc(meuNome())+'</b> chamou <b>'+esc(nome)+'</b> (PCP) para a conversa.'))
-    showToast(nome+' entrou na conversa.','success');
-}
-async function adicionarComercial(id){
-  const u = allUsers.find(x=>String(x.id)===String(id)); if(!u) return;
-  const c = chamadoAberto;
-  const nova = parts(c).concat([{id:u.id, nome:u.nome, lado:'comercial', por:meuNome(), em:nowIso()}]);
-  if(await salvarPessoas(nova, '<b>'+esc(meuNome())+'</b> incluiu <b>'+esc(u.nome)+'</b> na conversa.'))
-    showToast(u.nome+' entrou na conversa.','success');
+async function adicionarPessoa(lado, chave){
+  const c = chamadoAberto; if(!c) return;
+  let novo;
+  if(lado === 'pcp'){
+    novo = {id:null, nome:chave, lado:'pcp', por:meuNome(), em:nowIso()};
+  } else {
+    const u = allUsers.find(x=>String(x.id)===String(chave)); if(!u) return;
+    novo = {id:u.id, nome:u.nome, lado:'comercial', por:meuNome(), em:nowIso()};
+  }
+  const txt = '<b>'+esc(meuNome())+'</b> chamou <b>'+esc(novo.nome)+'</b> ('
+            + (lado==='pcp'?'PCP':'Comercial') + ') para a conversa.';
+  if(await salvarPessoas(parts(c).concat([novo]), txt))
+    showToast(novo.nome+' entrou na conversa.','success');
 }
 async function removerPessoa(i){
   const c = chamadoAberto;
