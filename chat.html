@@ -45,6 +45,12 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .btn-link{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);background:rgba(192,146,42,.1);border:1px solid rgba(192,146,42,.35);padding:4px 11px;cursor:pointer;font-family:'Inter',sans-serif;text-decoration:none}
 .btn-link:hover{background:rgba(192,146,42,.2)}
 .btn-link svg{width:13px;height:13px}
+.btn-aviso{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:4px 11px;cursor:pointer;font-family:'Inter',sans-serif;background:none;border:1px solid var(--border);color:var(--text-muted)}
+.btn-aviso svg{width:14px;height:14px}
+.btn-aviso:hover{color:var(--text);border-color:var(--border-light)}
+.btn-aviso.pedir{color:var(--accent);border-color:rgba(192,146,42,.45);background:rgba(192,146,42,.1)}
+.btn-aviso.mudo{color:var(--text-dim)}
+.btn-aviso.bloq{color:var(--red);border-color:rgba(229,57,53,.35)}
 .rt-dot{width:7px;height:7px;background:var(--green);flex-shrink:0}
 .rt-dot.off{background:var(--red)}
 .rt-dot.wait{background:var(--yellow)}
@@ -300,6 +306,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
   <div class="ht"><h1>Aluminas</h1><span id="headerSub">Conversas · Comercial ⇄ PCP</span></div>
   <div class="hr">
     <span class="rt-dot wait" id="rtDot" title="Conexão em tempo real"></span>
+    <button class="btn-aviso" id="btnAviso" style="display:none" onclick="clicarAviso()"></button>
     <div class="clock" id="clock">--:--:--</div>
     <div class="mbadge" id="modeBadge" style="display:none"></div>
     <button class="btn-link" id="btnCodigos" style="display:none" onclick="abrirModalCodigos()" title="Ver e redefinir os códigos do comercial">
@@ -525,10 +532,16 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 
 const SUPABASE_URL = 'https://zeaknzyvlgawtjjdfluc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InplYWtuenl2bGdhd3RqamRmbHVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwMDg3NDgsImV4cCI6MjA5ODU4NDc0OH0.YzYuE6fm6F0wvbDtmCVmWDrMXa7biEbcRZ2a8AfdR7s';
+const BUCKET = 'conversas';
+const MAX_FOTOS = 5;
+// Abaixo disso sobe o arquivo original: print de planilha em PNG fica nitido,
+// e reconverter para JPEG e' justamente o que borrava o texto.
+const SOBE_DIRETO = 1.5 * 1024 * 1024;
+
 const ADMINS = {'1964':'João Pedro','2404':'Bernardo','1010':'Huriel','2424':'Marco Túlio','1987':'Robson Adeilton','2469':'Ramon','6924':'Eduardo'};
 
 // Trocar a cada deploy. E o que faz uma aba velha se reconhecer desatualizada.
-const APP_VERSION = '2026.09.14-0013';
+const APP_VERSION = '2026.09.14-0015';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -632,6 +645,115 @@ function meuVisto(c){
 function vistoAtualizado(c, iso){ return Object.assign({}, c.visto||{}, {[meuNome()]: iso}); }
 function meuNome(){ return modo==='pcp' ? adminNome : (selectedUser && selectedUser.nome); }
 
+// ════════════════════════════════════════════════
+//  AVISOS
+//  So vale com a aba aberta em algum lugar, ainda que em segundo plano.
+//  Navegador fechado nao recebe nada — isso exigiria push de verdade,
+//  com service worker e servidor mandando, que e' outro projeto.
+// ════════════════════════════════════════════════
+let somLigado = localStorage.getItem('aluminas_chat_som') !== '0';
+let audioCtx = null;
+
+function permAviso(){ return ('Notification' in window) ? Notification.permission : 'indisponivel'; }
+
+function renderBtnAviso(){
+  const b = $('btnAviso');
+  if(!modo){ b.style.display = 'none'; return; }
+  b.style.display = 'inline-flex';
+  const p = permAviso();
+  const sino = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>';
+  const mudo = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-9.3-5"/><path d="M6 9v-1"/><path d="M3 17h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/><path d="M2 2l20 20"/></svg>';
+  if(p === 'default'){
+    b.className = 'btn-aviso pedir'; b.innerHTML = sino + '<span class="rot">Ativar avisos</span>';
+    b.title = 'Receber aviso quando chegar mensagem';
+  } else if(p === 'denied'){
+    b.className = 'btn-aviso bloq'; b.innerHTML = mudo + '<span class="rot">Avisos bloqueados</span>';
+    b.title = 'O navegador bloqueou os avisos deste site. Libere no cadeado da barra de endereço.';
+  } else {
+    b.className = 'btn-aviso' + (somLigado ? '' : ' mudo');
+    b.innerHTML = (somLigado ? sino : mudo) + '<span class="rot">' + (somLigado ? 'Som ligado' : 'Sem som') + '</span>';
+    b.title = somLigado ? 'Clique para silenciar' : 'Clique para voltar o som';
+  }
+}
+
+async function clicarAviso(){
+  const p = permAviso();
+  if(p === 'default'){
+    try{
+      const r = await Notification.requestPermission();
+      renderBtnAviso();
+      if(r === 'granted'){ prepararSom(); tocarBip(); showToast('Avisos ligados. Pode deixar a aba em segundo plano.','success'); }
+      else showToast('Sem avisos, você só vê ao abrir a aba.','info');
+    }catch(e){}
+    return;
+  }
+  if(p === 'denied'){
+    showToast('Desbloqueie no cadeado ao lado do endereço e recarregue.','info');
+    return;
+  }
+  somLigado = !somLigado;
+  localStorage.setItem('aluminas_chat_som', somLigado ? '1' : '0');
+  renderBtnAviso();
+  if(somLigado){ prepararSom(); tocarBip(); }
+}
+
+// O navegador so deixa tocar som depois de um clique — por isso isto roda
+// no login, que e' um clique garantido.
+function prepararSom(){
+  try{
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+  }catch(e){}
+}
+function tocarBip(){
+  if(!somLigado) return;
+  try{
+    prepararSom(); if(!audioCtx) return;
+    const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(880, t);
+    o.frequency.setValueAtTime(1175, t + 0.1);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.16, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t); o.stop(t + 0.4);
+  }catch(e){}
+}
+
+function notificar(titulo, corpo, chamadoId){
+  if(permAviso() !== 'granted') return;
+  try{
+    const ico = document.querySelector('link[rel="icon"]');
+    const n = new Notification(titulo, {
+      body: corpo, tag: 'conv-' + chamadoId, renotify: true,
+      icon: ico ? ico.href : undefined
+    });
+    n.onclick = () => {
+      window.focus();
+      if(chamadoId && chamados.some(c=>c.id===chamadoId)) abrirConversa(chamadoId);
+      n.close();
+    };
+  }catch(e){}
+}
+
+// Aviso so do que e' meu. No PCP, conversa que o colega assumiu nao toca
+// aqui; a fila sem dono toca, porque ela precisa de alguem.
+function deveAvisar(c, autorTipo){
+  if(!c) return false;
+  if(modo === 'sol') return true;
+  if(ehInterna(c)) return ehMinhaConversaPcp(c);
+  if(ehMinhaConversaPcp(c)) return true;
+  return !c.assumido_por && autorTipo === 'comercial';
+}
+
+// So a visibilidade da aba. hasFocus() da' falso em casos em que a mensagem
+// esta na cara da pessoa, e aviso errado a mais irrita mais do que a menos.
+function estouVendo(chamadoId){
+  return !document.hidden && chamadoAberto && chamadoAberto.id === chamadoId;
+}
+
 // ── VERSAO ──
 function recarregarForcado(){ location.replace(location.pathname + '?v=' + Date.now()); }
 async function checarVersao(){
@@ -645,7 +767,13 @@ async function checarVersao(){
 }
 checarVersao();
 setInterval(checarVersao, 10*60*1000);
-document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ checarVersao(); if(modo) carregarChamados(); } });
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden) return;
+  checarVersao();
+  if(!modo) return;
+  carregarChamados();
+  if(chamadoAberto && !chamadoAberto._rascunho) marcarVisto();
+});
 
 // ── RELOGIO ──
 function tick(){ $('clock').textContent = new Date().toLocaleTimeString('pt-BR'); }
@@ -1012,6 +1140,8 @@ function entrarApp(m){
     filtro = 'ativas';
   }
   renderFiltros();
+  renderBtnAviso();
+  prepararSom();          // entrar no app e' um clique: da' para liberar o audio aqui
   carregarChamados(true);
   ligarRealtime();
 }
@@ -1028,6 +1158,7 @@ function voltarModo(){
   $('modeScreen').style.display = 'flex';
   $('btnSair').style.display = 'none';
   $('btnCodigos').style.display = 'none';
+  $('btnAviso').style.display = 'none';
   $('modeBadge').style.display = 'none';
   $('headerSub').textContent = 'Conversas · Comercial ⇄ PCP';
   carregarResumo();
@@ -1110,9 +1241,35 @@ async function carregarNaoLidos(){
 }
 
 function totalNaoLidos(){ return Object.values(naoLidos).reduce((a,b)=>a+b,0); }
+let faviconBase = null, faviconN = -1;
+// Contador no titulo some quando a aba fica estreita; no icone, nao.
+function atualizarFavicon(n){
+  const link = document.querySelector('link[rel="icon"]');
+  if(!link || n === faviconN) return;
+  faviconN = n;
+  if(!faviconBase){ faviconBase = new Image(); faviconBase.src = link.href; }
+  const desenhar = ()=>{
+    try{
+      const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+      const x = cv.getContext('2d');
+      x.drawImage(faviconBase, 0, 0, 64, 64);
+      if(n > 0){
+        x.fillStyle = '#e53935';
+        x.beginPath(); x.arc(44, 20, 20, 0, Math.PI*2); x.fill();
+        x.fillStyle = '#fff';
+        x.font = 'bold ' + (n > 9 ? 24 : 30) + 'px sans-serif';
+        x.textAlign = 'center'; x.textBaseline = 'middle';
+        x.fillText(n > 9 ? '9+' : String(n), 44, 22);
+      }
+      link.href = cv.toDataURL('image/png');
+    }catch(e){}
+  };
+  if(faviconBase.complete) desenhar(); else faviconBase.onload = desenhar;
+}
 function atualizarTitulo(){
   const n = totalNaoLidos();
   document.title = (n ? '('+n+') ' : '') + 'Aluminas · Conversas';
+  atualizarFavicon(n);
 }
 
 // ── FILTROS ──
@@ -1201,6 +1358,7 @@ async function abrirConversa(id){
   await marcarVisto();
 }
 function fecharConversa(){
+  fotosComp.forEach(f=>{ try{ URL.revokeObjectURL(f.prev); }catch(e){} });
   chamadoAberto = null; msgs = []; fotosComp = [];
   delete $('composer').dataset.estado; delete $('composer').dataset.chamado;
   $('app').classList.remove('aberto');
@@ -1609,7 +1767,22 @@ async function enviarMsg(){
   if(!texto && !fotosComp.length){ return; }
   let c = chamadoAberto;
   const eu = minhaSide(), nome = meuNome(), iso = nowIso();
-  const fotos = fotosComp.length ? JSON.stringify(fotosComp.map(f=>f.base64)) : null;
+  // Bolha provisoria usa a previa local; o que vai para o banco sao as URLs.
+  const fotosLocais = fotosComp.slice();
+  const previaFotos = fotosLocais.length ? JSON.stringify(fotosLocais.map(f=>f.prev)) : null;
+  let fotos = null;
+  if(fotosLocais.length){
+    $('compSend').disabled = true;
+    if(fotosLocais.length > 1) showToast('Enviando '+fotosLocais.length+' fotos...','info');
+    try{
+      fotos = JSON.stringify(await subirFotos(fotosLocais));
+    }catch(err){
+      $('compSend').disabled = false;
+      showToast('As fotos não subiram: '+(err.message||err)+'. A mensagem não foi enviada.','error');
+      return;
+    }
+    $('compSend').disabled = false;
+  }
 
   // Rascunho: o chamado nasce agora, no primeiro envio.
   if(c._rascunho){
@@ -1625,10 +1798,10 @@ async function enviarMsg(){
   }
 
   // Mostra na hora; se o banco recusar, a mensagem some e o texto volta.
-  const pend = {id:'pend-'+(++_pendId), chamado_id:c.id, autor_tipo:eu, autor_nome:nome, texto, fotos, criado_em:iso, _pend:true};
+  const pend = {id:'pend-'+(++_pendId), chamado_id:c.id, autor_tipo:eu, autor_nome:nome, texto, fotos:previaFotos, criado_em:iso, _pend:true};
   msgs.push(pend); renderMsgs(true);
   txtEl.value = ''; txtEl.style.height = 'auto';
-  const fotosEnviadas = fotosComp; fotosComp = []; renderPrevComp();
+  fotosComp = []; renderPrevComp();
   $('compSend').disabled = true;
 
   const {data,error} = await sb.from('chamado_msgs')
@@ -1638,7 +1811,7 @@ async function enviarMsg(){
 
   if(error){
     msgs = msgs.filter(m=>m.id !== pend.id);
-    fotosComp = fotosEnviadas; renderPrevComp();
+    fotosComp = fotosLocais; renderPrevComp();
     txtEl.value = texto;
     renderMsgs(true);
     showToast('A mensagem não foi enviada: '+error.message, 'error');
@@ -1731,38 +1904,76 @@ async function marcarVisto(){
 //  FOTOS
 // ════════════════════════════════════════════════
 function processarFotos(files){
-  const lista = fotosComp;
-  const rest = 3 - lista.length;
-  if(rest<=0){ showToast('Máximo de 3 fotos por mensagem.','error'); return; }
-  files.slice(0,rest).forEach(file=>{
+  const rest = MAX_FOTOS - fotosComp.length;
+  if(rest<=0){ showToast('Máximo de '+MAX_FOTOS+' fotos por mensagem.','error'); return; }
+  files.slice(0,rest).forEach(async file=>{
     if(!file.type.startsWith('image/')){ showToast(file.name+' não é imagem.','error'); return; }
+    const pronto = await prepararFoto(file);
+    fotosComp.push({name:file.name, file:pronto, prev:URL.createObjectURL(pronto)});
+    renderPrevComp();
+  });
+}
+
+// Arquivo pequeno vai inteiro. Grande e' reduzido — mas agora o teto e' bem
+// mais alto, porque nao precisa mais caber dentro de uma linha do banco.
+function prepararFoto(file){
+  if(file.size <= SOBE_DIRETO) return Promise.resolve(file);
+  return new Promise(resolve=>{
     const reader = new FileReader();
     reader.onload = ev=>{
       const img = new Image();
       img.onload = ()=>{
-        const canvas = document.createElement('canvas');
-        // 1600 a 0,82: print de planilha continua legível sem estourar o
-        // tamanho do payload do realtime, que derruba imagem muito grande.
-        const MAX=1600; let w=img.width,h=img.height;
-        if(w>MAX||h>MAX){ if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;} }
-        canvas.width=w; canvas.height=h;
-        canvas.getContext('2d').drawImage(img,0,0,w,h);
-        lista.push({name:file.name, base64:canvas.toDataURL('image/jpeg',.82)});
-        renderPrevComp();
+        const MAX = 2200; let w = img.width, h = img.height;
+        if(w>MAX || h>MAX){ if(w>h){ h=Math.round(h*MAX/w); w=MAX; } else { w=Math.round(w*MAX/h); h=MAX; } }
+        const cv = document.createElement('canvas');
+        cv.width=w; cv.height=h;
+        cv.getContext('2d').drawImage(img,0,0,w,h);
+        cv.toBlob(b=>resolve(b || file), 'image/jpeg', 0.88);
       };
+      img.onerror = ()=>resolve(file);
       img.src = ev.target.result;
     };
+    reader.onerror = ()=>resolve(file);
     reader.readAsDataURL(file);
   });
 }
+
+function idFoto(){
+  try{ if(crypto.randomUUID) return crypto.randomUUID(); }catch(e){}
+  return Date.now().toString(36) + Math.random().toString(36).slice(2,10);
+}
+
+// Sobe tudo em paralelo e devolve as URLs. Qualquer falha derruba o envio
+// inteiro: melhor a pessoa tentar de novo do que mandar mensagem sem a foto
+// que ela anexou para explicar o problema.
+async function subirFotos(lista){
+  if(!lista.length) return [];
+  const ano = new Date().getFullYear();
+  const envios = lista.map(async f=>{
+    const ext = (f.file.type.split('/')[1] || 'jpg').replace('jpeg','jpg');
+    const caminho = ano + '/' + idFoto() + '.' + ext;
+    const {error} = await sb.storage.from(BUCKET)
+      .upload(caminho, f.file, {contentType:f.file.type || 'image/jpeg', upsert:false});
+    if(error) throw error;
+    const {data} = sb.storage.from(BUCKET).getPublicUrl(caminho);
+    return data.publicUrl;
+  });
+  return Promise.all(envios);
+}
+
 function renderPrevComp(){
   const el = $('compPrev'); if(!el) return;
   el.innerHTML = fotosComp.map((f,i)=>`<div class="foto-prev">
-    <img src="${f.base64}" alt="${esc(f.name)}" onclick="abrirImg(this.src, this.alt)">
+    <img src="${f.prev}" alt="${esc(f.name)}" onclick="abrirImg(this.src, this.alt)">
     <button class="rm" onclick="removerFoto(${i})" aria-label="Remover foto">×</button>
   </div>`).join('');
 }
-function removerFoto(i){ fotosComp.splice(i,1); renderPrevComp(); }
+function removerFoto(i){
+  const f = fotosComp[i];
+  if(f && f.prev) { try{ URL.revokeObjectURL(f.prev); }catch(e){} }
+  fotosComp.splice(i,1); renderPrevComp();
+}
+
 function abrirImg(src, name){
   $('imgSrc').src = src;
   $('imgTitle').textContent = name || 'Foto';
@@ -1909,18 +2120,27 @@ function onMsgRT(payload){
   if(chamadoAberto && m.chamado_id === chamadoAberto.id){
     if(!addMsg(m)) return;
     renderMsgs(true);
-    if(m.autor_tipo !== minhaSide() && m.autor_tipo !== 'sistema') marcarVisto();
+    if(m.autor_nome === meuNome() || m.autor_tipo === 'sistema') return;
+    if(estouVendo(m.chamado_id)){ marcarVisto(); return; }
+    // Conversa aberta, mas a pessoa nao esta olhando: continua valendo aviso.
+    naoLidos[m.chamado_id] = (naoLidos[m.chamado_id]||0)+1;
+    atualizarTitulo(); renderLista();
+    if(!deveAvisar(chamadoAberto, m.autor_tipo)) return;
+    tocarBip();
+    if(document.hidden) notificar(m.autor_nome, (m.texto || '[foto]').slice(0,120), m.chamado_id);
     return;
   }
-  // Conversa em outra aba da lista: so avisa
+  // Conversa que nao esta na tela
   const c = chamados.find(x=>x.id===m.chamado_id);
-  if(c && m.autor_tipo !== minhaSide() && m.autor_tipo !== 'sistema'){
-    naoLidos[c.id] = (naoLidos[c.id]||0)+1;
-    atualizarTitulo();
-    if(modo==='pcp') showToast(c.solicitante+' respondeu em '+fmtNum(c.numero), 'info');
-    else showToast('O PCP respondeu em '+fmtNum(c.numero), 'info');
-    renderLista();
-  }
+  if(!c || m.autor_nome === meuNome() || m.autor_tipo === 'sistema') return;
+  naoLidos[c.id] = (naoLidos[c.id]||0)+1;
+  atualizarTitulo();
+  renderLista();
+  if(!deveAvisar(c, m.autor_tipo)) return;
+  tocarBip();
+  const quem = m.autor_nome + (m.autor_tipo==='pcp' ? ' · PCP' : '');
+  showToast(quem + ' escreveu em ' + fmtNum(c.numero), 'info');
+  if(document.hidden) notificar(quem, (m.texto || '[foto]').slice(0,120), c.id);
 }
 
 function onChamadoRT(payload){
@@ -1930,11 +2150,16 @@ function onChamadoRT(payload){
   if(payload.eventType === 'INSERT'){
     if(!chamados.some(x=>x.id===c.id)){
       chamados.unshift(c);
-      naoLidos[c.id] = (naoLidos[c.id]||0)+1;
-      atualizarTitulo();
-      showToast(modo==='pcp'
-        ? 'Nova conversa de '+c.solicitante+': '+c.assunto
-        : 'O PCP abriu uma conversa: '+c.assunto, 'info');
+      if(deveAvisar(c, c.ultima_msg_autor)){
+        naoLidos[c.id] = (naoLidos[c.id]||0)+1;
+        atualizarTitulo();
+        const t = modo==='pcp'
+          ? 'Nova conversa de '+c.solicitante
+          : 'O PCP abriu uma conversa';
+        showToast(t+': '+c.assunto, 'info');
+        tocarBip();
+        if(document.hidden) notificar(t, c.assunto, c.id);
+      }
       renderFiltros(); renderLista();
     }
     return;
