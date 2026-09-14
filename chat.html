@@ -362,11 +362,11 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 <!-- MODAL ESCOLHER USUÁRIO -->
 <div class="modal-bg" id="modalUser">
   <div class="modal-box">
-    <div class="mhead"><h3>Quem é você?</h3><button class="mclose" onclick="fecharModalUser()">×</button></div>
+    <div class="mhead"><h3 id="userTitulo">Quem é você?</h3><button class="mclose" onclick="fecharModalUser()">×</button></div>
     <div class="mbody">
       <input class="user-search" id="userBusca" placeholder="Buscar pelo nome..." oninput="renderUserList()">
       <div class="user-list" id="userList"></div>
-      <div class="fhint" style="margin-top:10px">Não achou seu nome? Fale com o PCP para ser cadastrado.</div>
+      <div class="fhint" style="margin-top:10px" id="userHint">Não achou seu nome? Fale com o PCP para ser cadastrado.</div>
     </div>
   </div>
 </div>
@@ -501,7 +501,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const ADMINS = {'1964':'João Pedro','2404':'Bernardo','1010':'Huriel','2424':'Marco Túlio','1987':'Robson Adeilton','2469':'Ramon'};
 
 // Trocar a cada deploy. E o que faz uma aba velha se reconhecer desatualizada.
-const APP_VERSION = '2026.09.14-0006';
+const APP_VERSION = '2026.09.14-0007';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -521,6 +521,7 @@ let codAcesso = null;            // { user_id, hash } da pessoa escolhida, ou nu
 let codModo = 'entrar';          // 'entrar' | 'criar'
 let codUserPend = null;          // usuario escolhido, esperando o codigo
 let usersCodigos = [];           // painel do PCP
+let userPickerFim = 'login';     // 'login' | 'destino'
 
 const FILTROS_PCP = [
   {k:'minhas', lb:'Minhas'},
@@ -658,6 +659,22 @@ function retomarSolicitante(){
 }
 
 async function entrarSolicitante(){
+  userPickerFim = 'login';
+  $('userTitulo').textContent = 'Quem é você?';
+  $('userHint').textContent = 'Não achou seu nome? Fale com o PCP para ser cadastrado.';
+  await abrirListaUsers();
+}
+
+// PCP começando uma conversa: escolhe com quem antes de escrever.
+async function escolherDestinatario(){
+  userPickerFim = 'destino';
+  $('userTitulo').textContent = 'Falar com quem?';
+  $('userHint').textContent = 'A conversa vai aparecer na lista dessa pessoa, com aviso de mensagem nova.';
+  await abrirListaUsers();
+}
+
+async function abrirListaUsers(){
+  $('userBusca').value = '';
   $('modalUser').classList.add('show');
   $('userList').innerHTML = '<div class="vazio">Carregando...</div>';
   const {data,error} = await sb.from('ticket_users').select('*').order('nome');
@@ -670,8 +687,9 @@ function renderUserList(){
   const b = ($('userBusca').value||'').trim().toLowerCase();
   const lista = allUsers.filter(u=>!b || u.nome.toLowerCase().includes(b));
   if(!lista.length){ $('userList').innerHTML = '<div class="vazio">Nenhum nome encontrado.</div>'; return; }
+  const fn = userPickerFim === 'destino' ? 'escolherDestino' : 'escolherUser';
   $('userList').innerHTML = lista.map(u=>`
-    <div class="user-item" onclick="escolherUser('${u.id}')">
+    <div class="user-item" onclick="${fn}('${u.id}')">
       <span class="avatar">${esc(initials(u.nome))}</span>
       <div><div class="un">${esc(u.nome)}</div>${u.setor?`<div class="us">${esc(u.setor)}</div>`:''}</div>
     </div>`).join('');
@@ -888,7 +906,7 @@ function entrarApp(m){
   if(m==='pcp'){
     badge.className = 'mbadge adm'; badge.textContent = 'PCP · '+adminNome;
     $('headerSub').textContent = 'Conversas · Atendimento';
-    $('btnNovo').style.display = 'none';
+    $('btnNovo').style.display = 'flex';
     $('btnCodigos').style.display = 'inline-flex';
     $('vaziaTxt').textContent = 'Escolha uma conversa na lista para responder.';
     filtro = 'espera';
@@ -1163,7 +1181,10 @@ function renderCabecalho(){
   const c = chamadoAberto;
   $('chAssunto').textContent = c.assunto;
   if(c._rascunho){
-    $('chMeta').textContent = 'Escreva abaixo — o PCP recebe assim que você enviar';
+    $('chAssunto').textContent = c._destino ? 'Nova conversa com '+c._destino.nome : 'Nova conversa';
+    $('chMeta').textContent = c._destino
+      ? 'Escreva abaixo — ela recebe assim que você enviar'
+      : 'Escreva abaixo — o PCP recebe assim que você enviar';
     $('chAcoes').innerHTML = '';
     return;
   }
@@ -1334,7 +1355,8 @@ async function enviarMsg(){
   };
   if(eu==='pcp'){
     patch.visto_pcp_em = iso;
-    if(!c.primeira_resposta_em) patch.primeira_resposta_em = iso;
+    // Conversa que o proprio PCP abriu nao entra na media de 1a resposta.
+    if(!c.primeira_resposta_em && msgs.some(m=>m.autor_tipo==='comercial')) patch.primeira_resposta_em = iso;
     if(c.status!=='resolvido') patch.status = 'andamento';
     // Responder ja e' assumir: ninguem precisa lembrar de clicar no botao antes.
     if(!c.assumido_por){ patch.assumido_por = nome; patch.assumido_em = iso; }
@@ -1477,9 +1499,21 @@ async function abrirImgNovaAba(){
 //  nasce no primeiro envio — antes disso é rascunho, não existe no banco.
 // ════════════════════════════════════════════════
 function novaConversa(){
-  if(modo !== 'sol') return;
-  chamadoAberto = {_rascunho:true, id:null, numero:null, status:'aberto',
-                   assunto:'Nova conversa', solicitante:selectedUser.nome};
+  if(modo === 'pcp') return escolherDestinatario();
+  abrirRascunho(null);
+}
+
+function escolherDestino(id){
+  const u = allUsers.find(x=>String(x.id)===String(id));
+  if(!u) return;
+  fecharModalUser();
+  abrirRascunho({id:u.id, nome:u.nome});
+}
+
+function abrirRascunho(destino){
+  chamadoAberto = {_rascunho:true, _destino:destino, id:null, numero:null, status:'aberto',
+                   assunto:'Nova conversa',
+                   solicitante: destino ? destino.nome : selectedUser.nome};
   msgs = []; fotosComp = [];
   $('app').classList.add('aberto');
   $('convVazia').style.display = 'none';
@@ -1497,14 +1531,23 @@ function assuntoDaMensagem(texto){
 }
 
 async function criarChamado(texto, fotos, iso){
+  const destino = chamadoAberto && chamadoAberto._destino;   // PCP escrevendo primeiro
   const {data:last} = await sb.from('chamados').select('numero').order('numero',{ascending:false}).limit(1);
   const numero = (last && last.length && last[0].numero) ? last[0].numero+1 : 1;
-  const {data, error} = await sb.from('chamados').insert([{
-    numero, user_id:selectedUser.id, solicitante:selectedUser.nome, setor:'Comercial',
-    assunto: assuntoDaMensagem(texto), status:'aberto',
-    criado_em:iso, ultima_msg_em:iso, ultima_msg_autor:'comercial',
-    ultima_msg_txt: texto ? texto.slice(0,120) : '[foto]', visto_sol_em:iso
-  }]).select();
+
+  const base = {
+    numero, setor:'Comercial', assunto: assuntoDaMensagem(texto),
+    criado_em:iso, ultima_msg_em:iso,
+    ultima_msg_txt: texto ? texto.slice(0,120) : '[foto]'
+  };
+  const linha = destino
+    // Quem abre já é o dono, e o não lido fica do lado de quem vai receber.
+    ? {...base, user_id:destino.id, solicitante:destino.nome, status:'andamento',
+       ultima_msg_autor:'pcp', assumido_por:adminNome, assumido_em:iso, visto_pcp_em:iso}
+    : {...base, user_id:selectedUser.id, solicitante:selectedUser.nome, status:'aberto',
+       ultima_msg_autor:'comercial', visto_sol_em:iso};
+
+  const {data, error} = await sb.from('chamados').insert([linha]).select();
   if(error) return {error};
   return {chamado: data[0]};
 }
@@ -1573,11 +1616,11 @@ function onChamadoRT(payload){
   if(payload.eventType === 'INSERT'){
     if(!chamados.some(x=>x.id===c.id)){
       chamados.unshift(c);
-      if(modo==='pcp'){
-        naoLidos[c.id] = (naoLidos[c.id]||0)+1;
-        showToast('Nova conversa de '+c.solicitante+': '+c.assunto, 'info');
-        atualizarTitulo();
-      }
+      naoLidos[c.id] = (naoLidos[c.id]||0)+1;
+      atualizarTitulo();
+      showToast(modo==='pcp'
+        ? 'Nova conversa de '+c.solicitante+': '+c.assunto
+        : 'O PCP abriu uma conversa: '+c.assunto, 'info');
       renderFiltros(); renderLista();
     }
     return;
