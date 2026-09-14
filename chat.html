@@ -166,6 +166,17 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .pill.dono{color:var(--accent);border-color:rgba(192,146,42,.45);background:rgba(192,146,42,.12)}
 .pill.dono.outro{color:var(--blue);border-color:rgba(100,181,246,.4);background:rgba(100,181,246,.1)}
 .pill.dono.livre{color:var(--text-dim);border-color:var(--border-light);background:none}
+.grp-label{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin:16px 0 7px}
+.grp-label:first-child{margin-top:0}
+.pess-item{padding:10px 13px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.pess-item:last-child{border-bottom:none}
+.pess-nome{flex:1;min-width:0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pess-tag{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--text-dim);flex-shrink:0}
+.pess-add{padding:10px 13px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);cursor:pointer}
+.pess-add:last-child{border-bottom:none}
+.pess-add:hover{background:var(--surface2)}
+.btn-x{background:none;border:1px solid var(--border);color:var(--text-dim);width:24px;height:24px;cursor:pointer;font-size:14px;line-height:1;flex-shrink:0}
+.btn-x:hover{border-color:var(--red);color:var(--red)}
 .transf-item{padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
 .transf-item:last-child{border-bottom:none}
 .transf-item:hover{background:var(--surface2)}
@@ -415,6 +426,14 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
   </div>
 </div>
 
+<!-- MODAL PESSOAS -->
+<div class="modal-bg" id="modalPessoas">
+  <div class="modal-box wide">
+    <div class="mhead"><h3>Pessoas na conversa</h3><button class="mclose" onclick="fecharModalPessoas()">×</button></div>
+    <div class="mbody" id="pessoasBody"></div>
+  </div>
+</div>
+
 <!-- MODAL TRANSFERIR -->
 <div class="modal-bg" id="modalTransf">
   <div class="modal-box">
@@ -501,7 +520,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const ADMINS = {'1964':'João Pedro','2404':'Bernardo','1010':'Huriel','2424':'Marco Túlio','1987':'Robson Adeilton','2469':'Ramon'};
 
 // Trocar a cada deploy. E o que faz uma aba velha se reconhecer desatualizada.
-const APP_VERSION = '2026.09.14-0007';
+const APP_VERSION = '2026.09.14-0009';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -522,6 +541,7 @@ let codModo = 'entrar';          // 'entrar' | 'criar'
 let codUserPend = null;          // usuario escolhido, esperando o codigo
 let usersCodigos = [];           // painel do PCP
 let userPickerFim = 'login';     // 'login' | 'destino'
+const rascunhos = {};            // texto por digitar, guardado por conversa
 
 const FILTROS_PCP = [
   {k:'minhas', lb:'Minhas'},
@@ -579,6 +599,22 @@ function duracaoCurta(ms){
   return Math.floor(h/24)+'d';
 }
 function minhaSide(){ return modo==='pcp' ? 'pcp' : 'comercial'; }
+function parts(c){ return Array.isArray(c && c.participantes) ? c.participantes : []; }
+function souParticipante(c){
+  if(!selectedUser) return false;
+  if(String(c.user_id) === String(selectedUser.id)) return true;
+  return parts(c).some(p => String(p.id) === String(selectedUser.id));
+}
+function ehMinhaConversaPcp(c){
+  return c.assumido_por === adminNome || parts(c).some(p => p.lado==='pcp' && p.nome===adminNome);
+}
+// Leitura por pessoa. As colunas antigas ficam como reserva para o que ja existia.
+function meuVisto(c){
+  const nome = meuNome();
+  if(c.visto && c.visto[nome]) return c.visto[nome];
+  return modo==='pcp' ? c.visto_pcp_em : c.visto_sol_em;
+}
+function vistoAtualizado(c, iso){ return Object.assign({}, c.visto||{}, {[meuNome()]: iso}); }
 function meuNome(){ return modo==='pcp' ? adminNome : (selectedUser && selectedUser.nome); }
 
 // ── VERSAO ──
@@ -945,9 +981,30 @@ function voltarModo(){
 // ════════════════════════════════════════════════
 async function carregarChamados(primeira){
   if(primeira) $('listaConv').innerHTML = '<div class="vazio">Carregando...</div>';
-  let q = sb.from('chamados').select('*').order('ultima_msg_em', {ascending:false});
-  if(modo==='sol') q = q.eq('user_id', selectedUser.id);
-  const {data,error} = await q;
+  let data, error;
+  if(modo === 'sol'){
+    // Duas consultas em vez de um OR: as dela e as em que foi incluida.
+    // A segunda consulta nunca pode derrubar a primeira: se o filtro por
+    // participante falhar, ela ainda ve as conversas dela.
+    const convidadasP = (async ()=>{
+      try{ return await sb.from('chamados').select('*').contains('participantes', [{id: selectedUser.id}]); }
+      catch(e){ return {data:null, error:e}; }
+    })();
+    const [minhas, convidadas] = await Promise.all([
+      sb.from('chamados').select('*').eq('user_id', selectedUser.id),
+      convidadasP
+    ]);
+    error = minhas.error;
+    const mapa = new Map();
+    (minhas.data||[]).forEach(c=>mapa.set(c.id,c));
+    if(convidadas && !convidadas.error) (convidadas.data||[]).forEach(c=>mapa.set(c.id,c));
+    else if(convidadas && convidadas.error) console.warn('filtro de participantes falhou:', convidadas.error.message||convidadas.error);
+    data = Array.from(mapa.values())
+      .sort((a,b)=>new Date(b.ultima_msg_em||b.criado_em)-new Date(a.ultima_msg_em||a.criado_em));
+  } else {
+    const r = await sb.from('chamados').select('*').order('ultima_msg_em', {ascending:false});
+    data = r.data; error = r.error;
+  }
   if(error){
     $('listaConv').innerHTML = '<div class="vazio">Não deu para carregar.<br>'+esc(error.message)+'</div>';
     return;
@@ -964,28 +1021,34 @@ async function carregarChamados(primeira){
 async function carregarNaoLidos(){
   naoLidos = {};
   if(!chamados.length) return;
-  const campo = modo==='pcp' ? 'visto_pcp_em' : 'visto_sol_em';
-  const outro = modo==='pcp' ? 'comercial' : 'pcp';
+  const eu = meuNome();
+  // Nao lida = mensagem depois do MEU visto, escrita por outra pessoa — sem
+  // olhar o lado, senao o gerente incluido nunca receberia aviso.
+  // Data invalida ou ausente nao pode derrubar o carregamento inteiro.
+  const ms = x => { const t = x ? Date.parse(x) : NaN; return isNaN(t) ? null : t; };
   const candidatos = chamados.filter(c=>{
-    if(c.ultima_msg_autor !== outro) return false;
-    return !c[campo] || new Date(c.ultima_msg_em) > new Date(c[campo]);
+    const u = ms(c.ultima_msg_em);
+    if(u === null) return false;          // ainda nao tem mensagem nenhuma
+    const v = ms(meuVisto(c));
+    return v === null || u > v;
   });
   if(!candidatos.length) return;
   const ids = candidatos.map(c=>c.id);
   const maisAntigo = candidatos.reduce((min,c)=>{
-    const v = c[campo] ? new Date(c[campo]) : new Date(c.criado_em);
-    return (!min || v<min) ? v : min;
+    const v = ms(meuVisto(c)) ?? ms(c.criado_em) ?? Date.now();
+    return (min === null || v < min) ? v : min;
   }, null);
   const {data} = await sb.from('chamado_msgs')
-    .select('chamado_id,criado_em,autor_tipo')
+    .select('chamado_id,criado_em,autor_nome,autor_tipo')
     .in('chamado_id', ids)
-    .eq('autor_tipo', outro)
-    .gte('criado_em', maisAntigo.toISOString());
+    .neq('autor_tipo', 'sistema')
+    .gte('criado_em', new Date(maisAntigo).toISOString());
   (data||[]).forEach(m=>{
+    if(m.autor_nome === eu) return;
     const c = chamados.find(x=>x.id===m.chamado_id);
     if(!c) return;
-    const lim = c[campo] ? new Date(c[campo]) : null;
-    if(!lim || new Date(m.criado_em) > lim) naoLidos[c.id] = (naoLidos[c.id]||0)+1;
+    const v = ms(meuVisto(c)), q = ms(m.criado_em);
+    if(q !== null && (v === null || q > v)) naoLidos[c.id] = (naoLidos[c.id]||0)+1;
   });
 }
 
@@ -1004,7 +1067,7 @@ function passaFiltro(c,k){
   if(k==='resolvidas') return c.status==='resolvido';
   if(k==='ativas') return c.status!=='resolvido';
   if(k==='espera') return c.status!=='resolvido' && c.ultima_msg_autor==='comercial';
-  if(k==='minhas') return c.status!=='resolvido' && c.assumido_por===adminNome;
+  if(k==='minhas') return c.status!=='resolvido' && ehMinhaConversaPcp(c);
   return true;
 }
 function renderFiltros(){
@@ -1081,6 +1144,7 @@ async function abrirConversa(id){
 }
 function fecharConversa(){
   chamadoAberto = null; msgs = []; fotosComp = [];
+  delete $('composer').dataset.estado; delete $('composer').dataset.chamado;
   $('app').classList.remove('aberto');
   $('convAtiva').style.display = 'none';
   $('convVazia').style.display = 'flex';
@@ -1094,6 +1158,120 @@ async function carregarMsgs(){
   if(error){ $('msgs').innerHTML = '<div class="vazio">Erro ao carregar: '+esc(error.message)+'</div>'; return; }
   msgs = data||[];
   renderMsgs(true);
+}
+
+// ════════════════════════════════════════════════
+//  QUEM PARTICIPA
+//  O dono e o solicitante estao sempre dentro. Aqui entra quem foi
+//  chamado depois: o gerente do comercial, o colega do PCP.
+// ════════════════════════════════════════════════
+async function abrirModalPessoas(){
+  const c = chamadoAberto;
+  if(!c || c._rascunho) return;
+  $('modalPessoas').classList.add('show');
+  $('pessoasBody').innerHTML = '<div class="vazio">Carregando...</div>';
+  if(!allUsers.length){
+    const {data} = await sb.from('ticket_users').select('*').order('nome');
+    allUsers = data||[];
+  }
+  renderPessoas();
+}
+function fecharModalPessoas(){ $('modalPessoas').classList.remove('show'); }
+
+function renderPessoas(){
+  const c = chamadoAberto; if(!c) return;
+  const lista = parts(c);
+  const fixos = [
+    {nome:c.solicitante, tag:'Comercial · abriu'},
+    ...(c.assumido_por ? [{nome:c.assumido_por, tag:'PCP · responsável'}] : [])
+  ];
+
+  let h = '<div class="grp-label">Na conversa</div><div class="user-list">';
+  h += fixos.map(f=>`<div class="pess-item">
+      <span class="avatar">${esc(initials(f.nome))}</span>
+      <span class="pess-nome">${esc(f.nome)}</span>
+      <span class="pess-tag">${esc(f.tag)}</span>
+    </div>`).join('');
+  h += lista.map((p,i)=>`<div class="pess-item">
+      <span class="avatar">${esc(initials(p.nome))}</span>
+      <span class="pess-nome">${esc(p.nome)}</span>
+      <span class="pess-tag">${p.lado==='pcp'?'PCP':'Comercial'}${p.por?' · por '+esc(p.por.split(' ')[0]):''}</span>
+      <button class="btn-x" onclick="removerPessoa(${i})" title="Tirar da conversa">×</button>
+    </div>`).join('');
+  h += '</div>';
+
+  const jaTem = n => lista.some(p=>p.nome===n) || n===c.solicitante || n===c.assumido_por;
+
+  // O comercial so chama gente do comercial: quem do PCP atende e' decisao do PCP.
+  if(modo==='pcp'){
+    const livres = Object.values(ADMINS).filter(n=>!jaTem(n));
+    if(livres.length){
+      h += '<div class="grp-label">Chamar alguém do PCP</div><div class="user-list">';
+      h += livres.map(n=>`<div class="pess-add" onclick="adicionarPcp('${esc(n).replace(/'/g,"&#39;")}')">
+          <span class="avatar">${esc(initials(n))}</span><span class="pess-nome">${esc(n)}</span>
+          <span class="pess-tag">chamar</span></div>`).join('');
+      h += '</div>';
+    }
+  }
+
+  const livresCom = allUsers.filter(u=>!jaTem(u.nome) && String(u.id)!==String(c.user_id));
+  h += '<div class="grp-label">Chamar alguém do comercial</div>';
+  h += '<input class="user-search" id="pessBusca" placeholder="Buscar pelo nome..." oninput="filtrarPess()">';
+  h += '<div class="user-list" id="pessLista" style="max-height:220px">';
+  h += livresCom.length
+    ? livresCom.map(u=>`<div class="pess-add" data-n="${esc(u.nome.toLowerCase())}" onclick="adicionarComercial('${u.id}')">
+        <span class="avatar">${esc(initials(u.nome))}</span><span class="pess-nome">${esc(u.nome)}</span>
+        <span class="pess-tag">chamar</span></div>`).join('')
+    : '<div class="vazio">Todo mundo já está na conversa.</div>';
+  h += '</div>';
+  $('pessoasBody').innerHTML = h;
+}
+function filtrarPess(){
+  const b = ($('pessBusca').value||'').trim().toLowerCase();
+  document.querySelectorAll('#pessLista .pess-add').forEach(el=>{
+    el.style.display = (!b || el.dataset.n.includes(b)) ? 'flex' : 'none';
+  });
+}
+
+async function salvarPessoas(novaLista, textoSistema){
+  const c = chamadoAberto; if(!c) return false;
+  const iso = nowIso();
+  showOverlay(true);
+  await sb.from('chamado_msgs').insert([{
+    chamado_id:c.id, autor_tipo:'sistema', autor_nome:meuNome(),
+    texto:textoSistema, criado_em:iso
+  }]);
+  const patch = {participantes:novaLista, ultima_msg_em:iso, ultima_msg_autor:'sistema',
+                 ultima_msg_txt:'Pessoas na conversa', visto: vistoAtualizado(c, iso)};
+  const {error} = await sb.from('chamados').update(patch).eq('id', c.id);
+  showOverlay(false);
+  if(error){ showToast('Não deu certo: '+error.message,'error'); return false; }
+  Object.assign(c, patch);
+  await carregarMsgs();
+  renderCabecalho(); renderPessoas(); renderLista();
+  return true;
+}
+
+async function adicionarPcp(nome){
+  const c = chamadoAberto;
+  const nova = parts(c).concat([{id:null, nome, lado:'pcp', por:meuNome(), em:nowIso()}]);
+  if(await salvarPessoas(nova, '<b>'+esc(meuNome())+'</b> chamou <b>'+esc(nome)+'</b> (PCP) para a conversa.'))
+    showToast(nome+' entrou na conversa.','success');
+}
+async function adicionarComercial(id){
+  const u = allUsers.find(x=>String(x.id)===String(id)); if(!u) return;
+  const c = chamadoAberto;
+  const nova = parts(c).concat([{id:u.id, nome:u.nome, lado:'comercial', por:meuNome(), em:nowIso()}]);
+  if(await salvarPessoas(nova, '<b>'+esc(meuNome())+'</b> incluiu <b>'+esc(u.nome)+'</b> na conversa.'))
+    showToast(u.nome+' entrou na conversa.','success');
+}
+async function removerPessoa(i){
+  const c = chamadoAberto;
+  const p = parts(c)[i]; if(!p) return;
+  if(!confirm('Tirar '+p.nome+' da conversa?')) return;
+  const nova = parts(c).filter((_,n)=>n!==i);
+  if(await salvarPessoas(nova, '<b>'+esc(meuNome())+'</b> tirou <b>'+esc(p.nome)+'</b> da conversa.'))
+    showToast(p.nome+' saiu da conversa.','info');
 }
 
 // ════════════════════════════════════════════════
@@ -1191,11 +1369,14 @@ function renderCabecalho(){
   const partes = [fmtNum(c.numero)];
   if(modo==='pcp') partes.push(c.solicitante);
   else partes.push(c.assumido_por ? 'Atendimento: '+c.assumido_por : 'Ainda sem atendente');
+  if(parts(c).length) partes.push('+ '+parts(c).map(p=>p.nome.split(' ')[0]).join(', '));
   if(c.categoria) partes.push(c.categoria);
   if(c.pedido) partes.push('Pedido '+c.pedido);
   $('chMeta').textContent = partes.join(' · ');
 
+  const nP = parts(c).length;
   let acoes = `<span class="pill ${c.status}">${c.status==='aberto'?'Aguardando':c.status==='andamento'?'Em conversa':'Resolvida'}</span>`;
+  acoes += `<button class="btn-acao" onclick="abrirModalPessoas()" title="Quem participa da conversa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg><span class="rot">Pessoas${nP?' ('+(nP+1)+')':''}</span></button>`;
   if(modo==='pcp'){
     acoes += pillDono(c, false);
     if(!c.assumido_por){
@@ -1219,7 +1400,7 @@ function renderMsgs(irAoFim){
       : '<div class="vazio">Sem mensagens.</div>';
     return;
   }
-  const eu = minhaSide();
+  const eu = minhaSide(), euNome = meuNome();
   let html = '', diaAtual = '';
   msgs.forEach(m=>{
     const d = diaLabel(m.criado_em);
@@ -1228,7 +1409,9 @@ function renderMsgs(irAoFim){
       html += `<div class="sys">${m.texto}</div>`;
       return;
     }
-    const mine = m.autor_tipo === eu;
+    // Com mais de uma pessoa do mesmo lado, comparar so o lado faria a mensagem
+    // do colega aparecer como se fosse minha.
+    const mine = m.autor_tipo === eu && m.autor_nome === euNome;
     let fotos = [];
     try{ fotos = m.fotos ? JSON.parse(m.fotos) : []; }catch(e){}
     html += `<div class="msg ${mine?'mine':'theirs'} ${m._pend?'pend':''}">
@@ -1243,10 +1426,40 @@ function renderMsgs(irAoFim){
 }
 
 // ── COMPOSER ──
-function renderComposer(){
+// Qual das tres caras a caixa de baixo tem agora.
+function estadoComposer(c){
+  if(!c) return 'nenhum';
+  if(!c._rascunho && modo==='pcp' && c.assumido_por && c.assumido_por !== adminNome && !c._escrevendo) return 'outro';
+  if(c.status === 'resolvido' && !c._escrevendo) return 'resolvido';
+  return 'normal';
+}
+
+function renderComposer(forcar){
   const c = chamadoAberto;
   const el = $('composer');
-  if(!c._rascunho && modo==='pcp' && c.assumido_por && c.assumido_por !== adminNome && !c._escrevendo){
+  if(!c) return;
+
+  // Redesenhar o <textarea> apaga o cursor de quem esta digitando. O evento de
+  // realtime do proprio envio chega uns 2s depois; se a cara da caixa nao mudou,
+  // nao se toca no DOM. Quando precisa mudar, o que estava escrito volta.
+  const estado = estadoComposer(c);
+  if(!forcar && el.dataset.estado === estado && el.dataset.chamado === String(c.id)) return;
+
+  // O que estava na caixa pertence a conversa ANTERIOR — guarda com o id dela.
+  const antigo = $('compTxt');
+  const idAntigo = el.dataset.chamado;
+  const mesmaConversa = idAntigo === String(c.id);
+  const guarda = antigo ? {ini:antigo.selectionStart, fim:antigo.selectionEnd,
+                           focado: document.activeElement === antigo} : null;
+  if(antigo && idAntigo){
+    if(antigo.value.trim()) rascunhos[idAntigo] = antigo.value;
+    else delete rascunhos[idAntigo];
+  }
+
+  el.dataset.estado = estado;
+  el.dataset.chamado = String(c.id);
+
+  if(estado === 'outro'){
     el.innerHTML = `<div class="comp-fechado">
       Esta conversa está com <b>${esc(c.assumido_por)}</b>${c.assumido_em?' desde '+horaCurta(c.assumido_em):''}.
       <br>Responder por cima costuma virar resposta repetida para o comercial.
@@ -1254,7 +1467,7 @@ function renderComposer(){
     </div>`;
     return;
   }
-  if(c.status === 'resolvido' && !c._escrevendo){
+  if(estado === 'resolvido'){
     el.innerHTML = `<div class="comp-fechado">
       Conversa marcada como resolvida${c.resolvido_por?' por <b>'+esc(c.resolvido_por)+'</b>':''}.
       <br>Se ainda faltou alguma coisa, é só escrever de novo — a conversa reabre.
@@ -1288,6 +1501,17 @@ function renderComposer(){
   $('compFile').addEventListener('change', e=>{ processarFotos(Array.from(e.target.files)); e.target.value=''; });
   $('compDica').textContent = ehToque() ? '' : 'Enter envia · Shift+Enter quebra linha';
   renderPrevComp();
+
+  const pendente = rascunhos[String(c.id)];
+  if(pendente){
+    txt.value = pendente;
+    txt.style.height = 'auto';
+    txt.style.height = Math.min(txt.scrollHeight,140)+'px';
+  }
+  if(guarda && guarda.focado && mesmaConversa){
+    txt.focus();
+    try{ txt.setSelectionRange(guarda.ini, guarda.fim); }catch(e){}
+  }
 }
 // WebView antiga (uso em file:// no Android) as vezes nao tem matchMedia
 function ehToque(){
@@ -1345,6 +1569,7 @@ async function enviarMsg(){
   }
   msgs = msgs.filter(m=>m.id !== pend.id);
   if(data && data[0]) addMsg(data[0]);
+  delete rascunhos[String(c.id)];
   renderMsgs(true);
 
   // Atualiza o cabecalho do chamado: e por ele que a lista se ordena.
@@ -1353,15 +1578,13 @@ async function enviarMsg(){
     ultima_msg_autor: eu,
     ultima_msg_txt: texto ? texto.slice(0,120) : '[foto]'
   };
+  patch.visto = vistoAtualizado(c, iso);
   if(eu==='pcp'){
-    patch.visto_pcp_em = iso;
     // Conversa que o proprio PCP abriu nao entra na media de 1a resposta.
     if(!c.primeira_resposta_em && msgs.some(m=>m.autor_tipo==='comercial')) patch.primeira_resposta_em = iso;
     if(c.status!=='resolvido') patch.status = 'andamento';
     // Responder ja e' assumir: ninguem precisa lembrar de clicar no botao antes.
     if(!c.assumido_por){ patch.assumido_por = nome; patch.assumido_em = iso; }
-  } else {
-    patch.visto_sol_em = iso;
   }
   if(c.status==='resolvido'){
     delete c._escrevendo;
@@ -1422,10 +1645,9 @@ async function marcarVisto(){
   if(!naoLidos[c.id]) return;
   delete naoLidos[c.id];
   atualizarTitulo(); renderLista();
-  const campo = modo==='pcp' ? 'visto_pcp_em' : 'visto_sol_em';
   const iso = nowIso();
-  c[campo] = iso;
-  await sb.from('chamados').update({[campo]:iso}).eq('id', c.id);
+  c.visto = vistoAtualizado(c, iso);
+  await sb.from('chamados').update({visto: c.visto}).eq('id', c.id);
 }
 
 // ════════════════════════════════════════════════
@@ -1612,7 +1834,7 @@ function onMsgRT(payload){
 function onChamadoRT(payload){
   const c = payload.new;
   if(!c) return;
-  if(modo==='sol' && String(c.user_id) !== String(selectedUser.id)) return;
+  if(modo==='sol' && !souParticipante(c)) return;
   if(payload.eventType === 'INSERT'){
     if(!chamados.some(x=>x.id===c.id)){
       chamados.unshift(c);
@@ -1643,6 +1865,7 @@ document.addEventListener('keydown', e=>{
   if(e.key !== 'Escape') return;
   if($('modalImg').classList.contains('show')) return fecharModalImg();
   if($('modalTransf').classList.contains('show')) return fecharModalTransf();
+  if($('modalPessoas').classList.contains('show')) return fecharModalPessoas();
   if($('modalCodigos').classList.contains('show')) return fecharModalCodigos();
   if($('modalCodigo').classList.contains('show')) return fecharModalCodigo();
   if($('modalUser').classList.contains('show')) return fecharModalUser();
