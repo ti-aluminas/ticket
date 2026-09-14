@@ -228,6 +228,8 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .msg-autor{font-size:11px;font-weight:600;color:var(--accent)}
 .msg.mine .msg-autor{color:var(--text-muted)}
 .msg-fotos{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.visto-linha{align-self:flex-end;font-size:10px;font-family:'Roboto Mono',monospace;color:var(--text-dim);padding:0 2px 4px;min-height:12px}
+.visto-linha.lido{color:var(--accent);opacity:.75}
 .msg-fotos img{width:92px;height:92px;object-fit:cover;border:1px solid var(--border);cursor:pointer;display:block}
 .msg.pend .bubble{opacity:.6}
 
@@ -546,7 +548,7 @@ const SOBE_DIRETO = 1.5 * 1024 * 1024;
 const ADMINS = {'1964':'João Pedro','2404':'Bernardo','1010':'Huriel','2424':'Marco Túlio','1987':'Robson Adeilton','2469':'Ramon','6924':'Eduardo'};
 
 // Trocar a cada deploy. E o que faz uma aba velha se reconhecer desatualizada.
-const APP_VERSION = '2026.09.14-0016';
+const APP_VERSION = '2026.09.14-0018';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -1653,6 +1655,13 @@ async function devolverFila(){
   if(ok) showToast('Devolvida à fila.','info');
 }
 
+// Todo mundo da conversa menos eu — e' de quem espero a leitura.
+function outrosNaConversa(c){
+  const eu = meuNome();
+  const nomes = [c.solicitante, c.assumido_por].concat(parts(c).map(p=>p.nome));
+  return Array.from(new Set(nomes.filter(n => n && n !== eu)));
+}
+
 // Guarda de entrada: o id e' o mesmo nos dois caminhos, entao basta conferir.
 function addMsg(m){
   if(!m || !m.id) return false;
@@ -1660,6 +1669,35 @@ function addMsg(m){
   msgs.push(m);
   msgs.sort((a,b)=>new Date(a.criado_em)-new Date(b.criado_em));
   return true;
+}
+
+function renderVisto(){
+  const el = $('vistoLinha');
+  const c = chamadoAberto;
+  if(!el || !c || c._rascunho) return;
+
+  const eu = meuNome();
+  let minha = null;
+  for(let i = msgs.length - 1; i >= 0; i--){
+    const m = msgs[i];
+    if(m.autor_tipo !== 'sistema' && m.autor_nome === eu && !m._pend){ minha = m; break; }
+  }
+  if(!minha){ el.textContent = ''; el.className = 'visto-linha'; return; }
+
+  const quando = Date.parse(minha.criado_em);
+  const visto = c.visto || {};
+  const leram = outrosNaConversa(c).filter(n=>{
+    const t = Date.parse(visto[n]);
+    return !isNaN(t) && t >= quando;
+  });
+
+  if(!leram.length){ el.textContent = 'enviado'; el.className = 'visto-linha'; return; }
+  el.className = 'visto-linha lido';
+  el.textContent = leram.length === 1
+    ? 'visto por ' + leram[0] + ' · ' + horaCurta(visto[leram[0]])
+    : leram.length === 2
+      ? 'visto por ' + leram[0] + ' e ' + leram[1]
+      : 'visto por ' + leram[0] + ' e mais ' + (leram.length - 1);
 }
 
 function renderCabecalho(){
@@ -1732,7 +1770,8 @@ function renderMsgs(irAoFim){
       <div class="msg-meta">${m._pend?'enviando...':horaCurta(m.criado_em)}</div>
     </div>`;
   });
-  el.innerHTML = html;
+  el.innerHTML = html + '<div class="visto-linha" id="vistoLinha"></div>';
+  renderVisto();
   if(irAoFim !== false) el.scrollTop = el.scrollHeight;
 }
 
@@ -1970,7 +2009,12 @@ async function reabrir(){
 
 async function marcarVisto(){
   const c = chamadoAberto; if(!c || c._rascunho) return;
-  if(!naoLidos[c.id]) return;
+  // Antes so gravava quando havia nao lida. Quem estava com a conversa
+  // aberta na tela no momento em que a mensagem chegou nunca era
+  // registrado como leitor — e' exatamente quem precisa aparecer.
+  const v = meuVisto(c), u = c.ultima_msg_em;
+  const precisa = naoLidos[c.id] || !v || (u && Date.parse(u) > Date.parse(v));
+  if(!precisa) return;
   delete naoLidos[c.id];
   atualizarTitulo(); renderLista();
   const iso = nowIso();
@@ -2124,11 +2168,11 @@ function assuntoDaMensagem(texto){
 
 async function criarChamado(texto, fotos, iso){
   const destino = chamadoAberto && chamadoAberto._destino;   // PCP escrevendo primeiro
-  const {data:last} = await sb.from('chamados').select('numero').order('numero',{ascending:false}).limit(1);
-  const numero = (last && last.length && last[0].numero) ? last[0].numero+1 : 1;
 
+  // Sem 'numero': quem numera e' a sequence do banco, e o insert devolve
+  // o numero que coube a esta conversa.
   const base = {
-    numero, assunto: assuntoDaMensagem(texto),
+    assunto: assuntoDaMensagem(texto),
     criado_em:iso, ultima_msg_em:iso,
     ultima_msg_txt: texto ? texto.slice(0,120) : '[foto]'
   };
@@ -2150,9 +2194,15 @@ async function criarChamado(texto, fotos, iso){
              status:'aberto', ultima_msg_autor:'comercial', visto:{[selectedUser.nome]: iso}};
   }
 
-  const {data, error} = await sb.from('chamados').insert([linha]).select();
-  if(error) return {error};
-  return {chamado: data[0]};
+  // Rede de seguranca: se uma aba antiga tiver gravado um numero na mao,
+  // a sequence pode esbarrar nele uma vez. Tentar de novo ja' resolve,
+  // porque o proximo nextval vem adiante.
+  for(let tentativa = 0; tentativa < 3; tentativa++){
+    const {data, error} = await sb.from('chamados').insert([linha]).select();
+    if(!error) return {chamado: data[0]};
+    const dup = error.code === '23505' || /duplicate key/i.test(error.message||'');
+    if(!dup || tentativa === 2) return {error};
+  }
 }
 
 // Renomear (PCP): o título é o que a lista mostra, então vale poder arrumar.
@@ -2247,7 +2297,9 @@ function onChamadoRT(payload){
   chamados.sort((a,b)=>new Date(b.ultima_msg_em||b.criado_em)-new Date(a.ultima_msg_em||a.criado_em));
   if(chamadoAberto && chamadoAberto.id===c.id){
     chamadoAberto = c;
-    renderCabecalho(); renderComposer();
+    // So a linha do visto: redesenhar as mensagens jogaria a rolagem
+    // de volta para o topo no meio da leitura.
+    renderCabecalho(); renderComposer(); renderVisto();
   }
   renderFiltros(); renderLista();
 }
