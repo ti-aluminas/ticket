@@ -112,6 +112,8 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .pin-sub{font-size:11px;color:var(--text-muted);margin:14px 0 8px}
 .lembrar{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);cursor:pointer;margin-bottom:16px;text-align:left}
 .lembrar input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.novo-user{display:flex;gap:8px;margin-bottom:10px}
+.novo-user .finput{flex:1}
 .cod-item{padding:11px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
 .cod-item:last-child{border-bottom:none}
 .cod-nome{flex:1;min-width:0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -419,8 +421,14 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
   <div class="modal-box wide">
     <div class="mhead"><h3>Códigos do comercial</h3><button class="mclose" onclick="fecharModalCodigos()">×</button></div>
     <div class="mbody">
+      <div class="novo-user">
+        <input class="finput" id="novoUserNome" placeholder="Nome da pessoa" maxlength="60"
+               onkeydown="if(event.key==='Enter')criarUsuario()">
+        <button class="btn-confirm" style="flex:0 0 auto;padding:10px 16px" onclick="criarUsuario()">Cadastrar</button>
+      </div>
+      <div class="fhint" style="margin:-4px 0 14px">Cadastra na mesma lista do sistema de tickets. A pessoa cria o próprio código no primeiro acesso.</div>
       <input class="user-search" id="codBusca" placeholder="Buscar pelo nome..." oninput="renderCodList()">
-      <div class="user-list" id="codList" style="max-height:340px"></div>
+      <div class="user-list" id="codList" style="max-height:300px"></div>
       <div class="fhint" style="margin-top:10px">Redefinir apaga o código atual. Na próxima entrada a pessoa cria um novo — você não precisa inventar nem passar código nenhum.</div>
     </div>
   </div>
@@ -520,7 +528,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const ADMINS = {'1964':'João Pedro','2404':'Bernardo','1010':'Huriel','2424':'Marco Túlio','1987':'Robson Adeilton','2469':'Ramon'};
 
 // Trocar a cada deploy. E o que faz uma aba velha se reconhecer desatualizada.
-const APP_VERSION = '2026.09.14-0010';
+const APP_VERSION = '2026.09.14-0011';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -706,7 +714,7 @@ async function entrarSolicitante(){
 async function escolherDestinatario(){
   userPickerFim = 'destino';
   $('userTitulo').textContent = 'Falar com quem?';
-  $('userHint').textContent = 'A conversa vai aparecer na lista dessa pessoa, com aviso de mensagem nova.';
+  $('userHint').textContent = 'Conversa com alguém do PCP fica interna: o comercial não vê.';
   await abrirListaUsers();
 }
 
@@ -723,13 +731,30 @@ function fecharModalUser(){ $('modalUser').classList.remove('show'); }
 function renderUserList(){
   const b = ($('userBusca').value||'').trim().toLowerCase();
   const lista = allUsers.filter(u=>!b || u.nome.toLowerCase().includes(b));
-  if(!lista.length){ $('userList').innerHTML = '<div class="vazio">Nenhum nome encontrado.</div>'; return; }
-  const fn = userPickerFim === 'destino' ? 'escolherDestino' : 'escolherUser';
-  $('userList').innerHTML = lista.map(u=>`
-    <div class="user-item" onclick="${fn}('${u.id}')">
+  if(!lista.length && !(userPickerFim==='destino' && modo==='pcp')){
+    $('userList').innerHTML = '<div class="vazio">Nenhum nome encontrado.</div>'; return;
+  }
+  const destino = userPickerFim === 'destino';
+  let html = '';
+
+  // Abrindo conversa, o PCP tambem pode chamar o proprio pessoal.
+  if(destino && modo === 'pcp'){
+    const colegas = Object.values(ADMINS).filter(n=>n !== adminNome)
+      .filter(n=>!b || n.toLowerCase().includes(b));
+    html += colegas.map(n=>`
+      <div class="user-item" onclick="escolherDestinoPcp('${esc(n).replace(/'/g,"&#39;")}')">
+        <span class="avatar">${esc(initials(n))}</span>
+        <div><div class="un">${esc(n)}</div><div class="us">PCP · conversa interna</div></div>
+      </div>`).join('');
+  }
+
+  html += lista.map(u=>`
+    <div class="user-item" onclick="${destino?'escolherDestino':'escolherUser'}('${u.id}')">
       <span class="avatar">${esc(initials(u.nome))}</span>
-      <div><div class="un">${esc(u.nome)}</div>${u.setor?`<div class="us">${esc(u.setor)}</div>`:''}</div>
+      <div><div class="un">${esc(u.nome)}</div><div class="us">${esc(u.setor||'Comercial')}</div></div>
     </div>`).join('');
+
+  $('userList').innerHTML = html || '<div class="vazio">Nenhum nome encontrado.</div>';
 }
 async function escolherUser(id){
   const u = allUsers.find(x=>String(x.id)===String(id));
@@ -883,6 +908,29 @@ function renderCodList(){
       ${u.tem?`<button class="btn-acao warn" onclick="redefinirCodigo('${u.id}')">Redefinir</button>`:''}
     </div>`).join('');
 }
+// Cadastro de pessoa. Mesma tabela e mesmas colunas do sistema de tickets,
+// entao quem entra aqui tambem passa a existir la.
+async function criarUsuario(){
+  const el = $('novoUserNome');
+  const nome = (el.value||'').trim();
+  if(!nome){ showToast('Digite o nome.','error'); return; }
+  if(usersCodigos.some(u=>u.nome.toLowerCase() === nome.toLowerCase())){
+    showToast('Já existe alguém com esse nome.','error'); return;
+  }
+  showOverlay(true);
+  const {data, error} = await sb.from('ticket_users').insert([{nome}]).select();
+  showOverlay(false);
+  if(error){ showToast('Não deu para cadastrar: '+error.message,'error'); return; }
+  el.value = '';
+  const novo = data[0];
+  usersCodigos.push({...novo, tem:false});
+  usersCodigos.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  allUsers.push(novo);
+  allUsers.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  renderCodList();
+  showToast(nome+' cadastrado. Falta ela criar o código.','success');
+}
+
 async function redefinirCodigo(id){
   const u = usersCodigos.find(x=>String(x.id)===String(id));
   if(!u) return;
@@ -1116,6 +1164,7 @@ function renderLista(){
       </div>
       <div class="ci-l3">
         <span class="pill ${c.status}">${c.status==='aberto'?'Aguardando':c.status==='andamento'?'Em conversa':'Resolvida'}</span>
+        ${c.setor==='PCP'?'<span class="pill tag">interna</span>':''}
         ${c.pedido?`<span class="pill tag">${esc(c.pedido)}</span>`:''}
         ${modo==='pcp' ? pillDono(c, true) : ''}
         ${modo==='pcp'?`<span class="ci-quem">${esc(c.solicitante)}</span>`:`<span class="ci-quem">${esc(c.categoria||'')}</span>`}
@@ -1370,14 +1419,16 @@ function renderCabecalho(){
   $('chAssunto').textContent = c.assunto;
   if(c._rascunho){
     $('chAssunto').textContent = c._destino ? 'Nova conversa com '+c._destino.nome : 'Nova conversa';
-    $('chMeta').textContent = c._destino
-      ? 'Escreva abaixo — ela recebe assim que você enviar'
-      : 'Escreva abaixo — o PCP recebe assim que você enviar';
+    $('chMeta').textContent = !c._destino
+      ? 'Escreva abaixo — o PCP recebe assim que você enviar'
+      : c._destino.lado === 'pcp'
+        ? 'Conversa interna do PCP — o comercial não vê'
+        : 'Escreva abaixo — ela recebe assim que você enviar';
     $('chAcoes').innerHTML = '';
     return;
   }
   const partes = [fmtNum(c.numero)];
-  if(modo==='pcp') partes.push(c.solicitante);
+  if(modo==='pcp') partes.push(c.setor==='PCP' ? 'Interna · '+c.solicitante : c.solicitante);
   else partes.push(c.assumido_por ? 'Atendimento: '+c.assumido_por : 'Ainda sem atendente');
   if(parts(c).length) partes.push('+ '+parts(c).map(p=>p.nome.split(' ')[0]).join(', '));
   if(c.categoria) partes.push(c.categoria);
@@ -1554,6 +1605,8 @@ async function enviarMsg(){
     if(r.error){ showToast('Não deu para abrir a conversa: '+r.error.message,'error'); return; }
     c = chamadoAberto = r.chamado;
     chamados.unshift(c);
+    // Senao ela nasce fora do filtro aberto (Aguardando) e some da lista.
+    filtro = modo==='pcp' ? 'minhas' : 'ativas';
     renderCabecalho(); renderFiltros(); renderLista();
   }
 
@@ -1739,7 +1792,11 @@ function escolherDestino(id){
   const u = allUsers.find(x=>String(x.id)===String(id));
   if(!u) return;
   fecharModalUser();
-  abrirRascunho({id:u.id, nome:u.nome});
+  abrirRascunho({id:u.id, nome:u.nome, lado:'comercial'});
+}
+function escolherDestinoPcp(nome){
+  fecharModalUser();
+  abrirRascunho({id:null, nome, lado:'pcp'});
 }
 
 function abrirRascunho(destino){
@@ -1768,16 +1825,27 @@ async function criarChamado(texto, fotos, iso){
   const numero = (last && last.length && last[0].numero) ? last[0].numero+1 : 1;
 
   const base = {
-    numero, setor:'Comercial', assunto: assuntoDaMensagem(texto),
+    numero, assunto: assuntoDaMensagem(texto),
     criado_em:iso, ultima_msg_em:iso,
     ultima_msg_txt: texto ? texto.slice(0,120) : '[foto]'
   };
-  const linha = destino
+
+  let linha;
+  if(destino && destino.lado === 'pcp'){
+    // Interna: sem user_id, entao nenhuma consulta do comercial a alcanca.
+    linha = {...base, setor:'PCP', user_id:null, solicitante:adminNome, status:'andamento',
+             ultima_msg_autor:'pcp', assumido_por:adminNome, assumido_em:iso,
+             participantes:[{id:null, nome:destino.nome, lado:'pcp', por:adminNome, em:iso}],
+             visto:{[adminNome]: iso}};
+  } else if(destino){
     // Quem abre já é o dono, e o não lido fica do lado de quem vai receber.
-    ? {...base, user_id:destino.id, solicitante:destino.nome, status:'andamento',
-       ultima_msg_autor:'pcp', assumido_por:adminNome, assumido_em:iso, visto_pcp_em:iso}
-    : {...base, user_id:selectedUser.id, solicitante:selectedUser.nome, status:'aberto',
-       ultima_msg_autor:'comercial', visto_sol_em:iso};
+    linha = {...base, setor:'Comercial', user_id:destino.id, solicitante:destino.nome,
+             status:'andamento', ultima_msg_autor:'pcp',
+             assumido_por:adminNome, assumido_em:iso, visto:{[adminNome]: iso}};
+  } else {
+    linha = {...base, setor:'Comercial', user_id:selectedUser.id, solicitante:selectedUser.nome,
+             status:'aberto', ultima_msg_autor:'comercial', visto:{[selectedUser.nome]: iso}};
+  }
 
   const {data, error} = await sb.from('chamados').insert([linha]).select();
   if(error) return {error};
