@@ -1235,7 +1235,7 @@ const ADMINS = {'1964':'João Pedro','2404':'Bernardo','1010':'Huriel','2424':'M
 
 // Versao deste arquivo. Trocar a cada deploy — e o que permite uma aba antiga
 // se reconhecer como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.09.14-1240';
+const APP_VERSION = '2026.09.14-1830';
 
 // Momento em que a medicao de execucao passa a valer. Fica em 12:30 de
 // 30/07/2026 e nao no horario do deploy (10:53) porque as duas horas seguintes
@@ -2467,11 +2467,25 @@ async function confirmarReabrir(id) {
 }
 
 // ── ADMIN: TICKETS ──
+// O servidor devolve no maximo 1000 linhas por requisicao e corta o resto em
+// silencio, sem erro. Com a tabela passando de 1000 os tickets mais antigos
+// sumiam do painel e das metricas. Aqui a busca vai de 500 em 500 ate acabar.
 async function loadTickets() {
   document.getElementById('adminSub').textContent = 'Carregando...';
-  const {data,error} = await sb.from('tickets').select('*').order('criado_em',{ascending:false});
-  if(error){ showToast('Erro: '+error.message,'error'); return; }
-  allTickets = data||[]; atualizarFiltrosDropdowns(); renderTickets();
+  const PAGINA = 500;
+  const acc = [];
+  for (let de = 0; ; de += PAGINA) {
+    const {data, error} = await sb.from('tickets')
+      .select('*')
+      .order('criado_em', {ascending:false})
+      .order('id', {ascending:false})   // desempate: sem isso, criado_em igual embaralha entre paginas
+      .range(de, de + PAGINA - 1);
+    if(error){ showToast('Erro: '+error.message,'error'); return; }
+    acc.push(...(data||[]));
+    if (!data || data.length < PAGINA) break;
+    if (de > 50000) break;              // trava de seguranca
+  }
+  allTickets = acc; atualizarFiltrosDropdowns(); renderTickets();
   // Marca o teto conhecido para a varredura não avisar de ticket antigo
   const maior = allTickets.reduce((m,t)=> Math.max(m, t.numero||0), 0);
   if (maior > _ultimoNumeroVisto) _ultimoNumeroVisto = maior;
