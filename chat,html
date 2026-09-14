@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aluminas · Conversas</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#222;
+  --border:#2e2e2e; --border-light:#3a3a3a; --accent:#c0922a;
+  --text:#e8e8e8; --text-muted:#888; --text-dim:#555;
+  --green:#43a047; --red:#e53935; --yellow:#f9a825;
+  --blue:#64b5f6;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;display:flex;flex-direction:column;overflow:hidden}
+
+/* SCROLLBAR */
+*{scrollbar-width:thin;scrollbar-color:var(--border-light) transparent}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-light);border:2px solid var(--bg);background-clip:padding-box;min-height:40px}
+::-webkit-scrollbar-thumb:hover{background:#4d4d4d;border:2px solid var(--bg);background-clip:padding-box}
+::-webkit-scrollbar-corner{background:transparent}
+::-webkit-scrollbar-button{display:none;width:0;height:0}
+.side-list,.msgs,.mbody{scrollbar-color:var(--border-light) transparent}
+.side-list::-webkit-scrollbar-thumb,.msgs::-webkit-scrollbar-thumb,.mbody::-webkit-scrollbar-thumb{border-color:var(--surface)}
+
+/* HEADER */
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0;z-index:50}
+.logo-mark{width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ht h1{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.ht span{font-size:11px;color:var(--text-muted);font-family:'Roboto Mono',monospace}
+.hr{margin-left:auto;display:flex;align-items:center;gap:10px}
+.clock{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--accent);background:var(--surface2);border:1px solid var(--border);padding:5px 10px}
+.mbadge{font-size:11px;font-weight:600;padding:4px 10px;letter-spacing:.06em;text-transform:uppercase}
+.mbadge.sol{background:rgba(192,146,42,.15);border:1px solid rgba(192,146,42,.3);color:var(--accent)}
+.mbadge.adm{background:rgba(67,160,71,.15);border:1px solid rgba(67,160,71,.3);color:var(--green)}
+.btn-sair{font-size:11px;color:var(--text-muted);background:none;border:1px solid var(--border);padding:4px 10px;cursor:pointer;font-family:'Inter',sans-serif}
+.btn-sair:hover{color:var(--text);border-color:var(--border-light)}
+.btn-link{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);background:rgba(192,146,42,.1);border:1px solid rgba(192,146,42,.35);padding:4px 11px;cursor:pointer;font-family:'Inter',sans-serif;text-decoration:none}
+.btn-link:hover{background:rgba(192,146,42,.2)}
+.btn-link svg{width:13px;height:13px}
+.rt-dot{width:7px;height:7px;background:var(--green);flex-shrink:0}
+.rt-dot.off{background:var(--red)}
+.rt-dot.wait{background:var(--yellow)}
+@media(max-width:760px){.btn-link .rot{display:none}.btn-link{padding:4px 8px}.clock{display:none}header{padding:10px 12px}}
+
+/* TELA INICIAL */
+.mode-screen{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 20px;overflow-y:auto}
+.mode-card{background:var(--surface);border:1px solid var(--border);padding:36px 32px;max-width:420px;width:100%;text-align:center}
+.mode-card h2{font-size:18px;font-weight:700;margin-bottom:6px}
+.mode-card p.sub{font-size:13px;color:var(--text-muted);margin-bottom:24px}
+.mode-retomar{display:flex;align-items:center;gap:12px;width:100%;background:rgba(192,146,42,.1);border:1px solid rgba(192,146,42,.4);padding:12px 14px;cursor:pointer;color:var(--accent);font-family:'Inter',sans-serif;text-align:left;margin-bottom:10px}
+.mode-retomar:hover{background:rgba(192,146,42,.18)}
+.mode-retomar .avatar{width:34px;height:34px;font-size:11px;background:rgba(192,146,42,.2)}
+.mr-txt{flex:1;display:flex;flex-direction:column;gap:1px;min-width:0}
+.mr-label{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)}
+.mr-nome{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mode-btn{display:block;width:100%;background:var(--surface2);border:2px solid var(--border);padding:22px 18px;cursor:pointer;text-align:center;color:var(--text);font-family:'Inter',sans-serif;transition:border-color .15s,background .15s}
+.mode-btn:hover{border-color:var(--accent);background:rgba(192,146,42,.05)}
+.mode-btn.principal{border-color:rgba(192,146,42,.35)}
+.mode-btn .icon{display:block;margin-bottom:10px;color:var(--accent)}
+.mode-btn .icon svg{width:26px;height:26px}
+.mode-btn .title{font-size:15px;font-weight:700;display:block;margin-bottom:4px}
+.mode-btn .desc{font-size:11px;color:var(--text-muted);line-height:1.4}
+.mode-admin{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:none;border:none;color:var(--text-dim);font-size:12px;font-family:'Inter',sans-serif;padding:14px 8px 2px;cursor:pointer}
+.mode-admin:hover{color:var(--text-muted)}
+.mode-admin strong{font-weight:600}
+.mode-resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:22px;padding-top:18px;border-top:1px solid var(--border)}
+.mr-item{display:flex;flex-direction:column;gap:3px}
+.mr-val{font-size:17px;font-weight:700;font-family:'Roboto Mono',monospace;color:var(--text-muted);line-height:1;transition:color .3s}
+.mr-val.carregado{color:var(--accent)}
+.mr-cap{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--text-dim)}
+
+/* MODAL BASE */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;align-items:center;justify-content:center;padding:20px}
+.modal-bg.show{display:flex}
+#modalImg{z-index:600}
+.modal-box{background:var(--surface);border:1px solid var(--border);width:100%;max-width:380px}
+.modal-box.wide{max-width:560px;max-height:90vh;display:flex;flex-direction:column}
+.modal-box.img-box{max-width:600px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column}
+.mhead{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.mhead h3{font-size:15px;font-weight:700}
+.mclose{background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1}
+.mclose:hover{color:var(--text)}
+.mbody{padding:20px;overflow-y:auto;flex:1}
+.mfoot{padding:14px 20px;border-top:1px solid var(--border);flex-shrink:0;background:var(--surface2)}
+.modal-err{font-size:12px;color:var(--red);margin-top:-6px;margin-bottom:10px;display:none}
+.modal-err.show{display:block}
+.modal-btns{display:flex;gap:8px}
+.btn-confirm{flex:1;background:var(--accent);border:none;color:#000;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif}
+.btn-confirm:hover{background:#d4a030}
+.btn-confirm:disabled{opacity:.5;cursor:not-allowed}
+.btn-cancel{background:none;border:1px solid var(--border);color:var(--text-muted);padding:10px 16px;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif}
+.btn-cancel:hover{color:var(--text);border-color:var(--border-light)}
+
+/* PIN */
+.senha-box{max-width:340px;padding:30px 28px;text-align:center}
+.senha-ico{width:44px;height:44px;margin:0 auto 14px;border:1px solid rgba(192,146,42,.35);background:rgba(192,146,42,.08);color:var(--accent);display:flex;align-items:center;justify-content:center}
+.senha-ico svg{width:20px;height:20px}
+.senha-box h3{font-size:16px;font-weight:700;margin-bottom:5px}
+.senha-box p{font-size:12px;color:var(--text-muted);margin-bottom:20px}
+.pin-row{display:flex;gap:10px;justify-content:center;margin-bottom:16px}
+.pin-box{width:52px;height:60px;background:var(--surface2);border:2px solid var(--border);color:var(--text);font-size:24px;font-weight:700;font-family:'Roboto Mono',monospace;text-align:center;outline:none;caret-color:var(--accent)}
+.pin-box:focus{border-color:var(--accent);background:rgba(192,146,42,.06)}
+.pin-box.preenchido{border-color:var(--border-light)}
+.pin-sub{font-size:11px;color:var(--text-muted);margin:14px 0 8px}
+.lembrar{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);cursor:pointer;margin-bottom:16px;text-align:left}
+.lembrar input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.cod-item{padding:11px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.cod-item:last-child{border-bottom:none}
+.cod-nome{flex:1;min-width:0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cod-est{font-size:11px;font-family:'Roboto Mono',monospace;color:var(--text-dim);flex-shrink:0}
+.cod-est.on{color:var(--green)}
+
+/* LISTA DE USUÁRIOS */
+.user-search{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:9px 11px;font-size:13px;font-family:'Inter',sans-serif;outline:none;margin-bottom:10px}
+.user-search:focus{border-color:var(--accent)}
+.user-list{max-height:320px;overflow-y:auto;border:1px solid var(--border)}
+.user-item{padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;border-left:3px solid transparent}
+.user-item:hover{background:var(--surface2)}
+.user-item.sel{background:rgba(192,146,42,.1);border-left-color:var(--accent)}
+.user-item .un{font-size:13px;font-weight:600}
+.user-item .us{font-size:11px;color:var(--text-muted)}
+.avatar{width:28px;height:28px;background:var(--border-light);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--accent);flex-shrink:0}
+
+/* APP (duas colunas) */
+.app{flex:1;display:flex;min-height:0;overflow:hidden}
+.side{width:330px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
+.side-top{padding:12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.btn-novo{width:100%;background:var(--accent);border:none;color:#000;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:10px}
+.btn-novo:hover{background:#d4a030}
+.btn-novo svg{width:15px;height:15px}
+.busca{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 10px;font-size:13px;font-family:'Inter',sans-serif;outline:none}
+.busca:focus{border-color:var(--accent)}
+.filtros{display:flex;gap:0;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
+.fbtn{flex:1;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-muted);font-size:11px;font-weight:600;letter-spacing:.04em;padding:10px 6px;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;margin-bottom:-1px}
+.fbtn:hover{color:var(--text)}
+.fbtn.on{color:var(--accent);border-bottom-color:var(--accent)}
+.fbtn .ct{font-family:'Roboto Mono',monospace;opacity:.8}
+.side-list{flex:1;overflow-y:auto;min-height:0}
+.conv-item{padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;border-left:3px solid transparent;display:flex;flex-direction:column;gap:5px}
+.conv-item:hover{background:var(--surface2)}
+.conv-item.sel{background:rgba(192,146,42,.08);border-left-color:var(--accent)}
+.conv-item.novo{border-left-color:var(--red)}
+.ci-l1{display:flex;align-items:center;gap:8px}
+.ci-num{font-family:'Roboto Mono',monospace;font-size:11px;color:var(--text-dim);flex-shrink:0}
+.ci-assunto{font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ci-hora{font-size:10px;font-family:'Roboto Mono',monospace;color:var(--text-dim);flex-shrink:0}
+.ci-l2{display:flex;align-items:center;gap:8px}
+.ci-prev{flex:1;min-width:0;font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ci-prev b{color:var(--text-dim);font-weight:600}
+.ci-nao{background:var(--red);color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;padding:0 5px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ci-l3{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ci-quem{font-size:11px;color:var(--text-dim)}
+
+.pill{font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border:1px solid;white-space:nowrap}
+.pill.aberto{color:var(--yellow);border-color:rgba(249,168,37,.4);background:rgba(249,168,37,.1)}
+.pill.andamento{color:var(--blue);border-color:rgba(100,181,246,.4);background:rgba(100,181,246,.1)}
+.pill.resolvido{color:var(--green);border-color:rgba(67,160,71,.4);background:rgba(67,160,71,.1)}
+.pill.tag{color:var(--text-muted);border-color:var(--border-light);background:none;text-transform:none;letter-spacing:0;font-weight:500}
+
+.vazio{padding:40px 20px;text-align:center;color:var(--text-dim);font-size:13px;line-height:1.6}
+
+/* CONVERSA */
+.conv{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--bg)}
+.conv-vazia{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--text-dim);padding:30px;text-align:center}
+.conv-vazia svg{width:38px;height:38px;opacity:.5}
+.conv-head{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:12px;flex-shrink:0}
+.btn-voltar{display:none;background:none;border:1px solid var(--border);color:var(--text-muted);padding:6px 8px;cursor:pointer;line-height:0;flex-shrink:0}
+.btn-voltar svg{width:16px;height:16px}
+.ch-txt{flex:1;min-width:0}
+.ch-assunto{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ch-meta{font-size:11px;color:var(--text-muted);font-family:'Roboto Mono',monospace;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ch-acoes{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.btn-acao{background:none;border:1px solid var(--border);color:var(--text-muted);padding:6px 11px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;display:inline-flex;align-items:center;gap:5px}
+.btn-acao:hover{border-color:var(--border-light);color:var(--text)}
+.btn-acao svg{width:13px;height:13px}
+.btn-acao.ok:hover{border-color:var(--green);color:var(--green)}
+.btn-acao.warn:hover{border-color:var(--yellow);color:var(--yellow)}
+
+.msgs{flex:1;overflow-y:auto;padding:18px 16px 8px;display:flex;flex-direction:column;gap:12px;min-height:0}
+.dia{align-self:center;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);background:var(--surface);border:1px solid var(--border);padding:3px 12px;margin:4px 0}
+.sys{align-self:center;max-width:85%;text-align:center;font-size:11px;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);padding:6px 14px;line-height:1.5}
+.sys b{color:var(--text);font-weight:600}
+.msg{display:flex;flex-direction:column;max-width:74%;gap:4px}
+.msg.mine{align-self:flex-end;align-items:flex-end}
+.msg.theirs{align-self:flex-start}
+.bubble{background:var(--surface);border:1px solid var(--border);padding:9px 12px;font-size:13.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+.msg.mine .bubble{background:rgba(192,146,42,.12);border-color:rgba(192,146,42,.35)}
+.msg-meta{font-size:10px;font-family:'Roboto Mono',monospace;color:var(--text-dim);display:flex;gap:7px;align-items:center}
+.msg-autor{font-size:11px;font-weight:600;color:var(--accent)}
+.msg.mine .msg-autor{color:var(--text-muted)}
+.msg-fotos{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.msg-fotos img{width:92px;height:92px;object-fit:cover;border:1px solid var(--border);cursor:pointer;display:block}
+.msg.pend .bubble{opacity:.6}
+
+/* COMPOSER */
+.composer{border-top:1px solid var(--border);background:var(--surface);padding:10px 12px;flex-shrink:0}
+.comp-prev{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.foto-prev{position:relative;width:58px;height:58px}
+.foto-prev img{width:100%;height:100%;object-fit:cover;border:1px solid var(--border);display:block;cursor:pointer}
+.foto-prev .rm{position:absolute;top:-6px;right:-6px;width:19px;height:19px;background:var(--red);color:#fff;border:none;font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.comp-row{display:flex;align-items:flex-end;gap:8px}
+.comp-txt{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 12px;font-size:13.5px;font-family:'Inter',sans-serif;line-height:1.5;resize:none;outline:none;max-height:140px;min-height:42px}
+.comp-txt:focus{border-color:var(--accent)}
+.comp-btn{background:none;border:1px solid var(--border);color:var(--text-muted);width:42px;height:42px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.comp-btn:hover{border-color:var(--border-light);color:var(--text)}
+.comp-btn svg{width:17px;height:17px}
+.comp-btn.enviar{background:var(--accent);border-color:var(--accent);color:#000}
+.comp-btn.enviar:hover{background:#d4a030}
+.comp-btn.enviar:disabled{opacity:.4;cursor:not-allowed;background:var(--accent)}
+.comp-dica{font-size:10px;color:var(--text-dim);margin-top:6px;font-family:'Roboto Mono',monospace}
+.comp-fechado{padding:14px;text-align:center;font-size:12px;color:var(--text-muted);line-height:1.6}
+.comp-fechado button{background:none;border:1px solid var(--border-light);color:var(--accent);padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;margin-top:8px}
+.comp-fechado button:hover{background:rgba(192,146,42,.1)}
+
+/* FORM NOVA CONVERSA */
+.fgrp{margin-bottom:14px}
+.flabel{display:block;font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--text-muted);margin-bottom:6px}
+.finput,.fsel,.ftext{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 12px;font-size:13.5px;font-family:'Inter',sans-serif;outline:none}
+.finput:focus,.fsel:focus,.ftext:focus{border-color:var(--accent)}
+.finput.erro,.ftext.erro{border-color:var(--red)}
+.ftext{resize:vertical;min-height:100px;line-height:1.5}
+.fhint{font-size:11px;color:var(--text-dim);margin-top:5px}
+.fsel option{background:var(--surface2)}
+.up-area{border:1px dashed var(--border-light);padding:14px;text-align:center;cursor:pointer;color:var(--text-muted);font-size:12px}
+.up-area:hover,.up-area.drag{border-color:var(--accent);color:var(--accent)}
+
+/* IMAGEM */
+.img-wrap{overflow:auto;padding:10px;background:#000;display:flex;align-items:center;justify-content:center}
+.img-wrap img{max-width:100%;max-height:70vh;object-fit:contain}
+
+/* TOAST / OVERLAY / BANNER */
+.toast{position:fixed;bottom:20px;right:20px;padding:12px 18px;font-size:13px;font-weight:500;transform:translateY(60px);opacity:0;transition:all .3s;z-index:999;max-width:340px;pointer-events:none}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:#2e7d32;color:#fff}
+.toast.error{background:#b71c1c;color:#fff}
+.toast.info{background:var(--surface2);border:1px solid var(--accent);color:var(--text)}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;align-items:center;justify-content:center}
+.overlay.show{display:flex}
+.spin{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);animation:sp .8s linear infinite;border-radius:50%}
+@keyframes sp{to{transform:rotate(360deg)}}
+#verBanner{display:none;position:fixed;left:0;right:0;bottom:0;z-index:900;background:#b71c1c;color:#fff;padding:12px 16px;font-size:13px;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap}
+#verBanner.show{display:flex}
+#verBanner button{background:#fff;color:#b71c1c;border:none;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;letter-spacing:.04em;text-transform:uppercase}
+
+/* MOBILE: a lista e a conversa dividem a mesma tela */
+@media(max-width:860px){
+  .side{width:100%;border-right:none}
+  .conv{display:none}
+  .app.aberto .side{display:none}
+  .app.aberto .conv{display:flex}
+  .btn-voltar{display:flex}
+  .msg{max-width:88%}
+  .msgs{padding:14px 12px 6px}
+  .ch-acoes .rot{display:none}
+}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark"><img src="data:image/png;base64,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" style="width:30px;height:30px;object-fit:contain" alt="AL"></div>
+  <div class="ht"><h1>Aluminas</h1><span id="headerSub">Conversas · Comercial ⇄ PCP</span></div>
+  <div class="hr">
+    <span class="rt-dot wait" id="rtDot" title="Conexão em tempo real"></span>
+    <div class="clock" id="clock">--:--:--</div>
+    <div class="mbadge" id="modeBadge" style="display:none"></div>
+    <button class="btn-link" id="btnCodigos" style="display:none" onclick="abrirModalCodigos()" title="Ver e redefinir os códigos do comercial">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="1"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+      <span class="rot">Códigos</span>
+    </button>
+    <a class="btn-link" href="index.html" target="_blank" rel="noopener" title="Abrir o sistema de tickets">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+      <span class="rot">Tickets</span>
+    </a>
+    <button class="btn-sair" id="btnSair" style="display:none" onclick="voltarModo()">Sair</button>
+  </div>
+</header>
+
+<!-- TELA INICIAL -->
+<div class="mode-screen" id="modeScreen">
+  <div class="mode-card">
+    <h2>Como deseja acessar?</h2>
+    <p class="sub">Escolha seu perfil para continuar</p>
+
+    <button class="mode-retomar" id="btnRetomar" style="display:none" onclick="retomarSolicitante()">
+      <span class="avatar" id="retomarAvatar">—</span>
+      <span class="mr-txt">
+        <span class="mr-label">Continuar como</span>
+        <span class="mr-nome" id="retomarNome">—</span>
+      </span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </button>
+
+    <button class="mode-btn principal" onclick="entrarSolicitante()">
+      <span class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.8-.9L3 21l1.9-5.2A8.4 8.4 0 0 1 4 11.5a8.4 8.4 0 0 1 9-8.4 8.4 8.4 0 0 1 8 8.4z"/></svg>
+      </span>
+      <span class="title">Comercial</span>
+      <span class="desc">Falar com o PCP e acompanhar as respostas</span>
+    </button>
+
+    <button class="mode-admin" onclick="abrirModalSenha()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="10" rx="1"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+      <span><strong>Atendimento PCP</strong> — requer código</span>
+    </button>
+
+    <div class="mode-resumo">
+      <div class="mr-item"><span class="mr-val" id="resumoEspera">—</span><span class="mr-cap">aguardando PCP</span></div>
+      <div class="mr-item"><span class="mr-val" id="resumoHoje">—</span><span class="mr-cap">abertas hoje</span></div>
+      <div class="mr-item"><span class="mr-val" id="resumoTmr">—</span><span class="mr-cap">1ª resposta</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SENHA -->
+<div class="modal-bg" id="modalSenha">
+  <div class="modal-box senha-box">
+    <div class="senha-ico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="10" width="16" height="10" rx="1"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+    </div>
+    <h3>Código de Acesso</h3>
+    <p>Digite os 4 dígitos do seu código</p>
+    <div class="pin-row" id="pinRow">
+      <input class="pin-box" type="password" inputmode="numeric" autocomplete="off" maxlength="1" data-i="0">
+      <input class="pin-box" type="password" inputmode="numeric" autocomplete="off" maxlength="1" data-i="1">
+      <input class="pin-box" type="password" inputmode="numeric" autocomplete="off" maxlength="1" data-i="2">
+      <input class="pin-box" type="password" inputmode="numeric" autocomplete="off" maxlength="1" data-i="3">
+    </div>
+    <div class="modal-err" id="senhaErro">Código incorreto. Tente novamente.</div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="fecharModalSenha()">Cancelar</button>
+      <button class="btn-confirm" onclick="verificarSenha()">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ESCOLHER USUÁRIO -->
+<div class="modal-bg" id="modalUser">
+  <div class="modal-box">
+    <div class="mhead"><h3>Quem é você?</h3><button class="mclose" onclick="fecharModalUser()">×</button></div>
+    <div class="mbody">
+      <input class="user-search" id="userBusca" placeholder="Buscar pelo nome..." oninput="renderUserList()">
+      <div class="user-list" id="userList"></div>
+      <div class="fhint" style="margin-top:10px">Não achou seu nome? Fale com o PCP para ser cadastrado.</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CÓDIGO DO COMERCIAL -->
+<div class="modal-bg" id="modalCodigo">
+  <div class="modal-box senha-box">
+    <div class="senha-ico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="10" width="16" height="10" rx="1"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+    </div>
+    <h3 id="codTitulo">Seu código</h3>
+    <p id="codSub">—</p>
+    <div class="pin-row" id="codRow1">
+      <input class="pin-box c1" type="password" inputmode="numeric" autocomplete="off" maxlength="1">
+      <input class="pin-box c1" type="password" inputmode="numeric" autocomplete="off" maxlength="1">
+      <input class="pin-box c1" type="password" inputmode="numeric" autocomplete="off" maxlength="1">
+      <input class="pin-box c1" type="password" inputmode="numeric" autocomplete="off" maxlength="1">
+    </div>
+    <div id="codConfirmWrap" style="display:none">
+      <div class="pin-sub">Repita para confirmar</div>
+      <div class="pin-row" id="codRow2">
+        <input class="pin-box c2" type="password" inputmode="numeric" autocomplete="off" maxlength="1">
+        <input class="pin-box c2" type="password" inputmode="numeric" autocomplete="off" maxlength="1">
+        <input class="pin-box c2" type="password" inputmode="numeric" autocomplete="off" maxlength="1">
+        <input class="pin-box c2" type="password" inputmode="numeric" autocomplete="off" maxlength="1">
+      </div>
+    </div>
+    <div class="modal-err" id="codErro">—</div>
+    <label class="lembrar"><input type="checkbox" id="codLembrar"> Continuar conectada neste aparelho</label>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="fecharModalCodigo()">Voltar</button>
+      <button class="btn-confirm" id="codBtn" onclick="confirmarCodigo()">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CÓDIGOS (PCP) -->
+<div class="modal-bg" id="modalCodigos">
+  <div class="modal-box wide">
+    <div class="mhead"><h3>Códigos do comercial</h3><button class="mclose" onclick="fecharModalCodigos()">×</button></div>
+    <div class="mbody">
+      <input class="user-search" id="codBusca" placeholder="Buscar pelo nome..." oninput="renderCodList()">
+      <div class="user-list" id="codList" style="max-height:340px"></div>
+      <div class="fhint" style="margin-top:10px">Redefinir apaga o código atual. Na próxima entrada a pessoa cria um novo — você não precisa inventar nem passar código nenhum.</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOVA CONVERSA -->
+<div class="modal-bg" id="modalNova">
+  <div class="modal-box wide">
+    <div class="mhead"><h3>Nova conversa</h3><button class="mclose" onclick="fecharModalNova()">×</button></div>
+    <div class="mbody">
+      <div class="fgrp">
+        <label class="flabel" for="nvAssunto">Assunto</label>
+        <input class="finput" id="nvAssunto" maxlength="80" placeholder="Ex.: Prazo do pedido 48210 — Cliente Marca Forte">
+        <div class="fhint">Uma linha que diga do que se trata. É por ela que o PCP acha a conversa depois.</div>
+      </div>
+      <div class="fgrp">
+        <label class="flabel" for="nvCategoria">Assunto principal</label>
+        <select class="fsel" id="nvCategoria">
+          <option value="Prazo de entrega">Prazo de entrega</option>
+          <option value="Alteração de pedido">Alteração de pedido</option>
+          <option value="Status de produção">Status de produção</option>
+          <option value="Disponibilidade de material">Disponibilidade de material</option>
+          <option value="Cadastro de produto">Cadastro de produto</option>
+          <option value="Outro">Outro</option>
+        </select>
+      </div>
+      <div class="fgrp">
+        <label class="flabel" for="nvPedido">Pedido ou cliente <span style="color:var(--text-dim);font-weight:400">(opcional)</span></label>
+        <input class="finput" id="nvPedido" maxlength="60" placeholder="Ex.: 48210">
+      </div>
+      <div class="fgrp">
+        <label class="flabel" for="nvMsg">Primeira mensagem</label>
+        <textarea class="ftext" id="nvMsg" maxlength="2000" placeholder="Escreva sua dúvida ou pedido com os detalhes que o PCP precisa saber."></textarea>
+      </div>
+      <div class="fgrp" style="margin-bottom:0">
+        <label class="flabel">Fotos <span style="color:var(--text-dim);font-weight:400">(até 3)</span></label>
+        <div class="comp-prev" id="nvPrev"></div>
+        <div class="up-area" id="nvUpArea" onclick="document.getElementById('nvFile').click()">Clique ou arraste imagens aqui</div>
+        <input type="file" id="nvFile" accept="image/*" multiple style="display:none">
+      </div>
+      <div class="modal-err" id="nvErro">Preencha o assunto e a mensagem.</div>
+    </div>
+    <div class="mfoot">
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="fecharModalNova()">Cancelar</button>
+        <button class="btn-confirm" id="nvBtn" onclick="criarChamado()">Abrir conversa</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL IMAGEM -->
+<div class="modal-bg" id="modalImg" onclick="if(event.target===this)fecharModalImg()">
+  <div class="modal-box img-box">
+    <div class="mhead"><h3 id="imgTitle">Foto</h3><button class="mclose" onclick="fecharModalImg()">×</button></div>
+    <div class="img-wrap"><img id="imgSrc" alt=""></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="app" style="display:none">
+  <aside class="side">
+    <div class="side-top">
+      <button class="btn-novo" id="btnNovo" onclick="abrirModalNova()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Nova conversa
+      </button>
+      <input class="busca" id="buscaConv" placeholder="Buscar por assunto, pedido ou pessoa..." oninput="renderLista()">
+    </div>
+    <div class="filtros" id="filtros"></div>
+    <div class="side-list" id="listaConv"></div>
+  </aside>
+
+  <section class="conv" id="conv">
+    <div class="conv-vazia" id="convVazia">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.8-.9L3 21l1.9-5.2A8.4 8.4 0 0 1 4 11.5a8.4 8.4 0 0 1 9-8.4 8.4 8.4 0 0 1 8 8.4z"/></svg>
+      <div id="vaziaTxt">Escolha uma conversa na lista ao lado.</div>
+    </div>
+
+    <div id="convAtiva" style="display:none;flex:1;flex-direction:column;min-height:0">
+      <div class="conv-head">
+        <button class="btn-voltar" onclick="fecharConversa()" aria-label="Voltar para a lista">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="ch-txt">
+          <div class="ch-assunto" id="chAssunto">—</div>
+          <div class="ch-meta" id="chMeta">—</div>
+        </div>
+        <div class="ch-acoes" id="chAcoes"></div>
+      </div>
+      <div class="msgs" id="msgs"></div>
+      <div class="composer" id="composer"></div>
+    </div>
+  </section>
+</div>
+
+<div class="overlay" id="overlay"><div class="spin"></div></div>
+<div class="toast" id="toast"></div>
+<div id="verBanner">
+  <span>Esta versão está desatualizada. Recarregue para continuar.</span>
+  <button onclick="recarregarForcado()">Recarregar</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ════════════════════════════════════════════════════════════════
+//  Aluminas · Conversas — Comercial ⇄ PCP
+//  Um chamado = uma thread. Mesmo banco do sistema de tickets,
+//  tabelas proprias: chamados + chamado_msgs.
+// ════════════════════════════════════════════════════════════════
+
+const SUPABASE_URL = 'https://zeaknzyvlgawtjjdfluc.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InplYWtuenl2bGdhd3RqamRmbHVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwMDg3NDgsImV4cCI6MjA5ODU4NDc0OH0.YzYuE6fm6F0wvbDtmCVmWDrMXa7biEbcRZ2a8AfdR7s';
+const ADMINS = {'1964':'João Pedro','2404':'Bernardo','1010':'Huriel','2424':'Marco Túlio','1987':'Robson Adeilton','2469':'Ramon'};
+
+// Trocar a cada deploy. E o que faz uma aba velha se reconhecer desatualizada.
+const APP_VERSION = '2026.09.12-0002';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── ESTADO ──
+let modo = null;                 // 'sol' | 'pcp'
+let selectedUser = null;         // { id, nome } — quem e do comercial
+let adminNome = null;
+let allUsers = [];
+let chamados = [];
+let naoLidos = {};               // { chamado_id: qtd }
+let chamadoAberto = null;        // objeto do chamado aberto
+let msgs = [];                   // mensagens do chamado aberto
+let filtro = 'ativas';
+let fotosNova = [];
+let fotosComp = [];
+let _rtChannel = null, _toast = null, _pendId = 0;
+let codAcesso = null;            // { user_id, hash } da pessoa escolhida, ou null
+let codModo = 'entrar';          // 'entrar' | 'criar'
+let codUserPend = null;          // usuario escolhido, esperando o codigo
+let usersCodigos = [];           // painel do PCP
+
+const FILTROS_PCP = [
+  {k:'espera', lb:'Aguardando'},
+  {k:'ativas', lb:'Em aberto'},
+  {k:'resolvidas', lb:'Resolvidas'},
+  {k:'todas', lb:'Todas'}
+];
+const FILTROS_SOL = [
+  {k:'ativas', lb:'Em aberto'},
+  {k:'resolvidas', lb:'Resolvidas'},
+  {k:'todas', lb:'Todas'}
+];
+
+// ── HELPERS ──
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function nowIso(){ return new Date().toISOString(); }
+function fmtNum(n){ return '#'+String(n||0).padStart(4,'0'); }
+function initials(n){ return String(n||'?').trim().split(/\s+/).map(p=>p[0]).slice(0,2).join('').toUpperCase(); }
+function showOverlay(v){ $('overlay').classList.toggle('show', !!v); }
+function showToast(msg, type='success'){
+  const t = $('toast');
+  t.textContent = msg; t.className = 'toast '+type+' show';
+  clearTimeout(_toast); _toast = setTimeout(()=>t.classList.remove('show'), 4000);
+}
+function horaCurta(iso){
+  if(!iso) return '';
+  return new Date(iso).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+function diaLabel(iso){
+  const d = new Date(iso), h = new Date();
+  const ymd = x => x.toLocaleDateString('pt-BR');
+  const ontem = new Date(h.getTime()-86400000);
+  if(ymd(d)===ymd(h)) return 'Hoje';
+  if(ymd(d)===ymd(ontem)) return 'Ontem';
+  return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+// "agora", "14:32", "ontem", "12/09"
+function quando(iso){
+  if(!iso) return '';
+  const d = new Date(iso), dif = (Date.now()-d.getTime())/1000;
+  if(dif < 60) return 'agora';
+  const h = new Date();
+  if(d.toLocaleDateString('pt-BR')===h.toLocaleDateString('pt-BR')) return horaCurta(iso);
+  const ontem = new Date(h.getTime()-86400000);
+  if(d.toLocaleDateString('pt-BR')===ontem.toLocaleDateString('pt-BR')) return 'ontem';
+  return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+}
+function duracaoCurta(ms){
+  if(ms==null || !isFinite(ms) || ms<0) return '—';
+  const min = Math.round(ms/60000);
+  if(min < 60) return min+'min';
+  const h = Math.floor(min/60), m = min%60;
+  if(h < 24) return m ? h+'h'+String(m).padStart(2,'0') : h+'h';
+  return Math.floor(h/24)+'d';
+}
+function minhaSide(){ return modo==='pcp' ? 'pcp' : 'comercial'; }
+function meuNome(){ return modo==='pcp' ? adminNome : (selectedUser && selectedUser.nome); }
+
+// ── VERSAO ──
+function recarregarForcado(){ location.replace(location.pathname + '?v=' + Date.now()); }
+async function checarVersao(){
+  if(!location.protocol.startsWith('http')) return;
+  try{
+    const r = await fetch(location.pathname + '?_v=' + Date.now(), {cache:'no-store'});
+    if(!r.ok) return;
+    const m = (await r.text()).match(/const APP_VERSION = '([^']+)'/);
+    if(m) $('verBanner').classList.toggle('show', m[1] !== APP_VERSION);
+  }catch(e){}
+}
+checarVersao();
+setInterval(checarVersao, 10*60*1000);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ checarVersao(); if(modo) carregarChamados(); } });
+
+// ── RELOGIO ──
+function tick(){ $('clock').textContent = new Date().toLocaleTimeString('pt-BR'); }
+tick(); setInterval(tick, 1000);
+
+// ════════════════════════════════════════════════
+//  TELA INICIAL
+// ════════════════════════════════════════════════
+async function carregarResumo(){
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  try{
+    const {data} = await sb.from('chamados')
+      .select('status,criado_em,ultima_msg_autor,primeira_resposta_em')
+      .gte('criado_em', new Date(Date.now()-30*86400000).toISOString());
+    if(!data) return;
+    const espera = data.filter(c=>c.status!=='resolvido' && c.ultima_msg_autor==='comercial').length;
+    const hojeN = data.filter(c=>new Date(c.criado_em)>=hoje).length;
+    const resp = data.filter(c=>c.primeira_resposta_em)
+                     .map(c=>new Date(c.primeira_resposta_em)-new Date(c.criado_em));
+    const media = resp.length ? resp.reduce((a,b)=>a+b,0)/resp.length : null;
+    setResumo('resumoEspera', espera);
+    setResumo('resumoHoje', hojeN);
+    setResumo('resumoTmr', media==null ? '—' : duracaoCurta(media));
+  }catch(e){}
+}
+function setResumo(id, v){ const el=$(id); el.textContent=v; el.classList.add('carregado'); }
+carregarResumo();
+
+// Atalho "continuar como"
+// A sessao guardada vale por tempo limitado. Num computador compartilhado
+// isso e o que impede a proxima pessoa de cair direto na conversa alheia.
+const SESSAO_CURTA = 12*3600*1000;        // uso normal: 12h
+const SESSAO_LONGA = 30*86400*1000;       // "aparelho meu": 30 dias
+function salvarSessao(user, lembrar){
+  localStorage.setItem('aluminas_chat_user', JSON.stringify({
+    id:user.id, nome:user.nome, exp: Date.now() + (lembrar ? SESSAO_LONGA : SESSAO_CURTA)
+  }));
+}
+function lerSessao(){
+  try{
+    const u = JSON.parse(localStorage.getItem('aluminas_chat_user')||'null');
+    if(!u || !u.id || !u.nome) return null;
+    if(!u.exp || Date.now() > u.exp){ localStorage.removeItem('aluminas_chat_user'); return null; }
+    return u;
+  }catch(e){ return null; }
+}
+(function(){
+  try{
+    const u = lerSessao();
+    if(u && u.id && u.nome){
+      $('retomarNome').textContent = u.nome;
+      $('retomarAvatar').textContent = initials(u.nome);
+      $('btnRetomar').style.display = 'flex';
+    }
+  }catch(e){}
+})();
+function retomarSolicitante(){
+  const u = lerSessao();
+  if(!u){ showToast('Sua sessão expirou. Entre com o código.','info'); entrarSolicitante(); return; }
+  selectedUser = {id:u.id, nome:u.nome};
+  entrarApp('sol');
+}
+
+async function entrarSolicitante(){
+  $('modalUser').classList.add('show');
+  $('userList').innerHTML = '<div class="vazio">Carregando...</div>';
+  const {data,error} = await sb.from('ticket_users').select('*').order('nome');
+  if(error){ $('userList').innerHTML = '<div class="vazio">Não deu para carregar a lista.<br>'+esc(error.message)+'</div>'; return; }
+  allUsers = data||[];
+  renderUserList();
+}
+function fecharModalUser(){ $('modalUser').classList.remove('show'); }
+function renderUserList(){
+  const b = ($('userBusca').value||'').trim().toLowerCase();
+  const lista = allUsers.filter(u=>!b || u.nome.toLowerCase().includes(b));
+  if(!lista.length){ $('userList').innerHTML = '<div class="vazio">Nenhum nome encontrado.</div>'; return; }
+  $('userList').innerHTML = lista.map(u=>`
+    <div class="user-item" onclick="escolherUser('${u.id}')">
+      <span class="avatar">${esc(initials(u.nome))}</span>
+      <div><div class="un">${esc(u.nome)}</div>${u.setor?`<div class="us">${esc(u.setor)}</div>`:''}</div>
+    </div>`).join('');
+}
+async function escolherUser(id){
+  const u = allUsers.find(x=>String(x.id)===String(id));
+  if(!u) return;
+  codUserPend = {id:u.id, nome:u.nome};
+  fecharModalUser();
+  showOverlay(true);
+  const {data,error} = await sb.from('chat_acesso').select('*').eq('user_id', u.id).limit(1);
+  showOverlay(false);
+  if(error){ showToast('Não deu para checar o código: '+error.message,'error'); return; }
+  codAcesso = (data && data[0]) || null;
+  abrirModalCodigo(codAcesso ? 'entrar' : 'criar');
+}
+
+// ════════════════════════════════════════════════
+//  CÓDIGO DO COMERCIAL
+//  Trava de porta, não cofre: a checagem acontece aqui no navegador.
+//  Segura colega curiosa e computador deixado aberto; não segura quem
+//  abre o inspetor. Para isso seria preciso fechar a tabela no banco.
+// ════════════════════════════════════════════════
+
+// O código não vai para o banco em texto puro — só esta mistura, presa ao id
+// da pessoa. É ofuscação, não criptografia: quem souber o que está fazendo
+// quebra em segundos. Serve para o código não ficar à mostra na resposta.
+function hashCodigo(codigo, salt){
+  let h1 = 0x811c9dc5, h2 = 0x01000193;
+  const txt = String(salt) + '|' + codigo + '|aluminas-conversas';
+  for(let i=0;i<txt.length;i++){
+    const c = txt.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 16777619) >>> 0;
+    h2 = (Math.imul(h2 + c, 2654435761) ^ (h1 >>> 7)) >>> 0;
+  }
+  return h1.toString(16).padStart(8,'0') + h2.toString(16).padStart(8,'0');
+}
+
+function caixasC1(){ return Array.from(document.querySelectorAll('.pin-box.c1')); }
+function caixasC2(){ return Array.from(document.querySelectorAll('.pin-box.c2')); }
+function limparCod(){ caixasC1().concat(caixasC2()).forEach(i=>{ i.value=''; i.classList.remove('preenchido'); }); }
+
+function abrirModalCodigo(m){
+  codModo = m;
+  limparCod();
+  $('codErro').classList.remove('show');
+  $('codLembrar').checked = false;
+  $('codConfirmWrap').style.display = m==='criar' ? 'block' : 'none';
+  $('codTitulo').textContent = m==='criar' ? 'Crie seu código' : 'Seu código';
+  $('codSub').innerHTML = m==='criar'
+    ? 'Olá, <b>'+esc(codUserPend.nome)+'</b>. Escolha 4 dígitos só seus — é o que impede outra pessoa de abrir suas conversas.'
+    : 'Olá, <b>'+esc(codUserPend.nome)+'</b>. Digite seus 4 dígitos.';
+  $('codBtn').textContent = m==='criar' ? 'Criar e entrar' : 'Entrar';
+  $('modalCodigo').classList.add('show');
+  setTimeout(()=>caixasC1()[0].focus(), 80);
+}
+function fecharModalCodigo(){
+  $('modalCodigo').classList.remove('show');
+  codUserPend = null; codAcesso = null; limparCod();
+}
+
+function ligarCaixas(arr, aoCompletar){
+  arr.forEach((inp,i)=>{
+    inp.addEventListener('input', ()=>{
+      inp.value = inp.value.replace(/\D/g,'');
+      inp.classList.toggle('preenchido', !!inp.value);
+      if(inp.value && i<arr.length-1) arr[i+1].focus();
+      if(arr.every(x=>x.value) && aoCompletar) aoCompletar();
+    });
+    inp.addEventListener('keydown', e=>{
+      if(e.key==='Backspace' && !inp.value && i>0) arr[i-1].focus();
+      if(e.key==='Enter') confirmarCodigo();
+    });
+  });
+}
+ligarCaixas(caixasC1(), ()=>{
+  if(codModo==='criar') caixasC2()[0].focus();
+  else confirmarCodigo();
+});
+ligarCaixas(caixasC2(), ()=>confirmarCodigo());
+
+function erroCod(msg){
+  const e = $('codErro'); e.textContent = msg; e.classList.add('show');
+}
+
+async function confirmarCodigo(){
+  if(!codUserPend) return;
+  const c1 = caixasC1().map(i=>i.value).join('');
+  if(c1.length < 4) return;
+
+  if(codModo === 'criar'){
+    const c2 = caixasC2().map(i=>i.value).join('');
+    if(c2.length < 4) return;
+    if(c1 !== c2){
+      erroCod('Os dois códigos não bateram. Tente de novo.');
+      limparCod(); caixasC1()[0].focus();
+      return;
+    }
+    if(/^(\d)\1{3}$/.test(c1) || c1==='1234' || c1==='0000'){
+      erroCod('Escolha algo menos óbvio que ' + c1 + '.');
+      limparCod(); caixasC1()[0].focus();
+      return;
+    }
+    $('codBtn').disabled = true; showOverlay(true);
+    const {error} = await sb.from('chat_acesso').insert([{
+      user_id: codUserPend.id, nome: codUserPend.nome,
+      hash: hashCodigo(c1, codUserPend.id), criado_em: nowIso()
+    }]);
+    showOverlay(false); $('codBtn').disabled = false;
+    if(error){ erroCod('Não deu para salvar: '+error.message); return; }
+    entrarComoComercial();
+    return;
+  }
+
+  if(hashCodigo(c1, codUserPend.id) !== codAcesso.hash){
+    erroCod('Código incorreto. Se esqueceu, peça ao PCP para redefinir.');
+    limparCod(); caixasC1()[0].focus();
+    return;
+  }
+  entrarComoComercial();
+}
+
+function entrarComoComercial(){
+  selectedUser = {id:codUserPend.id, nome:codUserPend.nome};
+  salvarSessao(selectedUser, $('codLembrar').checked);
+  $('modalCodigo').classList.remove('show');
+  codUserPend = null; codAcesso = null; limparCod();
+  entrarApp('sol');
+}
+
+// ── PAINEL DE CÓDIGOS (PCP) ──
+async function abrirModalCodigos(){
+  $('modalCodigos').classList.add('show');
+  $('codList').innerHTML = '<div class="vazio">Carregando...</div>';
+  const [u, a] = await Promise.all([
+    sb.from('ticket_users').select('*').order('nome'),
+    sb.from('chat_acesso').select('user_id,criado_em')
+  ]);
+  if(u.error){ $('codList').innerHTML = '<div class="vazio">'+esc(u.error.message)+'</div>'; return; }
+  const comCodigo = new Set((a.data||[]).map(x=>String(x.user_id)));
+  usersCodigos = (u.data||[]).map(x=>({...x, tem: comCodigo.has(String(x.id))}));
+  renderCodList();
+}
+function fecharModalCodigos(){ $('modalCodigos').classList.remove('show'); }
+function renderCodList(){
+  const b = ($('codBusca').value||'').trim().toLowerCase();
+  const lista = usersCodigos.filter(u=>!b || u.nome.toLowerCase().includes(b));
+  if(!lista.length){ $('codList').innerHTML = '<div class="vazio">Nenhum nome encontrado.</div>'; return; }
+  $('codList').innerHTML = lista.map(u=>`
+    <div class="cod-item">
+      <span class="avatar">${esc(initials(u.nome))}</span>
+      <span class="cod-nome">${esc(u.nome)}</span>
+      <span class="cod-est ${u.tem?'on':''}">${u.tem?'com código':'sem código'}</span>
+      ${u.tem?`<button class="btn-acao warn" onclick="redefinirCodigo('${u.id}')">Redefinir</button>`:''}
+    </div>`).join('');
+}
+async function redefinirCodigo(id){
+  const u = usersCodigos.find(x=>String(x.id)===String(id));
+  if(!u) return;
+  if(!confirm('Apagar o código de '+u.nome+'?\n\nNa próxima entrada ela cria um novo. As conversas não são afetadas.')) return;
+  showOverlay(true);
+  const {error} = await sb.from('chat_acesso').delete().eq('user_id', id);
+  showOverlay(false);
+  if(error){ showToast('Não deu para redefinir: '+error.message,'error'); return; }
+  u.tem = false; renderCodList();
+  showToast('Código de '+u.nome+' apagado.','success');
+}
+
+// ── PIN ──
+function pinCaixas(){ return Array.from(document.querySelectorAll('.pin-box')); }
+function abrirModalSenha(){
+  $('modalSenha').classList.add('show');
+  $('senhaErro').classList.remove('show');
+  pinCaixas().forEach(i=>{ i.value=''; i.classList.remove('preenchido'); });
+  setTimeout(()=>pinCaixas()[0].focus(), 60);
+}
+function fecharModalSenha(){ $('modalSenha').classList.remove('show'); }
+pinCaixas().forEach((inp,i,arr)=>{
+  inp.addEventListener('input', ()=>{
+    inp.value = inp.value.replace(/\D/g,'');
+    inp.classList.toggle('preenchido', !!inp.value);
+    if(inp.value && i<arr.length-1) arr[i+1].focus();
+    if(arr.every(x=>x.value)) verificarSenha();
+  });
+  inp.addEventListener('keydown', e=>{
+    if(e.key==='Backspace' && !inp.value && i>0) arr[i-1].focus();
+    if(e.key==='Enter') verificarSenha();
+  });
+});
+function verificarSenha(){
+  const cod = pinCaixas().map(i=>i.value).join('');
+  if(cod.length<4) return;
+  if(ADMINS[cod]){
+    adminNome = ADMINS[cod];
+    fecharModalSenha();
+    entrarApp('pcp');
+  } else {
+    $('senhaErro').classList.add('show');
+    pinCaixas().forEach(i=>{ i.value=''; i.classList.remove('preenchido'); });
+    pinCaixas()[0].focus();
+  }
+}
+
+// ════════════════════════════════════════════════
+//  ENTRADA NO APP
+// ════════════════════════════════════════════════
+function entrarApp(m){
+  modo = m;
+  $('modeScreen').style.display = 'none';
+  $('app').style.display = 'flex';
+  $('btnSair').style.display = 'inline-block';
+  const badge = $('modeBadge');
+  badge.style.display = 'inline-block';
+  if(m==='pcp'){
+    badge.className = 'mbadge adm'; badge.textContent = 'PCP · '+adminNome;
+    $('headerSub').textContent = 'Conversas · Atendimento';
+    $('btnNovo').style.display = 'none';
+    $('btnCodigos').style.display = 'inline-flex';
+    $('vaziaTxt').textContent = 'Escolha uma conversa na lista para responder.';
+    filtro = 'espera';
+  } else {
+    badge.className = 'mbadge sol'; badge.textContent = selectedUser.nome;
+    $('headerSub').textContent = 'Conversas · Comercial';
+    $('btnNovo').style.display = 'flex';
+    $('btnCodigos').style.display = 'none';
+    $('vaziaTxt').textContent = 'Escolha uma conversa ou abra uma nova.';
+    filtro = 'ativas';
+  }
+  renderFiltros();
+  carregarChamados(true);
+  ligarRealtime();
+}
+function voltarModo(){
+  if(modo === 'sol'){
+    localStorage.removeItem('aluminas_chat_user');
+    $('btnRetomar').style.display = 'none';
+  }
+  if(_rtChannel){ sb.removeChannel(_rtChannel); _rtChannel = null; }
+  modo = null; adminNome = null; chamadoAberto = null; chamados = []; msgs = [];
+  document.title = 'Aluminas · Conversas';
+  $('app').style.display = 'none';
+  $('app').classList.remove('aberto');
+  $('modeScreen').style.display = 'flex';
+  $('btnSair').style.display = 'none';
+  $('btnCodigos').style.display = 'none';
+  $('modeBadge').style.display = 'none';
+  $('headerSub').textContent = 'Conversas · Comercial ⇄ PCP';
+  carregarResumo();
+}
+
+// ════════════════════════════════════════════════
+//  DADOS
+// ════════════════════════════════════════════════
+async function carregarChamados(primeira){
+  if(primeira) $('listaConv').innerHTML = '<div class="vazio">Carregando...</div>';
+  let q = sb.from('chamados').select('*').order('ultima_msg_em', {ascending:false});
+  if(modo==='sol') q = q.eq('user_id', selectedUser.id);
+  const {data,error} = await q;
+  if(error){
+    $('listaConv').innerHTML = '<div class="vazio">Não deu para carregar.<br>'+esc(error.message)+'</div>';
+    return;
+  }
+  chamados = data||[];
+  await carregarNaoLidos();
+  renderFiltros();
+  renderLista();
+  atualizarTitulo();
+}
+
+// Conta mensagens que a minha ponta ainda nao viu. Uma consulta so, sem
+// trazer texto nem foto — e o suficiente para o contador da lista.
+async function carregarNaoLidos(){
+  naoLidos = {};
+  if(!chamados.length) return;
+  const campo = modo==='pcp' ? 'visto_pcp_em' : 'visto_sol_em';
+  const outro = modo==='pcp' ? 'comercial' : 'pcp';
+  const candidatos = chamados.filter(c=>{
+    if(c.ultima_msg_autor !== outro) return false;
+    return !c[campo] || new Date(c.ultima_msg_em) > new Date(c[campo]);
+  });
+  if(!candidatos.length) return;
+  const ids = candidatos.map(c=>c.id);
+  const maisAntigo = candidatos.reduce((min,c)=>{
+    const v = c[campo] ? new Date(c[campo]) : new Date(c.criado_em);
+    return (!min || v<min) ? v : min;
+  }, null);
+  const {data} = await sb.from('chamado_msgs')
+    .select('chamado_id,criado_em,autor_tipo')
+    .in('chamado_id', ids)
+    .eq('autor_tipo', outro)
+    .gte('criado_em', maisAntigo.toISOString());
+  (data||[]).forEach(m=>{
+    const c = chamados.find(x=>x.id===m.chamado_id);
+    if(!c) return;
+    const lim = c[campo] ? new Date(c[campo]) : null;
+    if(!lim || new Date(m.criado_em) > lim) naoLidos[c.id] = (naoLidos[c.id]||0)+1;
+  });
+}
+
+function totalNaoLidos(){ return Object.values(naoLidos).reduce((a,b)=>a+b,0); }
+function atualizarTitulo(){
+  const n = totalNaoLidos();
+  document.title = (n ? '('+n+') ' : '') + 'Aluminas · Conversas';
+}
+
+// ── FILTROS ──
+function contarFiltro(k){
+  return chamados.filter(c=>passaFiltro(c,k)).length;
+}
+function passaFiltro(c,k){
+  if(k==='todas') return true;
+  if(k==='resolvidas') return c.status==='resolvido';
+  if(k==='ativas') return c.status!=='resolvido';
+  if(k==='espera') return c.status!=='resolvido' && c.ultima_msg_autor==='comercial';
+  return true;
+}
+function renderFiltros(){
+  const defs = modo==='pcp' ? FILTROS_PCP : FILTROS_SOL;
+  $('filtros').innerHTML = defs.map(f=>{
+    const n = contarFiltro(f.k);
+    return `<button class="fbtn ${filtro===f.k?'on':''}" onclick="setFiltro('${f.k}')">${f.lb} <span class="ct">${n}</span></button>`;
+  }).join('');
+}
+function setFiltro(k){ filtro = k; renderFiltros(); renderLista(); }
+
+// ── LISTA ──
+function renderLista(){
+  const b = ($('buscaConv').value||'').trim().toLowerCase();
+  let lista = chamados.filter(c=>passaFiltro(c,filtro));
+  if(b){
+    lista = lista.filter(c=>
+      (c.assunto||'').toLowerCase().includes(b) ||
+      (c.pedido||'').toLowerCase().includes(b) ||
+      (c.solicitante||'').toLowerCase().includes(b) ||
+      (c.categoria||'').toLowerCase().includes(b) ||
+      String(c.numero||'').includes(b)
+    );
+  }
+  const el = $('listaConv');
+  if(!lista.length){
+    el.innerHTML = '<div class="vazio">' + (b
+      ? 'Nada encontrado para essa busca.'
+      : (modo==='sol' ? 'Nenhuma conversa por aqui ainda.<br>Use <b>Nova conversa</b> para falar com o PCP.' : 'Nenhuma conversa neste filtro.')) + '</div>';
+    return;
+  }
+  el.innerHTML = lista.map(c=>{
+    const n = naoLidos[c.id]||0;
+    const sel = chamadoAberto && chamadoAberto.id===c.id;
+    const quem = c.ultima_msg_autor==='pcp' ? 'PCP' : (c.ultima_msg_autor==='sistema' ? '' : 'Comercial');
+    return `<div class="conv-item ${sel?'sel':''} ${n?'novo':''}" onclick="abrirConversa('${c.id}')">
+      <div class="ci-l1">
+        <span class="ci-num">${fmtNum(c.numero)}</span>
+        <span class="ci-assunto">${esc(c.assunto)}</span>
+        <span class="ci-hora">${quando(c.ultima_msg_em||c.criado_em)}</span>
+      </div>
+      <div class="ci-l2">
+        <span class="ci-prev">${quem?`<b>${quem}:</b> `:''}${esc((c.ultima_msg_txt||'').slice(0,90))}</span>
+        ${n?`<span class="ci-nao">${n}</span>`:''}
+      </div>
+      <div class="ci-l3">
+        <span class="pill ${c.status}">${c.status==='aberto'?'Aguardando':c.status==='andamento'?'Em conversa':'Resolvida'}</span>
+        ${c.pedido?`<span class="pill tag">${esc(c.pedido)}</span>`:''}
+        ${modo==='pcp'?`<span class="ci-quem">${esc(c.solicitante)}</span>`:`<span class="ci-quem">${esc(c.categoria||'')}</span>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════
+//  CONVERSA
+// ════════════════════════════════════════════════
+async function abrirConversa(id){
+  const c = chamados.find(x=>x.id===id);
+  if(!c) return;
+  chamadoAberto = c;
+  delete c._escrevendo;
+  fotosComp = [];
+  $('app').classList.add('aberto');
+  $('convVazia').style.display = 'none';
+  $('convAtiva').style.display = 'flex';
+  renderCabecalho();
+  renderComposer();
+  $('msgs').innerHTML = '<div class="vazio">Carregando mensagens...</div>';
+  renderLista();
+  await carregarMsgs();
+  await marcarVisto();
+}
+function fecharConversa(){
+  chamadoAberto = null; msgs = []; fotosComp = [];
+  $('app').classList.remove('aberto');
+  $('convAtiva').style.display = 'none';
+  $('convVazia').style.display = 'flex';
+  renderLista();
+}
+
+async function carregarMsgs(){
+  if(!chamadoAberto) return;
+  const {data,error} = await sb.from('chamado_msgs')
+    .select('*').eq('chamado_id', chamadoAberto.id).order('criado_em',{ascending:true});
+  if(error){ $('msgs').innerHTML = '<div class="vazio">Erro ao carregar: '+esc(error.message)+'</div>'; return; }
+  msgs = data||[];
+  renderMsgs(true);
+}
+
+function renderCabecalho(){
+  const c = chamadoAberto;
+  $('chAssunto').textContent = c.assunto;
+  const partes = [fmtNum(c.numero)];
+  if(modo==='pcp') partes.push(c.solicitante);
+  if(c.categoria) partes.push(c.categoria);
+  if(c.pedido) partes.push('Pedido '+c.pedido);
+  $('chMeta').textContent = partes.join(' · ');
+
+  let acoes = `<span class="pill ${c.status}">${c.status==='aberto'?'Aguardando':c.status==='andamento'?'Em conversa':'Resolvida'}</span>`;
+  if(modo==='pcp'){
+    acoes += c.status==='resolvido'
+      ? `<button class="btn-acao warn" onclick="reabrir()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span class="rot">Reabrir</span></button>`
+      : `<button class="btn-acao ok" onclick="resolver()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span class="rot">Marcar resolvida</span></button>`;
+  }
+  $('chAcoes').innerHTML = acoes;
+}
+
+function renderMsgs(irAoFim){
+  const el = $('msgs');
+  if(!msgs.length){ el.innerHTML = '<div class="vazio">Sem mensagens.</div>'; return; }
+  const eu = minhaSide();
+  let html = '', diaAtual = '';
+  msgs.forEach(m=>{
+    const d = diaLabel(m.criado_em);
+    if(d !== diaAtual){ diaAtual = d; html += `<div class="dia">${esc(d)}</div>`; }
+    if(m.autor_tipo === 'sistema'){
+      html += `<div class="sys">${m.texto}</div>`;
+      return;
+    }
+    const mine = m.autor_tipo === eu;
+    let fotos = [];
+    try{ fotos = m.fotos ? JSON.parse(m.fotos) : []; }catch(e){}
+    html += `<div class="msg ${mine?'mine':'theirs'} ${m._pend?'pend':''}">
+      ${!mine?`<span class="msg-autor">${esc(m.autor_nome)}${m.autor_tipo==='pcp'?' · PCP':''}</span>`:''}
+      ${m.texto?`<div class="bubble">${esc(m.texto)}</div>`:''}
+      ${fotos.length?`<div class="msg-fotos">${fotos.map((f,i)=>`<img src="${f}" alt="Foto ${i+1}" onclick="abrirImg(this.src)">`).join('')}</div>`:''}
+      <div class="msg-meta">${m._pend?'enviando...':horaCurta(m.criado_em)}</div>
+    </div>`;
+  });
+  el.innerHTML = html;
+  if(irAoFim !== false) el.scrollTop = el.scrollHeight;
+}
+
+// ── COMPOSER ──
+function renderComposer(){
+  const c = chamadoAberto;
+  const el = $('composer');
+  if(c.status === 'resolvido' && !c._escrevendo){
+    el.innerHTML = `<div class="comp-fechado">
+      Conversa marcada como resolvida${c.resolvido_por?' por <b>'+esc(c.resolvido_por)+'</b>':''}.
+      <br>Se ainda faltou alguma coisa, é só escrever de novo — a conversa reabre.
+      <br><button onclick="reabrirEEscrever()">Escrever mesmo assim</button>
+    </div>`;
+    return;
+  }
+  el.innerHTML = `
+    <div class="comp-prev" id="compPrev"></div>
+    <div class="comp-row">
+      <button class="comp-btn" onclick="document.getElementById('compFile').click()" title="Anexar foto" aria-label="Anexar foto">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.5 12.7 20.8a5 5 0 0 1-7-7l8.3-8.4a3.3 3.3 0 1 1 4.7 4.7l-8.3 8.3a1.7 1.7 0 0 1-2.4-2.4l7.7-7.7"/></svg>
+      </button>
+      <textarea class="comp-txt" id="compTxt" rows="1" maxlength="2000" placeholder="Escreva uma mensagem..."></textarea>
+      <button class="comp-btn enviar" id="compSend" onclick="enviarMsg()" title="Enviar" aria-label="Enviar mensagem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 17-8L4 4l3 8z"/><path d="M7 12h14"/></svg>
+      </button>
+    </div>
+    <input type="file" id="compFile" accept="image/*" multiple style="display:none">
+    <div class="comp-dica" id="compDica"></div>`;
+
+  const txt = $('compTxt');
+  txt.addEventListener('input', ()=>{ txt.style.height='auto'; txt.style.height = Math.min(txt.scrollHeight,140)+'px'; });
+  txt.addEventListener('keydown', e=>{
+    if(e.key==='Enter' && !e.shiftKey && !ehToque()){ e.preventDefault(); enviarMsg(); }
+  });
+  txt.addEventListener('paste', e=>{
+    const imgs = Array.from(e.clipboardData.files||[]).filter(f=>f.type.startsWith('image/'));
+    if(imgs.length){ e.preventDefault(); processarFotos(imgs, 'comp'); }
+  });
+  $('compFile').addEventListener('change', e=>{ processarFotos(Array.from(e.target.files),'comp'); e.target.value=''; });
+  $('compDica').textContent = ehToque() ? '' : 'Enter envia · Shift+Enter quebra linha';
+  renderPrevComp();
+}
+// WebView antiga (uso em file:// no Android) as vezes nao tem matchMedia
+function ehToque(){
+  const estreito = window.matchMedia
+    ? window.matchMedia('(max-width:860px)').matches
+    : window.innerWidth <= 860;
+  return estreito || ('ontouchstart' in window && window.innerWidth < 1000);
+}
+
+function reabrirEEscrever(){
+  chamadoAberto._escrevendo = true;
+  renderComposer();
+  setTimeout(()=>$('compTxt') && $('compTxt').focus(), 50);
+}
+
+async function enviarMsg(){
+  if(!chamadoAberto) return;
+  const txtEl = $('compTxt');
+  const texto = (txtEl.value||'').trim();
+  if(!texto && !fotosComp.length){ return; }
+  const c = chamadoAberto;
+  const eu = minhaSide(), nome = meuNome(), iso = nowIso();
+  const fotos = fotosComp.length ? JSON.stringify(fotosComp.map(f=>f.base64)) : null;
+
+  // Mostra na hora; se o banco recusar, a mensagem some e o texto volta.
+  const pend = {id:'pend-'+(++_pendId), chamado_id:c.id, autor_tipo:eu, autor_nome:nome, texto, fotos, criado_em:iso, _pend:true};
+  msgs.push(pend); renderMsgs(true);
+  txtEl.value = ''; txtEl.style.height = 'auto';
+  const fotosEnviadas = fotosComp; fotosComp = []; renderPrevComp();
+  $('compSend').disabled = true;
+
+  const {data,error} = await sb.from('chamado_msgs')
+    .insert([{chamado_id:c.id, autor_tipo:eu, autor_nome:nome, texto:texto||null, fotos, criado_em:iso}])
+    .select();
+  $('compSend').disabled = false;
+
+  if(error){
+    msgs = msgs.filter(m=>m.id !== pend.id);
+    fotosComp = fotosEnviadas; renderPrevComp();
+    txtEl.value = texto;
+    renderMsgs(true);
+    showToast('A mensagem não foi enviada: '+error.message, 'error');
+    return;
+  }
+  msgs = msgs.filter(m=>m.id !== pend.id);
+  if(data && data[0]) msgs.push(data[0]);
+  renderMsgs(true);
+
+  // Atualiza o cabecalho do chamado: e por ele que a lista se ordena.
+  const patch = {
+    ultima_msg_em: iso,
+    ultima_msg_autor: eu,
+    ultima_msg_txt: texto ? texto.slice(0,120) : '[foto]'
+  };
+  if(eu==='pcp'){
+    patch.visto_pcp_em = iso;
+    if(!c.primeira_resposta_em) patch.primeira_resposta_em = iso;
+    if(c.status!=='resolvido') patch.status = 'andamento';
+  } else {
+    patch.visto_sol_em = iso;
+  }
+  if(c.status==='resolvido'){
+    delete c._escrevendo;
+    patch.status = 'andamento';
+    patch.reaberto_em = iso;
+    patch.resolvido_em = null;
+    patch.resolvido_por = null;
+    await sb.from('chamado_msgs').insert([{
+      chamado_id:c.id, autor_tipo:'sistema', autor_nome:nome,
+      texto:'Conversa reaberta por <b>'+esc(nome)+'</b>.', criado_em:new Date(Date.now()-1).toISOString()
+    }]);
+  }
+  await sb.from('chamados').update(patch).eq('id', c.id);
+  Object.assign(c, patch);
+  renderCabecalho(); renderComposer(); renderFiltros(); renderLista();
+  const t = $('compTxt'); if(t) t.focus();
+}
+
+async function resolver(){
+  const c = chamadoAberto; if(!c || modo!=='pcp') return;
+  const iso = nowIso();
+  showOverlay(true);
+  await sb.from('chamado_msgs').insert([{
+    chamado_id:c.id, autor_tipo:'sistema', autor_nome:adminNome,
+    texto:'Conversa marcada como resolvida por <b>'+esc(adminNome)+'</b>.', criado_em:iso
+  }]);
+  const patch = {status:'resolvido', resolvido_em:iso, resolvido_por:adminNome,
+                 ultima_msg_em:iso, ultima_msg_autor:'sistema', ultima_msg_txt:'Resolvida', visto_pcp_em:iso};
+  const {error} = await sb.from('chamados').update(patch).eq('id', c.id);
+  showOverlay(false);
+  if(error){ showToast('Não deu para resolver: '+error.message,'error'); return; }
+  Object.assign(c, patch);
+  await carregarMsgs();
+  renderCabecalho(); renderComposer(); renderFiltros(); renderLista();
+  showToast('Conversa resolvida.','success');
+}
+
+async function reabrir(){
+  const c = chamadoAberto; if(!c || modo!=='pcp') return;
+  const iso = nowIso();
+  showOverlay(true);
+  await sb.from('chamado_msgs').insert([{
+    chamado_id:c.id, autor_tipo:'sistema', autor_nome:adminNome,
+    texto:'Conversa reaberta por <b>'+esc(adminNome)+'</b>.', criado_em:iso
+  }]);
+  const patch = {status:'andamento', resolvido_em:null, resolvido_por:null, reaberto_em:iso,
+                 ultima_msg_em:iso, ultima_msg_autor:'sistema', ultima_msg_txt:'Reaberta', visto_pcp_em:iso};
+  const {error} = await sb.from('chamados').update(patch).eq('id', c.id);
+  showOverlay(false);
+  if(error){ showToast('Não deu para reabrir: '+error.message,'error'); return; }
+  Object.assign(c, patch);
+  await carregarMsgs();
+  renderCabecalho(); renderComposer(); renderFiltros(); renderLista();
+}
+
+async function marcarVisto(){
+  const c = chamadoAberto; if(!c) return;
+  if(!naoLidos[c.id]) return;
+  delete naoLidos[c.id];
+  atualizarTitulo(); renderLista();
+  const campo = modo==='pcp' ? 'visto_pcp_em' : 'visto_sol_em';
+  const iso = nowIso();
+  c[campo] = iso;
+  await sb.from('chamados').update({[campo]:iso}).eq('id', c.id);
+}
+
+// ════════════════════════════════════════════════
+//  FOTOS
+// ════════════════════════════════════════════════
+function processarFotos(files, alvo){
+  const lista = alvo==='comp' ? fotosComp : fotosNova;
+  const rest = 3 - lista.length;
+  if(rest<=0){ showToast('Máximo de 3 fotos por mensagem.','error'); return; }
+  files.slice(0,rest).forEach(file=>{
+    if(!file.type.startsWith('image/')){ showToast(file.name+' não é imagem.','error'); return; }
+    const reader = new FileReader();
+    reader.onload = ev=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const canvas = document.createElement('canvas');
+        const MAX=1200; let w=img.width,h=img.height;
+        if(w>MAX||h>MAX){ if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;} }
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        lista.push({name:file.name, base64:canvas.toDataURL('image/jpeg',.75)});
+        alvo==='comp' ? renderPrevComp() : renderPrevNova();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function htmlPrev(lista, alvo){
+  return lista.map((f,i)=>`<div class="foto-prev">
+    <img src="${f.base64}" alt="${esc(f.name)}" onclick="abrirImg(this.src, this.alt)">
+    <button class="rm" onclick="removerFoto(${i},'${alvo}')" aria-label="Remover foto">×</button>
+  </div>`).join('');
+}
+function renderPrevComp(){ const el=$('compPrev'); if(el) el.innerHTML = htmlPrev(fotosComp,'comp'); }
+function renderPrevNova(){ $('nvPrev').innerHTML = htmlPrev(fotosNova,'nova'); }
+function removerFoto(i, alvo){
+  if(alvo==='comp'){ fotosComp.splice(i,1); renderPrevComp(); }
+  else { fotosNova.splice(i,1); renderPrevNova(); }
+}
+function abrirImg(src, name){
+  $('imgSrc').src = src;
+  $('imgTitle').textContent = name || 'Foto';
+  $('modalImg').classList.add('show');
+}
+function fecharModalImg(){ $('modalImg').classList.remove('show'); $('imgSrc').src=''; }
+
+// ════════════════════════════════════════════════
+//  NOVA CONVERSA
+// ════════════════════════════════════════════════
+function abrirModalNova(){
+  fotosNova = []; renderPrevNova();
+  $('nvAssunto').value=''; $('nvMsg').value=''; $('nvPedido').value='';
+  $('nvAssunto').classList.remove('erro'); $('nvMsg').classList.remove('erro');
+  $('nvErro').classList.remove('show');
+  $('modalNova').classList.add('show');
+  setTimeout(()=>$('nvAssunto').focus(), 80);
+}
+function fecharModalNova(){ $('modalNova').classList.remove('show'); }
+
+(function ligarUploadNova(){
+  const area = $('nvUpArea');
+  $('nvFile').addEventListener('change', e=>{ processarFotos(Array.from(e.target.files),'nova'); e.target.value=''; });
+  ['dragenter','dragover'].forEach(ev=>area.addEventListener(ev, e=>{ e.preventDefault(); area.classList.add('drag'); }));
+  ['dragleave','drop'].forEach(ev=>area.addEventListener(ev, e=>{ e.preventDefault(); area.classList.remove('drag'); }));
+  area.addEventListener('drop', e=>processarFotos(Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('image/')),'nova'));
+})();
+
+async function criarChamado(){
+  const assunto = ($('nvAssunto').value||'').trim();
+  const texto = ($('nvMsg').value||'').trim();
+  const pedido = ($('nvPedido').value||'').trim();
+  const categoria = $('nvCategoria').value;
+  $('nvAssunto').classList.toggle('erro', !assunto);
+  $('nvMsg').classList.toggle('erro', !texto);
+  if(!assunto || !texto){ $('nvErro').classList.add('show'); return; }
+  $('nvErro').classList.remove('show');
+
+  showOverlay(true); $('nvBtn').disabled = true;
+  const iso = nowIso();
+  const {data:last} = await sb.from('chamados').select('numero').order('numero',{ascending:false}).limit(1);
+  const numero = (last && last.length && last[0].numero) ? last[0].numero+1 : 1;
+
+  const {data:novo, error} = await sb.from('chamados').insert([{
+    numero, user_id:selectedUser.id, solicitante:selectedUser.nome, setor:'Comercial',
+    assunto, categoria, pedido: pedido||null, status:'aberto',
+    criado_em:iso, ultima_msg_em:iso, ultima_msg_autor:'comercial',
+    ultima_msg_txt: texto.slice(0,120), visto_sol_em:iso
+  }]).select();
+
+  if(error){ showOverlay(false); $('nvBtn').disabled=false; showToast('Erro ao abrir: '+error.message,'error'); return; }
+
+  const c = novo[0];
+  const {error:e2} = await sb.from('chamado_msgs').insert([{
+    chamado_id:c.id, autor_tipo:'comercial', autor_nome:selectedUser.nome,
+    texto, fotos: fotosNova.length ? JSON.stringify(fotosNova.map(f=>f.base64)) : null, criado_em:iso
+  }]);
+  showOverlay(false); $('nvBtn').disabled = false;
+  if(e2){ showToast('A conversa abriu, mas a mensagem falhou: '+e2.message,'error'); }
+
+  fotosNova = [];
+  fecharModalNova();
+  chamados.unshift(c);
+  filtro = 'ativas';
+  renderFiltros(); renderLista();
+  abrirConversa(c.id);
+  showToast('Conversa aberta. O PCP já consegue ver.','success');
+}
+
+// ════════════════════════════════════════════════
+//  TEMPO REAL
+// ════════════════════════════════════════════════
+function setDot(estado){
+  const d = $('rtDot');
+  d.className = 'rt-dot' + (estado==='on' ? '' : estado==='off' ? ' off' : ' wait');
+  d.title = estado==='on' ? 'Conectado — atualiza sozinho'
+          : estado==='off' ? 'Sem conexão em tempo real' : 'Conectando...';
+}
+function ligarRealtime(){
+  if(_rtChannel) sb.removeChannel(_rtChannel);
+  setDot('wait');
+  _rtChannel = sb.channel('conversas-rt')
+    .on('postgres_changes', {event:'*', schema:'public', table:'chamado_msgs'}, onMsgRT)
+    .on('postgres_changes', {event:'*', schema:'public', table:'chamados'}, onChamadoRT)
+    .subscribe(st=>{
+      if(st==='SUBSCRIBED') setDot('on');
+      else if(st==='CHANNEL_ERROR' || st==='TIMED_OUT' || st==='CLOSED') setDot('off');
+    });
+}
+
+function onMsgRT(payload){
+  const m = payload.new;
+  if(!m || payload.eventType !== 'INSERT') return;
+
+  // Mensagem da conversa que esta na tela: entra direto
+  if(chamadoAberto && m.chamado_id === chamadoAberto.id){
+    if(msgs.some(x=>x.id===m.id)) return;
+    msgs.push(m);
+    msgs.sort((a,b)=>new Date(a.criado_em)-new Date(b.criado_em));
+    renderMsgs(true);
+    if(m.autor_tipo !== minhaSide() && m.autor_tipo !== 'sistema') marcarVisto();
+    return;
+  }
+  // Conversa em outra aba da lista: so avisa
+  const c = chamados.find(x=>x.id===m.chamado_id);
+  if(c && m.autor_tipo !== minhaSide() && m.autor_tipo !== 'sistema'){
+    naoLidos[c.id] = (naoLidos[c.id]||0)+1;
+    atualizarTitulo();
+    if(modo==='pcp') showToast(c.solicitante+' respondeu em '+fmtNum(c.numero), 'info');
+    else showToast('O PCP respondeu em '+fmtNum(c.numero), 'info');
+    renderLista();
+  }
+}
+
+function onChamadoRT(payload){
+  const c = payload.new;
+  if(!c) return;
+  if(modo==='sol' && String(c.user_id) !== String(selectedUser.id)) return;
+  if(payload.eventType === 'INSERT'){
+    if(!chamados.some(x=>x.id===c.id)){
+      chamados.unshift(c);
+      if(modo==='pcp'){
+        naoLidos[c.id] = (naoLidos[c.id]||0)+1;
+        showToast('Nova conversa de '+c.solicitante+': '+c.assunto, 'info');
+        atualizarTitulo();
+      }
+      renderFiltros(); renderLista();
+    }
+    return;
+  }
+  const i = chamados.findIndex(x=>x.id===c.id);
+  if(i>=0) chamados[i] = c; else chamados.unshift(c);
+  chamados.sort((a,b)=>new Date(b.ultima_msg_em||b.criado_em)-new Date(a.ultima_msg_em||a.criado_em));
+  if(chamadoAberto && chamadoAberto.id===c.id){
+    chamadoAberto = c;
+    renderCabecalho(); renderComposer();
+  }
+  renderFiltros(); renderLista();
+}
+
+// Rede cai, aba dorme: de tempos em tempos confere com o banco de novo.
+setInterval(()=>{ if(modo && !document.hidden) carregarChamados(); }, 60000);
+
+// ESC fecha o que estiver aberto por cima
+document.addEventListener('keydown', e=>{
+  if(e.key !== 'Escape') return;
+  if($('modalImg').classList.contains('show')) return fecharModalImg();
+  if($('modalNova').classList.contains('show')) return fecharModalNova();
+  if($('modalCodigos').classList.contains('show')) return fecharModalCodigos();
+  if($('modalCodigo').classList.contains('show')) return fecharModalCodigo();
+  if($('modalUser').classList.contains('show')) return fecharModalUser();
+  if($('modalSenha').classList.contains('show')) return fecharModalSenha();
+});
+</script>
+</body>
+</html>
