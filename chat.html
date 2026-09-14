@@ -83,7 +83,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 #modalImg{z-index:600}
 .modal-box{background:var(--surface);border:1px solid var(--border);width:100%;max-width:380px}
 .modal-box.wide{max-width:560px;max-height:90vh;display:flex;flex-direction:column}
-.modal-box.img-box{max-width:600px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column}
+.modal-box.img-box{max-width:96vw;width:96vw;max-height:95vh;height:95vh;overflow:hidden;display:flex;flex-direction:column}
 .mhead{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .mhead h3{font-size:15px;font-weight:700}
 .mclose{background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1}
@@ -241,8 +241,15 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .up-area:hover,.up-area.drag{border-color:var(--accent);color:var(--accent)}
 
 /* IMAGEM */
-.img-wrap{overflow:auto;padding:10px;background:#000;display:flex;align-items:center;justify-content:center}
-.img-wrap img{max-width:100%;max-height:70vh;object-fit:contain}
+.img-wrap{flex:1;min-height:0;overflow:auto;padding:0;background:#000;display:flex;align-items:center;justify-content:center}
+.img-wrap img{max-width:100%;max-height:100%;object-fit:contain;cursor:zoom-in;display:block}
+/* Print de planilha só fica legível no tamanho real: o clique alterna entre
+   caber na tela e 100%, aí o wrapper vira área de arrasto. */
+.img-wrap.zoom{align-items:flex-start;justify-content:flex-start}
+.img-wrap.zoom img{max-width:none;max-height:none;width:auto;height:auto;cursor:zoom-out}
+.img-acoes{display:flex;align-items:center;gap:8px}
+.img-dica{font-size:11px;color:var(--text-dim);font-family:'Roboto Mono',monospace}
+@media(max-width:760px){.img-dica{display:none}}
 
 /* TOAST / OVERLAY / BANNER */
 .toast{position:fixed;bottom:20px;right:20px;padding:12px 18px;font-size:13px;font-weight:500;transform:translateY(60px);opacity:0;transition:all .3s;z-index:999;max-width:340px;pointer-events:none}
@@ -408,52 +415,6 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
   </div>
 </div>
 
-<!-- MODAL NOVA CONVERSA -->
-<div class="modal-bg" id="modalNova">
-  <div class="modal-box wide">
-    <div class="mhead"><h3>Nova conversa</h3><button class="mclose" onclick="fecharModalNova()">×</button></div>
-    <div class="mbody">
-      <div class="fgrp">
-        <label class="flabel" for="nvAssunto">Assunto</label>
-        <input class="finput" id="nvAssunto" maxlength="80" placeholder="Ex.: Prazo do pedido 48210 — Cliente Marca Forte">
-        <div class="fhint">Uma linha que diga do que se trata. É por ela que o PCP acha a conversa depois.</div>
-      </div>
-      <div class="fgrp">
-        <label class="flabel" for="nvCategoria">Assunto principal</label>
-        <select class="fsel" id="nvCategoria">
-          <option value="Prazo de entrega">Prazo de entrega</option>
-          <option value="Alteração de pedido">Alteração de pedido</option>
-          <option value="Status de produção">Status de produção</option>
-          <option value="Disponibilidade de material">Disponibilidade de material</option>
-          <option value="Cadastro de produto">Cadastro de produto</option>
-          <option value="Outro">Outro</option>
-        </select>
-      </div>
-      <div class="fgrp">
-        <label class="flabel" for="nvPedido">Pedido ou cliente <span style="color:var(--text-dim);font-weight:400">(opcional)</span></label>
-        <input class="finput" id="nvPedido" maxlength="60" placeholder="Ex.: 48210">
-      </div>
-      <div class="fgrp">
-        <label class="flabel" for="nvMsg">Primeira mensagem</label>
-        <textarea class="ftext" id="nvMsg" maxlength="2000" placeholder="Escreva sua dúvida ou pedido com os detalhes que o PCP precisa saber."></textarea>
-      </div>
-      <div class="fgrp" style="margin-bottom:0">
-        <label class="flabel">Fotos <span style="color:var(--text-dim);font-weight:400">(até 3)</span></label>
-        <div class="comp-prev" id="nvPrev"></div>
-        <div class="up-area" id="nvUpArea" onclick="document.getElementById('nvFile').click()">Clique ou arraste imagens aqui</div>
-        <input type="file" id="nvFile" accept="image/*" multiple style="display:none">
-      </div>
-      <div class="modal-err" id="nvErro">Preencha o assunto e a mensagem.</div>
-    </div>
-    <div class="mfoot">
-      <div class="modal-btns">
-        <button class="btn-cancel" onclick="fecharModalNova()">Cancelar</button>
-        <button class="btn-confirm" id="nvBtn" onclick="criarChamado()">Abrir conversa</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- MODAL TRANSFERIR -->
 <div class="modal-bg" id="modalTransf">
   <div class="modal-box">
@@ -468,8 +429,18 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 <!-- MODAL IMAGEM -->
 <div class="modal-bg" id="modalImg" onclick="if(event.target===this)fecharModalImg()">
   <div class="modal-box img-box">
-    <div class="mhead"><h3 id="imgTitle">Foto</h3><button class="mclose" onclick="fecharModalImg()">×</button></div>
-    <div class="img-wrap"><img id="imgSrc" alt=""></div>
+    <div class="mhead">
+      <h3 id="imgTitle">Foto</h3>
+      <div class="img-acoes">
+        <span class="img-dica" id="imgDica">clique na imagem para ampliar</span>
+        <button class="btn-acao" onclick="abrirImgNovaAba()" title="Abrir em outra aba, no tamanho original">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+          <span class="rot">Abrir original</span>
+        </button>
+        <button class="mclose" onclick="fecharModalImg()">×</button>
+      </div>
+    </div>
+    <div class="img-wrap" id="imgWrap" onclick="if(event.target.id==='imgSrc')alternarZoom()"><img id="imgSrc" alt=""></div>
   </div>
 </div>
 
@@ -477,7 +448,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 <div class="app" id="app" style="display:none">
   <aside class="side">
     <div class="side-top">
-      <button class="btn-novo" id="btnNovo" onclick="abrirModalNova()">
+      <button class="btn-novo" id="btnNovo" onclick="novaConversa()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
         Nova conversa
       </button>
@@ -530,7 +501,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const ADMINS = {'1964':'João Pedro','2404':'Bernardo','1010':'Huriel','2424':'Marco Túlio','1987':'Robson Adeilton','2469':'Ramon'};
 
 // Trocar a cada deploy. E o que faz uma aba velha se reconhecer desatualizada.
-const APP_VERSION = '2026.09.14-0004';
+const APP_VERSION = '2026.09.14-0006';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -544,7 +515,6 @@ let naoLidos = {};               // { chamado_id: qtd }
 let chamadoAberto = null;        // objeto do chamado aberto
 let msgs = [];                   // mensagens do chamado aberto
 let filtro = 'ativas';
-let fotosNova = [];
 let fotosComp = [];
 let _rtChannel = null, _toast = null, _pendId = 0;
 let codAcesso = null;            // { user_id, hash } da pessoa escolhida, ou null
@@ -1192,6 +1162,11 @@ function addMsg(m){
 function renderCabecalho(){
   const c = chamadoAberto;
   $('chAssunto').textContent = c.assunto;
+  if(c._rascunho){
+    $('chMeta').textContent = 'Escreva abaixo — o PCP recebe assim que você enviar';
+    $('chAcoes').innerHTML = '';
+    return;
+  }
   const partes = [fmtNum(c.numero)];
   if(modo==='pcp') partes.push(c.solicitante);
   else partes.push(c.assumido_por ? 'Atendimento: '+c.assumido_por : 'Ainda sem atendente');
@@ -1207,6 +1182,7 @@ function renderCabecalho(){
     } else if(c.assumido_por === adminNome){
       acoes += `<button class="btn-acao" onclick="abrirModalTransf()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l4 4-4 4"/><path d="M21 7H8a4 4 0 0 0-4 4v1"/><path d="M7 21l-4-4 4-4"/><path d="M3 17h13a4 4 0 0 0 4-4v-1"/></svg><span class="rot">Transferir</span></button>`;
     }
+    acoes += `<button class="btn-acao" onclick="renomear()" title="Mudar o assunto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>`;
     acoes += c.status==='resolvido'
       ? `<button class="btn-acao warn" onclick="reabrir()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span class="rot">Reabrir</span></button>`
       : `<button class="btn-acao ok" onclick="resolver()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span class="rot">Marcar resolvida</span></button>`;
@@ -1216,7 +1192,12 @@ function renderCabecalho(){
 
 function renderMsgs(irAoFim){
   const el = $('msgs');
-  if(!msgs.length){ el.innerHTML = '<div class="vazio">Sem mensagens.</div>'; return; }
+  if(!msgs.length){
+    el.innerHTML = chamadoAberto && chamadoAberto._rascunho
+      ? '<div class="vazio">Escreva sua mensagem aí embaixo.<br>Pode mandar foto junto, se ajudar a explicar.</div>'
+      : '<div class="vazio">Sem mensagens.</div>';
+    return;
+  }
   const eu = minhaSide();
   let html = '', diaAtual = '';
   msgs.forEach(m=>{
@@ -1244,7 +1225,7 @@ function renderMsgs(irAoFim){
 function renderComposer(){
   const c = chamadoAberto;
   const el = $('composer');
-  if(modo==='pcp' && c.assumido_por && c.assumido_por !== adminNome && !c._escrevendo){
+  if(!c._rascunho && modo==='pcp' && c.assumido_por && c.assumido_por !== adminNome && !c._escrevendo){
     el.innerHTML = `<div class="comp-fechado">
       Esta conversa está com <b>${esc(c.assumido_por)}</b>${c.assumido_em?' desde '+horaCurta(c.assumido_em):''}.
       <br>Responder por cima costuma virar resposta repetida para o comercial.
@@ -1281,9 +1262,9 @@ function renderComposer(){
   });
   txt.addEventListener('paste', e=>{
     const imgs = Array.from(e.clipboardData.files||[]).filter(f=>f.type.startsWith('image/'));
-    if(imgs.length){ e.preventDefault(); processarFotos(imgs, 'comp'); }
+    if(imgs.length){ e.preventDefault(); processarFotos(imgs); }
   });
-  $('compFile').addEventListener('change', e=>{ processarFotos(Array.from(e.target.files),'comp'); e.target.value=''; });
+  $('compFile').addEventListener('change', e=>{ processarFotos(Array.from(e.target.files)); e.target.value=''; });
   $('compDica').textContent = ehToque() ? '' : 'Enter envia · Shift+Enter quebra linha';
   renderPrevComp();
 }
@@ -1306,9 +1287,20 @@ async function enviarMsg(){
   const txtEl = $('compTxt');
   const texto = (txtEl.value||'').trim();
   if(!texto && !fotosComp.length){ return; }
-  const c = chamadoAberto;
+  let c = chamadoAberto;
   const eu = minhaSide(), nome = meuNome(), iso = nowIso();
   const fotos = fotosComp.length ? JSON.stringify(fotosComp.map(f=>f.base64)) : null;
+
+  // Rascunho: o chamado nasce agora, no primeiro envio.
+  if(c._rascunho){
+    $('compSend').disabled = true; showOverlay(true);
+    const r = await criarChamado(texto, fotos, iso);
+    showOverlay(false); $('compSend').disabled = false;
+    if(r.error){ showToast('Não deu para abrir a conversa: '+r.error.message,'error'); return; }
+    c = chamadoAberto = r.chamado;
+    chamados.unshift(c);
+    renderCabecalho(); renderFiltros(); renderLista();
+  }
 
   // Mostra na hora; se o banco recusar, a mensagem some e o texto volta.
   const pend = {id:'pend-'+(++_pendId), chamado_id:c.id, autor_tipo:eu, autor_nome:nome, texto, fotos, criado_em:iso, _pend:true};
@@ -1404,7 +1396,7 @@ async function reabrir(){
 }
 
 async function marcarVisto(){
-  const c = chamadoAberto; if(!c) return;
+  const c = chamadoAberto; if(!c || c._rascunho) return;
   if(!naoLidos[c.id]) return;
   delete naoLidos[c.id];
   atualizarTitulo(); renderLista();
@@ -1417,8 +1409,8 @@ async function marcarVisto(){
 // ════════════════════════════════════════════════
 //  FOTOS
 // ════════════════════════════════════════════════
-function processarFotos(files, alvo){
-  const lista = alvo==='comp' ? fotosComp : fotosNova;
+function processarFotos(files){
+  const lista = fotosComp;
   const rest = 3 - lista.length;
   if(rest<=0){ showToast('Máximo de 3 fotos por mensagem.','error'); return; }
   files.slice(0,rest).forEach(file=>{
@@ -1428,97 +1420,107 @@ function processarFotos(files, alvo){
       const img = new Image();
       img.onload = ()=>{
         const canvas = document.createElement('canvas');
-        const MAX=1200; let w=img.width,h=img.height;
+        // 1600 a 0,82: print de planilha continua legível sem estourar o
+        // tamanho do payload do realtime, que derruba imagem muito grande.
+        const MAX=1600; let w=img.width,h=img.height;
         if(w>MAX||h>MAX){ if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;} }
         canvas.width=w; canvas.height=h;
         canvas.getContext('2d').drawImage(img,0,0,w,h);
-        lista.push({name:file.name, base64:canvas.toDataURL('image/jpeg',.75)});
-        alvo==='comp' ? renderPrevComp() : renderPrevNova();
+        lista.push({name:file.name, base64:canvas.toDataURL('image/jpeg',.82)});
+        renderPrevComp();
       };
       img.src = ev.target.result;
     };
     reader.readAsDataURL(file);
   });
 }
-function htmlPrev(lista, alvo){
-  return lista.map((f,i)=>`<div class="foto-prev">
+function renderPrevComp(){
+  const el = $('compPrev'); if(!el) return;
+  el.innerHTML = fotosComp.map((f,i)=>`<div class="foto-prev">
     <img src="${f.base64}" alt="${esc(f.name)}" onclick="abrirImg(this.src, this.alt)">
-    <button class="rm" onclick="removerFoto(${i},'${alvo}')" aria-label="Remover foto">×</button>
+    <button class="rm" onclick="removerFoto(${i})" aria-label="Remover foto">×</button>
   </div>`).join('');
 }
-function renderPrevComp(){ const el=$('compPrev'); if(el) el.innerHTML = htmlPrev(fotosComp,'comp'); }
-function renderPrevNova(){ $('nvPrev').innerHTML = htmlPrev(fotosNova,'nova'); }
-function removerFoto(i, alvo){
-  if(alvo==='comp'){ fotosComp.splice(i,1); renderPrevComp(); }
-  else { fotosNova.splice(i,1); renderPrevNova(); }
-}
+function removerFoto(i){ fotosComp.splice(i,1); renderPrevComp(); }
 function abrirImg(src, name){
   $('imgSrc').src = src;
   $('imgTitle').textContent = name || 'Foto';
+  $('imgWrap').classList.remove('zoom');
+  $('imgDica').textContent = 'clique na imagem para ampliar';
   $('modalImg').classList.add('show');
 }
-function fecharModalImg(){ $('modalImg').classList.remove('show'); $('imgSrc').src=''; }
+function fecharModalImg(){
+  $('modalImg').classList.remove('show');
+  $('imgWrap').classList.remove('zoom');
+  $('imgSrc').src = '';
+}
+function alternarZoom(){
+  const z = $('imgWrap').classList.toggle('zoom');
+  $('imgDica').textContent = z ? 'arraste para navegar · clique para reduzir' : 'clique na imagem para ampliar';
+  if(z) $('imgWrap').scrollTop = 0;
+}
+// O Chrome bloqueia abrir data: numa aba nova, entao vira blob antes.
+async function abrirImgNovaAba(){
+  const src = $('imgSrc').src;
+  if(!src) return;
+  try{
+    const b = await (await fetch(src)).blob();
+    const u = URL.createObjectURL(b);
+    window.open(u, '_blank');
+    setTimeout(()=>URL.revokeObjectURL(u), 60000);
+  }catch(e){ showToast('Não deu para abrir a imagem.','error'); }
+}
 
 // ════════════════════════════════════════════════
 //  NOVA CONVERSA
+//  Sem formulário: abre o chat vazio e a pessoa escreve. O chamado só
+//  nasce no primeiro envio — antes disso é rascunho, não existe no banco.
 // ════════════════════════════════════════════════
-function abrirModalNova(){
-  fotosNova = []; renderPrevNova();
-  $('nvAssunto').value=''; $('nvMsg').value=''; $('nvPedido').value='';
-  $('nvAssunto').classList.remove('erro'); $('nvMsg').classList.remove('erro');
-  $('nvErro').classList.remove('show');
-  $('modalNova').classList.add('show');
-  setTimeout(()=>$('nvAssunto').focus(), 80);
+function novaConversa(){
+  if(modo !== 'sol') return;
+  chamadoAberto = {_rascunho:true, id:null, numero:null, status:'aberto',
+                   assunto:'Nova conversa', solicitante:selectedUser.nome};
+  msgs = []; fotosComp = [];
+  $('app').classList.add('aberto');
+  $('convVazia').style.display = 'none';
+  $('convAtiva').style.display = 'flex';
+  renderCabecalho(); renderMsgs(); renderComposer(); renderLista();
+  setTimeout(()=>{ const t = $('compTxt'); if(t) t.focus(); }, 60);
 }
-function fecharModalNova(){ $('modalNova').classList.remove('show'); }
 
-(function ligarUploadNova(){
-  const area = $('nvUpArea');
-  $('nvFile').addEventListener('change', e=>{ processarFotos(Array.from(e.target.files),'nova'); e.target.value=''; });
-  ['dragenter','dragover'].forEach(ev=>area.addEventListener(ev, e=>{ e.preventDefault(); area.classList.add('drag'); }));
-  ['dragleave','drop'].forEach(ev=>area.addEventListener(ev, e=>{ e.preventDefault(); area.classList.remove('drag'); }));
-  area.addEventListener('drop', e=>processarFotos(Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('image/')),'nova'));
-})();
+// O assunto sai da primeira mensagem. Na maioria das vezes serve; quando
+// alguém abre com "bom dia", o PCP renomeia pelo lápis no cabeçalho.
+function assuntoDaMensagem(texto){
+  const linha = (texto||'').split('\n')[0].trim();
+  if(!linha) return 'Conversa com foto';
+  return linha.length > 70 ? linha.slice(0,70).trim()+'…' : linha;
+}
 
-async function criarChamado(){
-  const assunto = ($('nvAssunto').value||'').trim();
-  const texto = ($('nvMsg').value||'').trim();
-  const pedido = ($('nvPedido').value||'').trim();
-  const categoria = $('nvCategoria').value;
-  $('nvAssunto').classList.toggle('erro', !assunto);
-  $('nvMsg').classList.toggle('erro', !texto);
-  if(!assunto || !texto){ $('nvErro').classList.add('show'); return; }
-  $('nvErro').classList.remove('show');
-
-  showOverlay(true); $('nvBtn').disabled = true;
-  const iso = nowIso();
+async function criarChamado(texto, fotos, iso){
   const {data:last} = await sb.from('chamados').select('numero').order('numero',{ascending:false}).limit(1);
   const numero = (last && last.length && last[0].numero) ? last[0].numero+1 : 1;
-
-  const {data:novo, error} = await sb.from('chamados').insert([{
+  const {data, error} = await sb.from('chamados').insert([{
     numero, user_id:selectedUser.id, solicitante:selectedUser.nome, setor:'Comercial',
-    assunto, categoria, pedido: pedido||null, status:'aberto',
+    assunto: assuntoDaMensagem(texto), status:'aberto',
     criado_em:iso, ultima_msg_em:iso, ultima_msg_autor:'comercial',
-    ultima_msg_txt: texto.slice(0,120), visto_sol_em:iso
+    ultima_msg_txt: texto ? texto.slice(0,120) : '[foto]', visto_sol_em:iso
   }]).select();
+  if(error) return {error};
+  return {chamado: data[0]};
+}
 
-  if(error){ showOverlay(false); $('nvBtn').disabled=false; showToast('Erro ao abrir: '+error.message,'error'); return; }
-
-  const c = novo[0];
-  const {error:e2} = await sb.from('chamado_msgs').insert([{
-    chamado_id:c.id, autor_tipo:'comercial', autor_nome:selectedUser.nome,
-    texto, fotos: fotosNova.length ? JSON.stringify(fotosNova.map(f=>f.base64)) : null, criado_em:iso
-  }]);
-  showOverlay(false); $('nvBtn').disabled = false;
-  if(e2){ showToast('A conversa abriu, mas a mensagem falhou: '+e2.message,'error'); }
-
-  fotosNova = [];
-  fecharModalNova();
-  chamados.unshift(c);
-  filtro = 'ativas';
-  renderFiltros(); renderLista();
-  abrirConversa(c.id);
-  showToast('Conversa aberta. O PCP já consegue ver.','success');
+// Renomear (PCP): o título é o que a lista mostra, então vale poder arrumar.
+async function renomear(){
+  const c = chamadoAberto;
+  if(!c || modo!=='pcp' || c._rascunho) return;
+  const novo = prompt('Assunto da conversa:', c.assunto);
+  if(novo === null) return;
+  const t = novo.trim();
+  if(!t || t === c.assunto) return;
+  const {error} = await sb.from('chamados').update({assunto:t}).eq('id', c.id);
+  if(error){ showToast('Não deu para renomear: '+error.message,'error'); return; }
+  c.assunto = t;
+  renderCabecalho(); renderLista();
 }
 
 // ════════════════════════════════════════════════
@@ -1597,7 +1599,6 @@ setInterval(()=>{ if(modo && !document.hidden) carregarChamados(); }, 60000);
 document.addEventListener('keydown', e=>{
   if(e.key !== 'Escape') return;
   if($('modalImg').classList.contains('show')) return fecharModalImg();
-  if($('modalNova').classList.contains('show')) return fecharModalNova();
   if($('modalTransf').classList.contains('show')) return fecharModalTransf();
   if($('modalCodigos').classList.contains('show')) return fecharModalCodigos();
   if($('modalCodigo').classList.contains('show')) return fecharModalCodigo();
