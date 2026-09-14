@@ -146,6 +146,10 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .btn-novo svg{width:15px;height:15px}
 .busca{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 10px;font-size:13px;font-family:'Inter',sans-serif;outline:none}
 .busca:focus{border-color:var(--accent)}
+.busca-info{font-size:10px;font-family:'Roboto Mono',monospace;color:var(--text-dim);margin-top:6px;min-height:13px}
+.busca-info b{color:var(--accent);font-weight:600}
+.ci-trecho{font-size:11px;color:var(--text-muted);line-height:1.4;background:var(--surface2);border-left:2px solid var(--accent);padding:4px 7px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.ci-trecho mark{background:rgba(192,146,42,.3);color:var(--accent);padding:0 1px}
 .filtros{display:flex;gap:0;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
 .fbtn{flex:1;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-muted);font-size:11px;font-weight:600;letter-spacing:.04em;padding:10px 6px;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;margin-bottom:-1px}
 .fbtn:hover{color:var(--text)}
@@ -486,7 +490,8 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
         Nova conversa
       </button>
-      <input class="busca" id="buscaConv" placeholder="Buscar por assunto, pedido ou pessoa..." oninput="renderLista()">
+      <input class="busca" id="buscaConv" placeholder="Buscar em tudo, inclusive nas mensagens..." oninput="onBusca()">
+      <div class="busca-info" id="buscaInfo"></div>
     </div>
     <div class="filtros" id="filtros"></div>
     <div class="side-list" id="listaConv"></div>
@@ -541,7 +546,7 @@ const SOBE_DIRETO = 1.5 * 1024 * 1024;
 const ADMINS = {'1964':'João Pedro','2404':'Bernardo','1010':'Huriel','2424':'Marco Túlio','1987':'Robson Adeilton','2469':'Ramon','6924':'Eduardo'};
 
 // Trocar a cada deploy. E o que faz uma aba velha se reconhecer desatualizada.
-const APP_VERSION = '2026.09.14-0015';
+const APP_VERSION = '2026.09.14-0016';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -563,6 +568,7 @@ let codUserPend = null;          // usuario escolhido, esperando o codigo
 let usersCodigos = [];           // painel do PCP
 let userPickerFim = 'login';     // 'login' | 'destino'
 let erroUsers = null;
+let buscaTermo = '', buscaTimer = null, buscaMsgs = {}, buscando = false;
 const rascunhos = {};            // texto por digitar, guardado por conversa
 
 const FILTROS_PCP = [
@@ -1293,23 +1299,94 @@ function renderFiltros(){
 }
 function setFiltro(k){ filtro = k; renderFiltros(); renderLista(); }
 
+// ════════════════════════════════════════════════
+//  BUSCA
+//  O que esta em memoria responde na hora. O texto das mensagens mora no
+//  banco, entao vai uma consulta — atrasada, para nao disparar a cada tecla.
+// ════════════════════════════════════════════════
+function onBusca(){
+  const t = ($('buscaConv').value||'').trim();
+  buscaTermo = t;
+  clearTimeout(buscaTimer);
+  if(t.length < 3){
+    buscaMsgs = {}; buscando = false;
+    renderLista(); return;
+  }
+  buscando = true;
+  renderLista();
+  buscaTimer = setTimeout(()=>buscarNasMensagens(t), 350);
+}
+
+async function buscarNasMensagens(termo){
+  if(termo !== buscaTermo) return;
+  // % e _ sao curingas no banco: digitados sem querer, mudariam a busca.
+  const limpo = termo.replace(/[%_]/g, ' ').trim();
+  if(!limpo){ buscando = false; renderLista(); return; }
+
+  const ids = chamados.map(c=>c.id);
+  let q = sb.from('chamado_msgs')
+    .select('chamado_id,texto,criado_em')
+    .neq('autor_tipo','sistema')
+    .ilike('texto', '%'+limpo+'%')
+    .order('criado_em', {ascending:false})
+    .limit(400);
+  // No comercial a consulta fica presa as conversas dela; sem isso, o texto
+  // de conversa alheia chegaria ao navegador so por causa da busca.
+  if(modo === 'sol' || ids.length <= 150) q = q.in('chamado_id', ids);
+
+  const {data, error} = await q;
+  if(termo !== buscaTermo) return;          // ela ja' digitou outra coisa
+  buscando = false;
+  if(error){ buscaMsgs = {}; renderLista(); return; }
+  const achados = {};
+  (data||[]).forEach(m=>{
+    if(!achados[m.chamado_id] && m.texto) achados[m.chamado_id] = m.texto;
+  });
+  buscaMsgs = achados;
+  renderLista();
+}
+
+function trechoBusca(texto, termo){
+  const i = texto.toLowerCase().indexOf(termo.toLowerCase());
+  if(i < 0) return esc(texto.slice(0,110));
+  const ini = Math.max(0, i - 35);
+  const fim = Math.min(texto.length, i + termo.length + 70);
+  return (ini ? '…' : '')
+       + esc(texto.slice(ini, i))
+       + '<mark>' + esc(texto.slice(i, i+termo.length)) + '</mark>'
+       + esc(texto.slice(i+termo.length, fim))
+       + (fim < texto.length ? '…' : '');
+}
+
+function renderBuscaInfo(b, achados){
+  const el = $('buscaInfo'); if(!el) return;
+  if(!b){ el.innerHTML = ''; return; }
+  if(b.length < 3){ el.innerHTML = 'digite 3 letras para procurar nas mensagens'; return; }
+  if(buscando){ el.innerHTML = 'procurando nas mensagens...'; return; }
+  const nasMsgs = Object.keys(buscaMsgs).length;
+  el.innerHTML = '<b>'+achados+'</b> em todas as conversas'
+               + (nasMsgs ? ' · '+nasMsgs+' com o termo no texto' : '');
+}
+
 // ── LISTA ──
 function renderLista(){
   const b = ($('buscaConv').value||'').trim().toLowerCase();
-  let lista = chamados.filter(c=>passaFiltro(c,filtro));
+  // Buscando, o filtro aberto sai da frente: quem procura quer achar, nao
+  // achar dentro da aba. Resolvida de tres meses atras tem que aparecer.
+  let lista = b ? chamados.slice() : chamados.filter(c=>passaFiltro(c,filtro));
   if(b){
     lista = lista.filter(c=>
       (c.assunto||'').toLowerCase().includes(b) ||
-      (c.pedido||'').toLowerCase().includes(b) ||
       (c.solicitante||'').toLowerCase().includes(b) ||
-      (c.categoria||'').toLowerCase().includes(b) ||
-      String(c.numero||'').includes(b)
+      String(c.numero||'').includes(b) ||
+      buscaMsgs[c.id]
     );
   }
+  renderBuscaInfo(b, lista.length);
   const el = $('listaConv');
   if(!lista.length){
     el.innerHTML = '<div class="vazio">' + (b
-      ? 'Nada encontrado para essa busca.'
+      ? (buscando ? 'Procurando nas mensagens...' : 'Nada encontrado para essa busca.')
       : (modo==='sol' ? 'Nenhuma conversa por aqui ainda.<br>Use <b>Nova conversa</b> para falar com o PCP.' : 'Nenhuma conversa neste filtro.')) + '</div>';
     return;
   }
@@ -1327,6 +1404,7 @@ function renderLista(){
         <span class="ci-prev">${quem?`<b>${quem}:</b> `:''}${esc((c.ultima_msg_txt||'').slice(0,90))}</span>
         ${n?`<span class="ci-nao">${n}</span>`:''}
       </div>
+      ${b && buscaMsgs[c.id] ? `<div class="ci-trecho">${trechoBusca(buscaMsgs[c.id], b)}</div>` : ''}
       <div class="ci-l3">
         <span class="pill ${c.status}">${c.status==='aberto'?'Aguardando':c.status==='andamento'?'Em conversa':'Resolvida'}</span>
         ${c.setor==='PCP'?'<span class="pill tag">interna</span>':''}
