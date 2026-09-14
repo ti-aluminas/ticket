@@ -525,10 +525,10 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 
 const SUPABASE_URL = 'https://zeaknzyvlgawtjjdfluc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InplYWtuenl2bGdhd3RqamRmbHVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwMDg3NDgsImV4cCI6MjA5ODU4NDc0OH0.YzYuE6fm6F0wvbDtmCVmWDrMXa7biEbcRZ2a8AfdR7s';
-const ADMINS = {'1964':'João Pedro','2404':'Bernardo','1010':'Huriel','2424':'Marco Túlio','1987':'Robson Adeilton','2469':'Ramon'};
+const ADMINS = {'1964':'João Pedro','2404':'Bernardo','1010':'Huriel','2424':'Marco Túlio','1987':'Robson Adeilton','2469':'Ramon','6924':'Eduardo'};
 
 // Trocar a cada deploy. E o que faz uma aba velha se reconhecer desatualizada.
-const APP_VERSION = '2026.09.14-0012';
+const APP_VERSION = '2026.09.14-0013';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -796,8 +796,8 @@ function hashCodigo(codigo, salt){
   return h1.toString(16).padStart(8,'0') + h2.toString(16).padStart(8,'0');
 }
 
-function caixasC1(){ return Array.from(document.querySelectorAll('.pin-box.c1')); }
-function caixasC2(){ return Array.from(document.querySelectorAll('.pin-box.c2')); }
+function caixasC1(){ return Array.from(document.querySelectorAll('#codRow1 .pin-box')); }
+function caixasC2(){ return Array.from(document.querySelectorAll('#codRow2 .pin-box')); }
 function limparCod(){ caixasC1().concat(caixasC2()).forEach(i=>{ i.value=''; i.classList.remove('preenchido'); }); }
 
 function abrirModalCodigo(m){
@@ -950,7 +950,9 @@ async function redefinirCodigo(id){
 }
 
 // ── PIN ──
-function pinCaixas(){ return Array.from(document.querySelectorAll('.pin-box')); }
+// Preso ao container: os dois modais usam .pin-box, e buscar solto fazia
+// um enxergar as caixas do outro.
+function pinCaixas(){ return Array.from(document.querySelectorAll('#pinRow .pin-box')); }
 function abrirModalSenha(){
   $('modalSenha').classList.add('show');
   $('senhaErro').classList.remove('show');
