@@ -370,7 +370,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
     <h2>Como deseja acessar?</h2>
     <p class="sub">Escolha seu perfil para continuar</p>
 
-    <button class="mode-retomar" id="btnRetomar" style="display:none" onclick="retomarSolicitante()">
+    <button class="mode-retomar" id="btnRetomar" style="display:none" onclick="retomar()">
       <span class="avatar" id="retomarAvatar">—</span>
       <span class="mr-txt">
         <span class="mr-label">Continuar como</span>
@@ -415,6 +415,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
       <input class="pin-box" type="password" inputmode="numeric" autocomplete="off" maxlength="1" data-i="3">
     </div>
     <div class="modal-err" id="senhaErro">Código incorreto. Tente novamente.</div>
+    <label class="lembrar"><input type="checkbox" id="pinLembrar"> Continuar conectado neste aparelho</label>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="fecharModalSenha()">Cancelar</button>
       <button class="btn-confirm" onclick="verificarSenha()">Entrar</button>
@@ -597,7 +598,7 @@ const FORMATOS_OK = ['image/png','image/jpeg','image/webp','image/gif'];
 const ADMINS = {'1964':'João Pedro','2404':'Bernardo','1010':'Huriel','2424':'Marco Túlio','1987':'Robson Adeilton','2469':'Ramon','6924':'Eduardo'};
 
 // Trocar a cada deploy. E o que faz uma aba velha se reconhecer desatualizada.
-const APP_VERSION = '2026.09.14-0021';
+const APP_VERSION = '2026.09.18-0023';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -877,6 +878,24 @@ function salvarSessao(user, lembrar){
     exp: Date.now() + (lembrar ? SESSAO_LONGA : SESSAO_CURTA)
   }));
 }
+// O PCP tambem precisa de sessao: sem isso, todo recarregamento — inclusive
+// o que o proprio banner de versao pede — obriga a redigitar o PIN.
+function salvarSessaoPcp(nome, lembrar){
+  localStorage.setItem('aluminas_chat_pcp', JSON.stringify({
+    nome, exp: Date.now() + (lembrar ? SESSAO_LONGA : SESSAO_CURTA)
+  }));
+}
+function lerSessaoPcp(){
+  try{
+    const u = JSON.parse(localStorage.getItem('aluminas_chat_pcp')||'null');
+    if(!u || !u.nome) return null;
+    if(!u.exp || Date.now() > u.exp){ localStorage.removeItem('aluminas_chat_pcp'); return null; }
+    // Nome que saiu da lista de admins nao vale mais.
+    if(!Object.values(ADMINS).includes(u.nome)){ localStorage.removeItem('aluminas_chat_pcp'); return null; }
+    return u;
+  }catch(e){ return null; }
+}
+
 function lerSessao(){
   try{
     const u = JSON.parse(localStorage.getItem('aluminas_chat_user')||'null');
@@ -885,16 +904,27 @@ function lerSessao(){
     return u;
   }catch(e){ return null; }
 }
-(function(){
-  try{
-    const u = lerSessao();
-    if(u && u.id && u.nome){
-      $('retomarNome').textContent = u.nome;
-      $('retomarAvatar').textContent = initials(u.nome);
-      $('btnRetomar').style.display = 'flex';
-    }
-  }catch(e){}
-})();
+function renderRetomar(){
+  const b = $('btnRetomar');
+  const pcp = lerSessaoPcp(), sol = lerSessao();
+  const u = pcp || sol;
+  if(!u){ b.style.display = 'none'; return; }
+  $('retomarNome').textContent = u.nome + (pcp ? ' · PCP' : '');
+  $('retomarAvatar').textContent = initials(u.nome);
+  b.style.display = 'flex';
+}
+renderRetomar();
+async function retomar(){
+  const pcp = lerSessaoPcp();
+  if(pcp){
+    adminNome = pcp.nome;
+    salvarSessaoPcp(pcp.nome, (pcp.exp - Date.now()) > SESSAO_CURTA);   // renova o prazo
+    entrarApp('pcp');
+    return;
+  }
+  return retomarSolicitante();
+}
+
 async function retomarSolicitante(){
   const u = lerSessao();
   if(!u){ showToast('Sua sessão expirou. Entre com o código.','info'); entrarSolicitante(); return; }
@@ -914,7 +944,7 @@ async function retomarSolicitante(){
   const linha = data && data[0];
   const barrar = (msg, modal, acesso)=>{
     localStorage.removeItem('aluminas_chat_user');
-    $('btnRetomar').style.display = 'none';
+    renderRetomar();
     codUserPend = {id:u.id, nome:u.nome};
     codAcesso = acesso;
     showToast(msg,'info');
@@ -1201,6 +1231,7 @@ function pinCaixas(){ return Array.from(document.querySelectorAll('#pinRow .pin-
 function abrirModalSenha(){
   $('modalSenha').classList.add('show');
   $('senhaErro').classList.remove('show');
+  $('pinLembrar').checked = false;
   pinCaixas().forEach(i=>{ i.value=''; i.classList.remove('preenchido'); });
   setTimeout(()=>pinCaixas()[0].focus(), 60);
 }
@@ -1222,6 +1253,7 @@ function verificarSenha(){
   if(cod.length<4) return;
   if(ADMINS[cod]){
     adminNome = ADMINS[cod];
+    salvarSessaoPcp(adminNome, $('pinLembrar').checked);
     fecharModalSenha();
     entrarApp('pcp');
   } else {
@@ -1265,10 +1297,7 @@ function entrarApp(m){
   ligarRealtime();
 }
 function voltarModo(){
-  if(modo === 'sol'){
-    localStorage.removeItem('aluminas_chat_user');
-    $('btnRetomar').style.display = 'none';
-  }
+  localStorage.removeItem(modo === 'pcp' ? 'aluminas_chat_pcp' : 'aluminas_chat_user');
   if(_rtChannel){ sb.removeChannel(_rtChannel); _rtChannel = null; }
   modo = null; adminNome = null; chamadoAberto = null; chamados = []; msgs = [];
   // Num computador compartilhado, o que a pessoa anterior digitou e nao
@@ -1288,6 +1317,7 @@ function voltarModo(){
   anlAberto = false; $('painel').classList.remove('show'); destruirGraficos();
   $('modeBadge').style.display = 'none';
   $('headerSub').textContent = 'Conversas · Comercial ⇄ PCP';
+  renderRetomar();
   carregarResumo();
 }
 
@@ -2659,6 +2689,18 @@ function onChamadoRT(payload){
 
 // Rede cai, aba dorme: de tempos em tempos confere com o banco de novo.
 setInterval(()=>{ if(modo && !document.hidden) carregarChamados(); }, 60000);
+
+// ── INIT ──
+// Igual ao sistema de tickets: com sessao valida o F5 devolve a pessoa ao
+// painel sozinho, sem clique nenhum. So o comercial continua com o botao,
+// porque ali ainda e' preciso conferir o codigo no banco antes de entrar.
+(function(){
+  const pcp = lerSessaoPcp();
+  if(!pcp) return;
+  adminNome = pcp.nome;
+  salvarSessaoPcp(pcp.nome, (pcp.exp - Date.now()) > SESSAO_CURTA);
+  entrarApp('pcp');
+})();
 
 // ESC fecha o que estiver aberto por cima
 document.addEventListener('keydown', e=>{
