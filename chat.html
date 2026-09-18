@@ -290,6 +290,39 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 #verBanner.show{display:flex}
 #verBanner button{background:#fff;color:#b71c1c;border:none;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;letter-spacing:.04em;text-transform:uppercase}
 
+/* PAINEL */
+.anl{flex:1;overflow-y:auto;min-height:0;padding:22px;display:none}
+.anl.show{display:block}
+.anl-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+.anl-top h2{font-size:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.anl-per{display:flex;gap:0;margin-left:auto;border:1px solid var(--border)}
+.anl-per button{background:none;border:none;border-right:1px solid var(--border);color:var(--text-muted);font-size:11px;font-weight:600;padding:7px 13px;cursor:pointer;font-family:'Inter',sans-serif}
+.anl-per button:last-child{border-right:none}
+.anl-per button:hover{color:var(--text)}
+.anl-per button.on{background:rgba(192,146,42,.14);color:var(--accent)}
+.anl-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+.anl-kpi{background:var(--surface);border:1px solid var(--border);padding:15px 17px}
+.anl-kpi-l{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px}
+.anl-kpi-v{font-size:27px;font-weight:700;font-family:'Roboto Mono',monospace;line-height:1;color:var(--accent)}
+.anl-kpi-v.yellow{color:var(--yellow)} .anl-kpi-v.green{color:#69f0ae} .anl-kpi-v.red{color:#ff8a80} .anl-kpi-v.plain{color:var(--text)}
+.anl-kpi-s{font-size:11px;color:var(--text-dim);margin-top:5px;line-height:1.4}
+.anl-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.anl-box{background:var(--surface);border:1px solid var(--border);padding:17px;min-width:0}
+.anl-box.full{grid-column:1/-1}
+.anl-tit{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted);margin-bottom:13px}
+.anl-tit span{font-weight:400;color:var(--text-dim);text-transform:none;letter-spacing:0}
+.anl-cv{position:relative;height:190px}
+.anl-cv.tall{height:230px}
+.anl-tab{width:100%;border-collapse:collapse;font-size:12px}
+.anl-tab th{text-align:left;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);font-weight:600;padding:0 8px 8px 0;border-bottom:1px solid var(--border)}
+.anl-tab th.num,.anl-tab td.num{text-align:right;padding-right:0;font-family:'Roboto Mono',monospace}
+.anl-tab td{padding:8px 8px 8px 0;border-bottom:1px solid var(--border)}
+.anl-tab tr:last-child td{border-bottom:none}
+.anl-tab .nm{font-weight:600}
+.anl-vazio{text-align:center;padding:34px 12px;font-size:12px;color:var(--text-dim);line-height:1.6}
+.anl-nota{font-size:11px;color:var(--text-dim);line-height:1.6;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
+@media(max-width:980px){.anl-kpis{grid-template-columns:repeat(2,1fr)}.anl-grid{grid-template-columns:1fr}.anl{padding:14px}}
+
 /* MOBILE: a lista e a conversa dividem a mesma tela */
 @media(max-width:860px){
   .side{width:100%;border-right:none}
@@ -315,6 +348,10 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
     <button class="btn-aviso" id="btnAviso" style="display:none" onclick="clicarAviso()"></button>
     <div class="clock" id="clock">--:--:--</div>
     <div class="mbadge" id="modeBadge" style="display:none"></div>
+    <button class="btn-link" id="btnPainel" style="display:none" onclick="alternarPainel()" title="Números do atendimento">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
+      <span class="rot">Painel</span>
+    </button>
     <button class="btn-link" id="btnCodigos" style="display:none" onclick="abrirModalCodigos()" title="Ver e redefinir os códigos do comercial">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="1"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
       <span class="rot">Códigos</span>
@@ -522,6 +559,14 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
   </section>
 </div>
 
+<div class="anl" id="painel">
+  <div class="anl-top">
+    <h2>Atendimento em números</h2>
+    <div class="anl-per" id="anlPer"></div>
+  </div>
+  <div id="anlCorpo"></div>
+</div>
+
 <div class="overlay" id="overlay"><div class="spin"></div></div>
 <div class="toast" id="toast"></div>
 <div id="verBanner">
@@ -529,6 +574,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
   <button onclick="recarregarForcado()">Recarregar</button>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ════════════════════════════════════════════════════════════════
@@ -544,11 +590,14 @@ const MAX_FOTOS = 5;
 // Abaixo disso sobe o arquivo original: print de planilha em PNG fica nitido,
 // e reconverter para JPEG e' justamente o que borrava o texto.
 const SOBE_DIRETO = 1.5 * 1024 * 1024;
+// Formatos que todo navegador desenha. Foto de iPhone costuma vir em HEIC:
+// subir do jeito que veio apareceria quebrada para quem recebe.
+const FORMATOS_OK = ['image/png','image/jpeg','image/webp','image/gif'];
 
 const ADMINS = {'1964':'João Pedro','2404':'Bernardo','1010':'Huriel','2424':'Marco Túlio','1987':'Robson Adeilton','2469':'Ramon','6924':'Eduardo'};
 
 // Trocar a cada deploy. E o que faz uma aba velha se reconhecer desatualizada.
-const APP_VERSION = '2026.09.14-0018';
+const APP_VERSION = '2026.09.14-0021';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -570,6 +619,9 @@ let codUserPend = null;          // usuario escolhido, esperando o codigo
 let usersCodigos = [];           // painel do PCP
 let userPickerFim = 'login';     // 'login' | 'destino'
 let erroUsers = null;
+// Qual codigo esta' por tras desta sessao. Se ele sumir ou for trocado,
+// a sessao guardada no navegador deixa de valer.
+let marcaAcesso = null;
 let buscaTermo = '', buscaTimer = null, buscaMsgs = {}, buscando = false;
 const rascunhos = {};            // texto por digitar, guardado por conversa
 
@@ -780,6 +832,7 @@ document.addEventListener('visibilitychange', ()=>{
   checarVersao();
   if(!modo) return;
   carregarChamados();
+  conferirAcesso();
   if(chamadoAberto && !chamadoAberto._rascunho) marcarVisto();
 });
 
@@ -801,7 +854,10 @@ async function carregarResumo(){
     const hojeN = data.filter(c=>new Date(c.criado_em)>=hoje).length;
     const resp = data.filter(c=>c.primeira_resposta_em)
                      .map(c=>new Date(c.primeira_resposta_em)-new Date(c.criado_em));
-    const media = resp.length ? resp.reduce((a,b)=>a+b,0)/resp.length : null;
+    // Mediana, igual ao painel: uma conversa esquecida no fim de semana
+    // sozinha estragaria a media mostrada na porta de entrada.
+    const ord = resp.slice().sort((a,b)=>a-b);
+    const media = ord.length ? (ord.length%2 ? ord[ord.length>>1] : (ord[(ord.length>>1)-1]+ord[ord.length>>1])/2) : null;
     setResumo('resumoEspera', espera);
     setResumo('resumoHoje', hojeN);
     setResumo('resumoTmr', media==null ? '—' : duracaoCurta(media));
@@ -817,7 +873,8 @@ const SESSAO_CURTA = 12*3600*1000;        // uso normal: 12h
 const SESSAO_LONGA = 30*86400*1000;       // "aparelho meu": 30 dias
 function salvarSessao(user, lembrar){
   localStorage.setItem('aluminas_chat_user', JSON.stringify({
-    id:user.id, nome:user.nome, exp: Date.now() + (lembrar ? SESSAO_LONGA : SESSAO_CURTA)
+    id:user.id, nome:user.nome, marca: marcaAcesso,
+    exp: Date.now() + (lembrar ? SESSAO_LONGA : SESSAO_CURTA)
   }));
 }
 function lerSessao(){
@@ -838,12 +895,61 @@ function lerSessao(){
     }
   }catch(e){}
 })();
-function retomarSolicitante(){
+async function retomarSolicitante(){
   const u = lerSessao();
   if(!u){ showToast('Sua sessão expirou. Entre com o código.','info'); entrarSolicitante(); return; }
+
+  showOverlay(true);
+  const {data, error} = await sb.from('chat_acesso').select('*').eq('user_id', u.id).limit(1);
+  showOverlay(false);
+
+  // Sem rede nao se tranca ninguem para fora: entra com o que ja' tinha.
+  if(error){
+    selectedUser = {id:u.id, nome:u.nome};
+    marcaAcesso = u.marca || null;
+    entrarApp('sol');
+    return;
+  }
+
+  const linha = data && data[0];
+  const barrar = (msg, modal, acesso)=>{
+    localStorage.removeItem('aluminas_chat_user');
+    $('btnRetomar').style.display = 'none';
+    codUserPend = {id:u.id, nome:u.nome};
+    codAcesso = acesso;
+    showToast(msg,'info');
+    abrirModalCodigo(modal);
+  };
+
+  if(!linha){
+    barrar('Seu código foi redefinido pelo PCP. Crie um novo.', 'criar', null);
+    return;
+  }
+  // Sessoes antigas nao guardavam marca; nesse caso basta o codigo existir.
+  if(u.marca && linha.criado_em !== u.marca){
+    barrar('Seu código mudou. Digite o novo.', 'entrar', linha);
+    return;
+  }
   selectedUser = {id:u.id, nome:u.nome};
+  marcaAcesso = linha.criado_em;
+  // Renova o prazo: sem isto o atalho sumia depois de cada uso.
+  salvarSessao(selectedUser, (u.exp - Date.now()) > SESSAO_CURTA);
   entrarApp('sol');
 }
+
+// Quem esta' com a aba aberta tambem tem que cair quando o codigo e'
+// redefinido — senao a redefinicao so vale no proximo login.
+async function conferirAcesso(){
+  if(modo !== 'sol' || !selectedUser) return;
+  const {data, error} = await sb.from('chat_acesso').select('criado_em').eq('user_id', selectedUser.id).limit(1);
+  if(error) return;                       // instabilidade de rede nao desloga
+  const linha = data && data[0];
+  if(linha && (!marcaAcesso || linha.criado_em === marcaAcesso)) return;
+  localStorage.removeItem('aluminas_chat_user');
+  showToast(linha ? 'Seu código mudou. Entre de novo.' : 'Seu código foi redefinido pelo PCP.','info');
+  voltarModo();
+}
+setInterval(conferirAcesso, 3*60*1000);
 
 async function entrarSolicitante(){
   userPickerFim = 'login';
@@ -998,12 +1104,14 @@ async function confirmarCodigo(){
       return;
     }
     $('codBtn').disabled = true; showOverlay(true);
+    const criado = nowIso();
     const {error} = await sb.from('chat_acesso').insert([{
       user_id: codUserPend.id, nome: codUserPend.nome,
-      hash: hashCodigo(c1, codUserPend.id), criado_em: nowIso()
+      hash: hashCodigo(c1, codUserPend.id), criado_em: criado
     }]);
     showOverlay(false); $('codBtn').disabled = false;
     if(error){ erroCod('Não deu para salvar: '+error.message); return; }
+    marcaAcesso = criado;
     entrarComoComercial();
     return;
   }
@@ -1013,6 +1121,7 @@ async function confirmarCodigo(){
     limparCod(); caixasC1()[0].focus();
     return;
   }
+  marcaAcesso = codAcesso.criado_em || null;
   entrarComoComercial();
 }
 
@@ -1082,7 +1191,7 @@ async function redefinirCodigo(id){
   showOverlay(false);
   if(error){ showToast('Não deu para redefinir: '+error.message,'error'); return; }
   u.tem = false; renderCodList();
-  showToast('Código de '+u.nome+' apagado.','success');
+  showToast('Código de '+u.nome+' apagado. Se estiver com a aba aberta, ela sai em até 3 minutos.','success');
 }
 
 // ── PIN ──
@@ -1137,6 +1246,7 @@ function entrarApp(m){
     $('headerSub').textContent = 'Conversas · Atendimento';
     $('btnNovo').style.display = 'flex';
     $('btnCodigos').style.display = 'inline-flex';
+    $('btnPainel').style.display = 'inline-flex';
     $('vaziaTxt').textContent = 'Escolha uma conversa na lista para responder.';
     filtro = 'espera';
   } else {
@@ -1144,6 +1254,7 @@ function entrarApp(m){
     $('headerSub').textContent = 'Conversas · Comercial';
     $('btnNovo').style.display = 'flex';
     $('btnCodigos').style.display = 'none';
+    $('btnPainel').style.display = 'none';
     $('vaziaTxt').textContent = 'Escolha uma conversa ou abra uma nova.';
     filtro = 'ativas';
   }
@@ -1160,13 +1271,21 @@ function voltarModo(){
   }
   if(_rtChannel){ sb.removeChannel(_rtChannel); _rtChannel = null; }
   modo = null; adminNome = null; chamadoAberto = null; chamados = []; msgs = [];
+  // Num computador compartilhado, o que a pessoa anterior digitou e nao
+  // enviou nao pode aparecer para quem entrar depois.
+  Object.keys(rascunhos).forEach(k=>delete rascunhos[k]);
+  fotosComp.forEach(f=>{ try{ URL.revokeObjectURL(f.prev); }catch(e){} });
+  fotosComp = []; naoLidos = {}; buscaMsgs = {}; selectedUser = null; marcaAcesso = null;
+  const cp = $('composer'); delete cp.dataset.estado; delete cp.dataset.chamado;
   document.title = 'Aluminas · Conversas';
   $('app').style.display = 'none';
   $('app').classList.remove('aberto');
   $('modeScreen').style.display = 'flex';
   $('btnSair').style.display = 'none';
   $('btnCodigos').style.display = 'none';
+  $('btnPainel').style.display = 'none';
   $('btnAviso').style.display = 'none';
+  anlAberto = false; $('painel').classList.remove('show'); destruirGraficos();
   $('modeBadge').style.display = 'none';
   $('headerSub').textContent = 'Conversas · Comercial ⇄ PCP';
   carregarResumo();
@@ -1234,11 +1353,15 @@ async function carregarNaoLidos(){
     const v = ms(meuVisto(c)) ?? ms(c.criado_em) ?? Date.now();
     return (min === null || v < min) ? v : min;
   }, null);
-  const {data} = await sb.from('chamado_msgs')
+  // Lista de ids vai na URL: passando de ~150 a consulta estoura o tamanho
+  // e falha em silencio. O PCP ve tudo mesmo, entao pode ir sem o filtro.
+  let q = sb.from('chamado_msgs')
     .select('chamado_id,criado_em,autor_nome,autor_tipo')
-    .in('chamado_id', ids)
     .neq('autor_tipo', 'sistema')
     .gte('criado_em', new Date(maisAntigo).toISOString());
+  if(modo === 'sol' || ids.length <= 150) q = q.in('chamado_id', ids);
+  const {data, error} = await q;
+  if(error){ console.warn('contagem de não lidas falhou:', error.message); return; }
   (data||[]).forEach(m=>{
     if(m.autor_nome === eu) return;
     const c = chamados.find(x=>x.id===m.chamado_id);
@@ -1386,6 +1509,9 @@ function renderLista(){
   }
   renderBuscaInfo(b, lista.length);
   const el = $('listaConv');
+  // Redesenhar zera a rolagem. Com o recarregamento de 1 em 1 minuto, quem
+  // esta' olhando o fim da lista era jogado para o topo sem motivo.
+  const rolagem = el.scrollTop;
   if(!lista.length){
     el.innerHTML = '<div class="vazio">' + (b
       ? (buscando ? 'Procurando nas mensagens...' : 'Nada encontrado para essa busca.')
@@ -1412,7 +1538,7 @@ function renderLista(){
         ${c.setor==='PCP'?'<span class="pill tag">interna</span>':''}
         ${c.pedido?`<span class="pill tag">${esc(c.pedido)}</span>`:''}
         ${modo==='pcp' && !ehInterna(c) ? pillDono(c, true) : ''}
-        ${modo==='pcp'?`<span class="ci-quem">${esc(c.solicitante)}</span>`:`<span class="ci-quem">${esc(c.categoria||'')}</span>`}
+        ${modo==='pcp'?`<span class="ci-quem">${esc(c.solicitante)}</span>`:`<span class="ci-quem">${esc(c.assumido_por||'sem atendente')}</span>`}
       </div>
     </div>`;
   }).join('');
@@ -1894,11 +2020,19 @@ async function enviarMsg(){
     try{
       fotos = JSON.stringify(await subirFotos(fotosLocais));
     }catch(err){
-      $('compSend').disabled = false;
+      if($('compSend')) $('compSend').disabled = false;
       showToast('As fotos não subiram: '+(err.message||err)+'. A mensagem não foi enviada.','error');
       return;
     }
-    $('compSend').disabled = false;
+    if($('compSend')) $('compSend').disabled = false;
+    // Upload em wi-fi ruim demora. Se a pessoa trocou de conversa no meio,
+    // continuar escreveria a bolha na conversa errada e limparia a caixa
+    // de outra. Melhor devolver tudo e avisar.
+    if(chamadoAberto !== c){
+      fotosComp = fotosLocais;
+      showToast('Você mudou de conversa durante o envio. As fotos continuam anexadas.','info');
+      return;
+    }
   }
 
   // Rascunho: o chamado nasce agora, no primeiro envio.
@@ -1934,10 +2068,11 @@ async function enviarMsg(){
     showToast('A mensagem não foi enviada: '+error.message, 'error');
     return;
   }
+  const aindaNaTela = chamadoAberto === c;
   msgs = msgs.filter(m=>m.id !== pend.id);
-  if(data && data[0]) addMsg(data[0]);
+  if(aindaNaTela && data && data[0]) addMsg(data[0]);
   delete rascunhos[String(c.id)];
-  renderMsgs(true);
+  if(aindaNaTela) renderMsgs(true);
 
   // Atualiza o cabecalho do chamado: e por ele que a lista se ordena.
   const patch = {
@@ -1966,7 +2101,9 @@ async function enviarMsg(){
   }
   await sb.from('chamados').update(patch).eq('id', c.id);
   Object.assign(c, patch);
-  renderCabecalho(); renderComposer(); renderFiltros(); renderLista();
+  renderFiltros(); renderLista();
+  if(chamadoAberto !== c) return;          // a pessoa ja' esta' em outra conversa
+  renderCabecalho(); renderComposer();
   const t = $('compTxt'); if(t) t.focus();
 }
 
@@ -1979,7 +2116,8 @@ async function resolver(){
     texto:'Conversa marcada como resolvida por <b>'+esc(adminNome)+'</b>.', criado_em:iso
   }]);
   const patch = {status:'resolvido', resolvido_em:iso, resolvido_por:adminNome,
-                 ultima_msg_em:iso, ultima_msg_autor:'sistema', ultima_msg_txt:'Resolvida', visto_pcp_em:iso};
+                 ultima_msg_em:iso, ultima_msg_autor:'sistema', ultima_msg_txt:'Resolvida',
+                 visto: vistoAtualizado(c, iso)};
   const {error} = await sb.from('chamados').update(patch).eq('id', c.id);
   showOverlay(false);
   if(error){ showToast('Não deu para resolver: '+error.message,'error'); return; }
@@ -1998,7 +2136,8 @@ async function reabrir(){
     texto:'Conversa reaberta por <b>'+esc(adminNome)+'</b>.', criado_em:iso
   }]);
   const patch = {status:'andamento', resolvido_em:null, resolvido_por:null, reaberto_em:iso,
-                 ultima_msg_em:iso, ultima_msg_autor:'sistema', ultima_msg_txt:'Reaberta', visto_pcp_em:iso};
+                 ultima_msg_em:iso, ultima_msg_autor:'sistema', ultima_msg_txt:'Reaberta',
+                 visto: vistoAtualizado(c, iso)};
   const {error} = await sb.from('chamados').update(patch).eq('id', c.id);
   showOverlay(false);
   if(error){ showToast('Não deu para reabrir: '+error.message,'error'); return; }
@@ -2031,6 +2170,11 @@ function processarFotos(files){
   files.slice(0,rest).forEach(async file=>{
     if(!file.type.startsWith('image/')){ showToast(file.name+' não é imagem.','error'); return; }
     const pronto = await prepararFoto(file);
+    if(!pronto){
+      showToast('Não deu para ler '+file.name+'. Tire um print ou salve como JPG.','error');
+      return;
+    }
+    if(fotosComp.length >= MAX_FOTOS){ showToast('Máximo de '+MAX_FOTOS+' fotos.','error'); return; }
     fotosComp.push({name:file.name, file:pronto, prev:URL.createObjectURL(pronto)});
     renderPrevComp();
   });
@@ -2039,8 +2183,15 @@ function processarFotos(files){
 // Arquivo pequeno vai inteiro. Grande e' reduzido — mas agora o teto e' bem
 // mais alto, porque nao precisa mais caber dentro de uma linha do banco.
 function prepararFoto(file){
-  if(file.size <= SOBE_DIRETO) return Promise.resolve(file);
+  // Formato conhecido e arquivo pequeno: sobe como veio, sem reconverter.
+  if(file.size <= SOBE_DIRETO && FORMATOS_OK.includes(file.type)) return Promise.resolve(file);
   return new Promise(resolve=>{
+    // Sem prazo, um navegador que nao dispare onload nem onerror deixaria a
+    // foto pendurada para sempre, sem anexar e sem avisar.
+    let pronto = false;
+    const responder = v => { if(!pronto){ pronto = true; resolve(v); } };
+    const reserva = FORMATOS_OK.includes(file.type) ? file : null;
+    setTimeout(()=>responder(reserva), 15000);
     const reader = new FileReader();
     reader.onload = ev=>{
       const img = new Image();
@@ -2050,12 +2201,14 @@ function prepararFoto(file){
         const cv = document.createElement('canvas');
         cv.width=w; cv.height=h;
         cv.getContext('2d').drawImage(img,0,0,w,h);
-        cv.toBlob(b=>resolve(b || file), 'image/jpeg', 0.88);
+        cv.toBlob(b=>responder(b || file), 'image/jpeg', 0.88);
       };
-      img.onerror = ()=>resolve(file);
+      // Nao conseguiu desenhar: e' formato que o navegador nao abre (HEIC,
+      // por exemplo). Devolver o original so empurraria o problema adiante.
+      img.onerror = ()=>responder(reserva);
       img.src = ev.target.result;
     };
-    reader.onerror = ()=>resolve(file);
+    reader.onerror = ()=>responder(reserva);
     reader.readAsDataURL(file);
   });
 }
@@ -2217,6 +2370,206 @@ async function renomear(){
   if(error){ showToast('Não deu para renomear: '+error.message,'error'); return; }
   c.assunto = t;
   renderCabecalho(); renderLista();
+}
+
+// ════════════════════════════════════════════════
+//  PAINEL
+//  Tudo sai do que ja' esta em memoria — nenhuma consulta nova.
+//  Uso mediana, nao media: uma conversa esquecida no fim de semana
+//  sozinha estraga a media e some com o retrato do dia normal.
+// ════════════════════════════════════════════════
+const PERIODOS = [{k:7,lb:'7 dias'},{k:30,lb:'30 dias'},{k:90,lb:'90 dias'},{k:0,lb:'Tudo'}];
+let anlPeriodo = 30, anlAberto = false;
+const _graficos = {};
+
+function mediana(v){
+  if(!v.length) return null;
+  const o = v.slice().sort((a,b)=>a-b), m = o.length>>1;
+  return o.length % 2 ? o[m] : (o[m-1]+o[m])/2;
+}
+function percentil(v, p){
+  if(!v.length) return null;
+  const o = v.slice().sort((a,b)=>a-b);
+  return o[Math.min(o.length-1, Math.floor(o.length*p))];
+}
+function destruirGraficos(){ Object.keys(_graficos).forEach(k=>{ try{_graficos[k].destroy();}catch(e){} delete _graficos[k]; }); }
+
+function alternarPainel(){
+  anlAberto = !anlAberto;
+  $('painel').classList.toggle('show', anlAberto);
+  $('app').style.display = anlAberto ? 'none' : 'flex';
+  if(anlAberto) renderPainel(); else destruirGraficos();
+}
+
+function setPeriodo(d){ anlPeriodo = d; renderPainel(); }
+
+function dadosPainel(){
+  const corte = anlPeriodo ? Date.now() - anlPeriodo*86400000 : 0;
+  const no = c => !corte || Date.parse(c.criado_em) >= corte;
+  // Conversa interna do PCP nao e' atendimento: contar junto inflaria o
+  // volume e sujaria os tempos com algo que ninguem do comercial espera.
+  const atend = chamados.filter(c=>!ehInterna(c));
+  return {
+    todas: atend,
+    periodo: atend.filter(no),
+    internas: chamados.filter(c=>ehInterna(c) && no(c)).length
+  };
+}
+
+function renderPainel(){
+  $('anlPer').innerHTML = PERIODOS.map(p=>
+    `<button class="${anlPeriodo===p.k?'on':''}" onclick="setPeriodo(${p.k})">${p.lb}</button>`).join('');
+
+  const {todas, periodo, internas} = dadosPainel();
+  if(!todas.length){
+    $('anlCorpo').innerHTML = '<div class="anl-vazio">Ainda não há conversas para medir.</div>';
+    return;
+  }
+
+  // ── KPIs ──
+  const esperando = todas.filter(c=>c.status!=='resolvido' && c.ultima_msg_autor==='comercial');
+  const maisAntiga = esperando.length
+    ? Math.min(...esperando.map(c=>Date.parse(c.ultima_msg_em)).filter(x=>!isNaN(x)))
+    : null;
+
+  const resp = periodo.filter(c=>c.primeira_resposta_em)
+    .map(c=>Date.parse(c.primeira_resposta_em)-Date.parse(c.criado_em)).filter(x=>x>=0);
+  const solu = periodo.filter(c=>c.resolvido_em)
+    .map(c=>Date.parse(c.resolvido_em)-Date.parse(c.criado_em)).filter(x=>x>=0);
+  const reab = periodo.filter(c=>c.reaberto_em).length;
+  const resolvidas = periodo.filter(c=>c.resolvido_em).length;
+  const semDono = todas.filter(c=>c.status!=='resolvido' && !c.assumido_por && !ehInterna(c)).length;
+
+  const kpi = (l,v,cls,sub)=>`<div class="anl-kpi"><div class="anl-kpi-l">${l}</div>
+    <div class="anl-kpi-v ${cls||''}">${v}</div><div class="anl-kpi-s">${sub||''}</div></div>`;
+
+  let h = '<div class="anl-kpis">'
+    + kpi('Esperando agora', esperando.length, esperando.length ? 'yellow' : 'green',
+          maisAntiga ? 'a mais antiga há '+duracaoCurta(Date.now()-maisAntiga) : 'ninguém na fila')
+    + kpi('1ª resposta', resp.length ? duracaoCurta(mediana(resp)) : '—', '',
+          resp.length ? 'mediana · pior 10%: '+duracaoCurta(percentil(resp,0.9)) : 'sem dados no período')
+    + kpi('Até resolver', solu.length ? duracaoCurta(mediana(solu)) : '—', '',
+          solu.length ? 'mediana de '+solu.length+' resolvidas' : 'nada resolvido no período')
+    + kpi('Abertas', periodo.length, 'plain',
+          anlPeriodo ? 'nos últimos '+anlPeriodo+' dias' : 'desde o começo')
+    + kpi('Reabertas', resolvidas ? Math.round(reab/resolvidas*100)+'%' : '—',
+          reab ? 'red' : 'green', reab+' de '+resolvidas+' resolvidas voltaram')
+    + '</div>';
+
+  h += '<div class="anl-grid"><div class="anl-box full"><div class="anl-tit">Conversas por dia <span>— abertas e resolvidas</span></div><div class="anl-cv tall"><canvas id="gDia"></canvas></div></div></div>';
+  h += '<div class="anl-grid">'
+     + '<div class="anl-box"><div class="anl-tit">Hora em que o comercial procura</div><div class="anl-cv"><canvas id="gHora"></canvas></div></div>'
+     + '<div class="anl-box"><div class="anl-tit">Situação agora</div><div class="anl-cv" style="display:flex;align-items:center;justify-content:center"><canvas id="gStatus" style="max-height:190px;max-width:190px"></canvas></div></div>'
+     + '</div>';
+  h += '<div class="anl-grid">'
+     + '<div class="anl-box"><div class="anl-tit">Por atendente <span>— no período</span></div><div id="anlAtend"></div></div>'
+     + '<div class="anl-box"><div class="anl-tit">Quem mais procura o PCP</div><div id="anlQuem"></div></div>'
+     + '</div>';
+  h += '<div class="anl-nota">Os tempos são <b>medianas</b>, não médias: uma conversa esquecida no fim de semana '
+     + 'sozinha distorce a média e esconde como é o dia normal. "Pior 10%" mostra a cauda que a mediana não conta. '
+     + (semDono ? '<br>Há <b>'+semDono+'</b> conversa'+(semDono>1?'s':'')+' em aberto sem ninguém do PCP responsável.' : '')
+     + (internas ? '<br><b>'+internas+'</b> conversa'+(internas>1?'s internas':' interna')+' do PCP no período — não entra'+(internas>1?'m':'')+' nestes números.' : '')
+     + '</div>';
+
+  $('anlCorpo').innerHTML = h;
+  destruirGraficos();
+  graficoDia(periodo);
+  graficoHora(periodo);
+  graficoStatus(todas);
+  tabelaAtendentes(periodo);
+  tabelaSolicitantes(periodo);
+}
+
+const EIXO = {color:'#555', font:{family:'Roboto Mono', size:10}};
+const GRADE = {color:'#2e2e2e'};
+const SEM_LEGENDA = {legend:{display:false}};
+
+function graficoDia(lista){
+  const dias = Math.min(anlPeriodo || 30, 30) || 30;
+  const rotulos = [], abertas = [], fechadas = [];
+  for(let i=dias-1; i>=0; i--){
+    const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-i);
+    const fim = d.getTime()+86400000;
+    rotulos.push(d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}));
+    abertas.push(lista.filter(c=>{const t=Date.parse(c.criado_em); return t>=d.getTime()&&t<fim;}).length);
+    fechadas.push(lista.filter(c=>{const t=Date.parse(c.resolvido_em); return t>=d.getTime()&&t<fim;}).length);
+  }
+  _graficos.dia = new Chart($('gDia'), {
+    type:'bar',
+    data:{labels:rotulos, datasets:[
+      {label:'Abertas', data:abertas, backgroundColor:'rgba(192,146,42,.75)'},
+      {label:'Resolvidas', data:fechadas, backgroundColor:'rgba(105,240,174,.5)'}]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#888', font:{family:'Inter', size:11}, boxWidth:10}}},
+      scales:{x:{ticks:EIXO, grid:{display:false}}, y:{ticks:{...EIXO, precision:0}, grid:GRADE, beginAtZero:true}}}
+  });
+}
+
+function graficoHora(lista){
+  const horas = new Array(24).fill(0);
+  lista.forEach(c=>{ const d=new Date(c.criado_em); if(!isNaN(d)) horas[d.getHours()]++; });
+  _graficos.hora = new Chart($('gHora'), {
+    type:'bar',
+    data:{labels:horas.map((_,i)=>String(i).padStart(2,'0')),
+          datasets:[{data:horas, backgroundColor:'rgba(100,181,246,.6)'}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:SEM_LEGENDA,
+      scales:{x:{ticks:{...EIXO, maxRotation:0, autoSkip:true, maxTicksLimit:12}, grid:{display:false}},
+              y:{ticks:{...EIXO, precision:0}, grid:GRADE, beginAtZero:true}}}
+  });
+}
+
+function graficoStatus(lista){
+  const ab = lista.filter(c=>c.status==='aberto').length;
+  const an = lista.filter(c=>c.status==='andamento').length;
+  const re = lista.filter(c=>c.status==='resolvido').length;
+  _graficos.status = new Chart($('gStatus'), {
+    type:'doughnut',
+    data:{labels:['Aguardando','Em conversa','Resolvidas'], datasets:[{data:[ab,an,re],
+      backgroundColor:['rgba(249,168,37,.8)','rgba(100,181,246,.8)','rgba(105,240,174,.7)'],
+      borderColor:'#1a1a1a', borderWidth:2}]},
+    options:{responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{legend:{position:'bottom', labels:{color:'#888', font:{family:'Inter', size:11}, boxWidth:9, padding:10}}}}
+  });
+}
+
+function tabelaAtendentes(lista){
+  const por = {};
+  lista.forEach(c=>{
+    if(!c.assumido_por) return;
+    const a = por[c.assumido_por] = por[c.assumido_por] || {n:0, res:0, tempos:[]};
+    a.n++;
+    if(c.resolvido_em) a.res++;
+    if(c.primeira_resposta_em){
+      const t = Date.parse(c.primeira_resposta_em)-Date.parse(c.criado_em);
+      if(t>=0) a.tempos.push(t);
+    }
+  });
+  const nomes = Object.keys(por).sort((a,b)=>por[b].n-por[a].n);
+  $('anlAtend').innerHTML = nomes.length
+    ? '<table class="anl-tab"><thead><tr><th>Atendente</th><th class="num">Assumidas</th><th class="num">Resolvidas</th><th class="num">1ª resp.</th></tr></thead><tbody>'
+      + nomes.map(n=>{
+          const a = por[n];
+          return `<tr><td class="nm">${esc(n)}</td><td class="num">${a.n}</td><td class="num">${a.res}</td>`
+               + `<td class="num">${a.tempos.length ? duracaoCurta(mediana(a.tempos)) : '—'}</td></tr>`;
+        }).join('')
+      + '</tbody></table>'
+    : '<div class="anl-vazio">Nenhuma conversa assumida no período.</div>';
+}
+
+function tabelaSolicitantes(lista){
+  const por = {};
+  lista.filter(c=>!ehInterna(c)).forEach(c=>{
+    if(!c.solicitante) return;
+    const a = por[c.solicitante] = por[c.solicitante] || {n:0, abertas:0};
+    a.n++;
+    if(c.status!=='resolvido') a.abertas++;
+  });
+  const nomes = Object.keys(por).sort((a,b)=>por[b].n-por[a].n).slice(0,8);
+  $('anlQuem').innerHTML = nomes.length
+    ? '<table class="anl-tab"><thead><tr><th>Pessoa</th><th class="num">Conversas</th><th class="num">Em aberto</th></tr></thead><tbody>'
+      + nomes.map(n=>`<tr><td class="nm">${esc(n)}</td><td class="num">${por[n].n}</td><td class="num">${por[n].abertas}</td></tr>`).join('')
+      + '</tbody></table>'
+    : '<div class="anl-vazio">Sem conversas do comercial no período.</div>';
 }
 
 // ════════════════════════════════════════════════
