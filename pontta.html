@@ -145,6 +145,23 @@ tbody tr:hover{background:var(--surface)}
 .acao:hover{border-color:var(--accent)}
 .acao.sel{border-color:var(--accent);background:rgba(192,146,42,.12);color:var(--accent)}
 
+/* ── USUARIOS ── */
+.us-top{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.us-busca{flex:1;min-width:180px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:9px 12px;font-family:'Inter',sans-serif;font-size:13px}
+.us-busca:focus{outline:none;border-color:var(--accent)}
+.us-novo{background:var(--accent);color:#000;border:none;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif}
+.us-chip{display:inline-block;font-size:10px;padding:2px 7px;border:1px solid var(--border);margin-right:4px}
+.us-chip.pontta{color:var(--blue);border-color:rgba(100,181,246,.4)}
+.us-chip.comercial{color:var(--accent);border-color:rgba(192,146,42,.4)}
+.us-papel{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.us-papel.master{color:var(--accent)}
+.us-papel.admin{color:var(--green)}
+.us-papel.solicitante{color:var(--text-muted)}
+.us-alerta{font-size:11px;color:var(--yellow)}
+.us-ajuda{font-size:11px;color:var(--text-dim);margin:-6px 0 14px;line-height:1.5}
+.us-linha{display:flex;gap:14px;align-items:center;margin-bottom:12px;font-size:13px}
+tr.off{opacity:.45}
+
 /* ── TOAST ── */
 #toasts{position:fixed;bottom:20px;right:20px;z-index:300;display:flex;flex-direction:column;gap:8px}
 .toast{padding:12px 18px;font-size:13px;border:1px solid;background:var(--surface);animation:sobe .25s}
@@ -278,6 +295,12 @@ tbody tr:hover{background:var(--surface)}
   <div class="page-tit">Atendimento</div>
   <div class="page-tit2">Chamados do Pontta</div>
 
+  <div class="tabs" id="abasAtend" style="display:none">
+    <button class="tab on" id="tbFila" onclick="verAtend('fila')">Fila</button>
+    <button class="tab" id="tbUsers" onclick="verAtend('users')">Usuários</button>
+  </div>
+
+  <div id="paneFila">
   <div class="filtros" id="filtros">
     <div class="filtro on" data-f="abertos">Em aberto</div>
     <div class="filtro" data-f="pendente">Pendentes</div>
@@ -288,6 +311,15 @@ tbody tr:hover{background:var(--surface)}
 
   <div class="linha-info" id="filaInfo">—</div>
   <div id="filaWrap"><div class="vazio">Carregando...</div></div>
+  </div>
+
+  <div id="paneUsers" style="display:none">
+    <div class="us-top">
+      <input class="us-busca" id="usBusca" placeholder="Buscar por nome ou setor..." oninput="renderUsuarios()">
+      <button class="us-novo" onclick="abrirUser(null)">+ Novo usuário</button>
+    </div>
+    <div id="usWrap"><div class="vazio">Carregando...</div></div>
+  </div>
 </div>
 
 <!-- ── MODAL CHAMADO ── -->
@@ -332,6 +364,56 @@ tbody tr:hover{background:var(--surface)}
   </div>
 </div>
 
+<!-- ── MODAL USUARIO ── -->
+<div class="modal-bg" id="modalUser" onclick="if(event.target===this)fecharUser()">
+  <div class="modal-box" style="max-width:460px;text-align:left;max-height:88vh;overflow-y:auto">
+    <h3 id="usTitulo" style="text-align:left;margin-bottom:18px">Novo usuário</h3>
+
+    <label class="lb">Nome</label>
+    <input class="campo" id="usNome" maxlength="60" placeholder="Como aparece na tela de login">
+
+    <label class="lb">Setor</label>
+    <input class="campo" id="usSetor" list="usSetores" maxlength="40" placeholder="Expedição, Produção, Financeiro...">
+    <datalist id="usSetores"></datalist>
+
+    <label class="lb">Papel</label>
+    <select class="campo" id="usPapel">
+      <option value="solicitante">Solicitante — só abre chamado</option>
+      <option value="admin">Admin — atende chamados</option>
+      <option value="master">Master — atende e gerencia usuários</option>
+    </select>
+
+    <label class="lb">Sistemas que enxerga</label>
+    <div class="us-linha" id="usMods">
+      <label><input type="checkbox" id="usModPontta"> Chamados do Pontta</label>
+      <label id="usModComercialWrap"><input type="checkbox" id="usModComercial"> Tickets do Comercial</label>
+    </div>
+
+    <div class="us-linha"><label><input type="checkbox" id="usAtivo" checked> Ativo (aparece na tela de login)</label></div>
+
+    <div id="usPinWrap">
+      <label class="lb">Código provisório</label>
+      <input class="campo" id="usPin" type="text" inputmode="numeric" maxlength="10" placeholder="Ex: 1234">
+      <div class="us-ajuda">A pessoa é obrigada a trocar no primeiro acesso.</div>
+    </div>
+
+    <div id="usResetWrap" style="display:none">
+      <label class="lb">Resetar código</label>
+      <div style="display:flex;gap:8px;margin-bottom:6px">
+        <input class="campo" id="usPinNovo" type="text" inputmode="numeric" maxlength="10" placeholder="Novo provisório" style="margin:0">
+        <button class="btn-cancel" style="padding:0 16px;cursor:pointer;white-space:nowrap;border:1px solid var(--border)" onclick="resetarPin()">Resetar</button>
+      </div>
+      <div class="us-ajuda">Derruba a sessão da pessoa e exige troca no próximo acesso.</div>
+    </div>
+
+    <div class="modal-err" id="usErro"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="fecharUser()">Cancelar</button>
+      <button class="btn-confirm" id="usSalvar" onclick="salvarUser()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── MODAL IMAGEM ── -->
 <div class="modal-bg" id="modalImg" onclick="if(event.target===this)this.classList.remove('show')">
   <img id="imgSrc" src="" alt="" style="max-width:92vw;max-height:88vh;object-fit:contain">
@@ -352,7 +434,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Trocar a cada deploy
-const APP_VERSION = '2026.09.29-pontta1';
+const APP_VERSION = '2026.09.29-pontta2';
 
 // ── SESSAO ──
 // Mesma chave do index.html de proposito: a sessao vale nos dois arquivos.
@@ -554,6 +636,7 @@ function aplicarSessao(s){
     document.getElementById('modeBadge').style.display = '';
     document.getElementById('headerSub').textContent = 'Atendimento · Pontta';
     document.getElementById('pgFila').style.display = 'flex';
+    if(s.papel === 'master') document.getElementById('abasAtend').style.display = 'flex';
     loadChamados();
     ligarRealtime();
   } else {
@@ -862,6 +945,129 @@ async function salvarStatus(){
   } finally {
     btn.disabled = false; btn.textContent = 'Salvar';
   }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// GESTAO DE USUARIOS  (somente master)
+// O backend so devolve quem esta dentro dos modulos do proprio master, entao
+// um master de {pontta} nunca ve nem edita o pessoal do Comercial.
+// ════════════════════════════════════════════════════════════════════════════
+let USUARIOS = [], usEditando = null;
+
+function verAtend(qual){
+  const fila = qual === 'fila';
+  document.getElementById('paneFila').style.display  = fila ? 'block' : 'none';
+  document.getElementById('paneUsers').style.display = fila ? 'none'  : 'block';
+  document.getElementById('tbFila').classList.toggle('on', fila);
+  document.getElementById('tbUsers').classList.toggle('on', !fila);
+  if(!fila) carregarUsuarios();
+}
+
+async function carregarUsuarios(){
+  const wrap = document.getElementById('usWrap');
+  try { USUARIOS = await rpc('pontta_admin_listar_usuarios', {p_token: SESSAO.token}); }
+  catch(e){ wrap.innerHTML = '<div class="vazio">'+esc(msgErro(e))+'</div>'; return; }
+  try {
+    const setores = await rpc('pontta_admin_setores', {p_token: SESSAO.token});
+    document.getElementById('usSetores').innerHTML = setores.map(x=>'<option value="'+esc(x.setor)+'">').join('');
+  } catch(e){}
+  renderUsuarios();
+}
+
+function renderUsuarios(){
+  const q = (document.getElementById('usBusca').value || '').toLowerCase();
+  const lista = USUARIOS.filter(u => u.nome.toLowerCase().includes(q) || (u.setor||'').toLowerCase().includes(q));
+  const wrap = document.getElementById('usWrap');
+  if(!lista.length){ wrap.innerHTML = '<div class="vazio">Ninguém encontrado.</div>'; return; }
+  wrap.innerHTML = '<table><thead><tr><th>Nome</th><th class="op">Setor</th><th>Papel</th>' +
+    '<th class="op">Sistemas</th><th class="op">Último acesso</th><th></th></tr></thead><tbody>' +
+    lista.map(u=>{
+      const mods = (u.modulos||[]).map(m=>'<span class="us-chip '+m+'">'+m+'</span>').join('');
+      let al = '';
+      if(u.bloqueado_ate && new Date(u.bloqueado_ate) > new Date()) al = '<span class="us-alerta">bloqueado</span>';
+      else if(u.precisa_trocar_pin) al = '<span class="us-alerta">código provisório</span>';
+      return '<tr class="'+(u.ativo?'':'off')+'" data-id="'+u.id+'">' +
+        '<td>'+esc(u.nome)+(u.ativo?'':' <span style="font-size:11px;color:var(--text-dim)">(inativo)</span>')+'</td>' +
+        '<td class="op">'+esc(u.setor||'—')+'</td>' +
+        '<td><span class="us-papel '+u.papel+'">'+u.papel+'</span></td>' +
+        '<td class="op">'+mods+'</td>' +
+        '<td class="op num" style="font-size:12px;color:var(--text-dim)">'+(u.ultimo_acesso?fmtData(u.ultimo_acesso):'nunca')+'</td>' +
+        '<td>'+al+'</td></tr>';
+    }).join('') + '</tbody></table>';
+  wrap.querySelectorAll('tbody tr').forEach(tr=>{
+    tr.addEventListener('click', ()=>{
+      const u = USUARIOS.find(x=>x.id === tr.dataset.id);
+      if(u) abrirUser(u);
+    });
+  });
+}
+
+function abrirUser(u){
+  usEditando = u;
+  document.getElementById('usTitulo').textContent = u ? 'Editar ' + u.nome : 'Novo usuário';
+  document.getElementById('usNome').value  = u ? u.nome : '';
+  document.getElementById('usSetor').value = u ? (u.setor||'') : '';
+  document.getElementById('usPapel').value = u ? u.papel : 'solicitante';
+  document.getElementById('usModPontta').checked    = u ? (u.modulos||[]).includes('pontta')    : true;
+  document.getElementById('usModComercial').checked = u ? (u.modulos||[]).includes('comercial') : false;
+  // Conceder um modulo que o proprio master nao tem e recusado no servidor;
+  // esconder aqui evita oferecer uma opcao que so daria erro.
+  document.getElementById('usModComercialWrap').style.display =
+    (SESSAO.modulos||[]).includes('comercial') ? '' : 'none';
+  document.getElementById('usAtivo').checked = u ? u.ativo : true;
+  document.getElementById('usPin').value = '';
+  document.getElementById('usPinNovo').value = '';
+  document.getElementById('usErro').style.display = 'none';
+  document.getElementById('usPinWrap').style.display   = u ? 'none'  : 'block';
+  document.getElementById('usResetWrap').style.display = u ? 'block' : 'none';
+  document.getElementById('modalUser').classList.add('show');
+}
+function fecharUser(){ document.getElementById('modalUser').classList.remove('show'); usEditando = null; }
+function usFalha(m){ const e = document.getElementById('usErro'); e.textContent = m; e.style.display='block'; }
+
+async function salvarUser(){
+  const nome  = document.getElementById('usNome').value.trim();
+  const setor = document.getElementById('usSetor').value.trim();
+  const papel = document.getElementById('usPapel').value;
+  const mods  = [];
+  if(document.getElementById('usModPontta').checked)    mods.push('pontta');
+  if(document.getElementById('usModComercial').checked) mods.push('comercial');
+  if(!nome)        return usFalha('Informe o nome.');
+  if(!setor)       return usFalha('Informe o setor.');
+  if(!mods.length) return usFalha('Escolha ao menos um sistema.');
+  const pin = document.getElementById('usPin').value.replace(/\D/g,'');
+  if(!usEditando && pin.length < 4) return usFalha('O código provisório precisa ter ao menos 4 dígitos.');
+  // Tirar o proprio master do ar deixaria o sistema sem quem gerencia
+  if(usEditando && usEditando.id === SESSAO.id && (papel !== 'master' || !document.getElementById('usAtivo').checked)) {
+    return usFalha('Você não pode tirar o próprio acesso de master.');
+  }
+  const btn = document.getElementById('usSalvar');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  try {
+    await rpc('pontta_admin_salvar_usuario', {
+      p_token: SESSAO.token,
+      p_id: usEditando ? usEditando.id : null,
+      p_nome: nome, p_setor: setor, p_papel: papel,
+      p_pin: usEditando ? null : pin,
+      p_ativo: document.getElementById('usAtivo').checked,
+      p_modulos: mods, p_tela_inicial: null
+    });
+    showToast(usEditando ? 'Usuário atualizado' : 'Usuário criado', 'success');
+    fecharUser(); carregarUsuarios();
+  } catch(e){ usFalha(msgErro(e)); }
+  finally { btn.disabled = false; btn.textContent = 'Salvar'; }
+}
+
+async function resetarPin(){
+  if(!usEditando) return;
+  const novo = document.getElementById('usPinNovo').value.replace(/\D/g,'');
+  if(novo.length < 4) return usFalha('O código provisório precisa ter ao menos 4 dígitos.');
+  if(!confirm('Resetar o código de ' + usEditando.nome + '? A sessão dela cai na hora.')) return;
+  try {
+    await rpc('pontta_admin_resetar_pin', {p_token: SESSAO.token, p_usuario_id: usEditando.id, p_pin_novo: novo});
+    showToast('Código resetado — avise ' + usEditando.nome, 'success');
+    fecharUser(); carregarUsuarios();
+  } catch(e){ usFalha(msgErro(e)); }
 }
 
 // ── Realtime ──
