@@ -146,6 +146,9 @@ tbody tr:hover{background:var(--surface)}
 .acao.sel{border-color:var(--accent);background:rgba(192,146,42,.12);color:var(--accent)}
 
 /* ── USUARIOS ── */
+tr.somenteleitura{cursor:default}
+tr.somenteleitura:hover{background:none}
+.us-lock{font-size:11px;color:var(--text-dim)}
 .us-top{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
 .us-busca{flex:1;min-width:180px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:9px 12px;font-family:'Inter',sans-serif;font-size:13px}
 .us-busca:focus{outline:none;border-color:var(--accent)}
@@ -434,7 +437,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Trocar a cada deploy
-const APP_VERSION = '2026.09.29-pontta2';
+const APP_VERSION = '2026.09.29-pontta3';
 
 // ── SESSAO ──
 // Mesma chave do index.html de proposito: a sessao vale nos dois arquivos.
@@ -986,7 +989,8 @@ function renderUsuarios(){
       let al = '';
       if(u.bloqueado_ate && new Date(u.bloqueado_ate) > new Date()) al = '<span class="us-alerta">bloqueado</span>';
       else if(u.precisa_trocar_pin) al = '<span class="us-alerta">código provisório</span>';
-      return '<tr class="'+(u.ativo?'':'off')+'" data-id="'+u.id+'">' +
+      if(!u.editavel) al = '<span class="us-lock">somente leitura</span>';
+      return '<tr class="'+(u.ativo?'':'off')+(u.editavel?'':' somenteleitura')+'" data-id="'+u.id+'">' +
         '<td>'+esc(u.nome)+(u.ativo?'':' <span style="font-size:11px;color:var(--text-dim)">(inativo)</span>')+'</td>' +
         '<td class="op">'+esc(u.setor||'—')+'</td>' +
         '<td><span class="us-papel '+u.papel+'">'+u.papel+'</span></td>' +
@@ -997,7 +1001,8 @@ function renderUsuarios(){
   wrap.querySelectorAll('tbody tr').forEach(tr=>{
     tr.addEventListener('click', ()=>{
       const u = USUARIOS.find(x=>x.id === tr.dataset.id);
-      if(u) abrirUser(u);
+      // Quem tem modulo alem dos meus nao e meu para editar
+      if(u && u.editavel) abrirUser(u);
     });
   });
 }
