@@ -77,6 +77,9 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .us-lb{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px}
 .us-linha{display:flex;gap:10px;align-items:center;margin-bottom:12px;font-size:13px}
 .us-ajuda{font-size:11px;color:var(--text-dim);margin:-6px 0 14px;line-height:1.5}
+tr.somenteleitura{cursor:default}
+tr.somenteleitura:hover{background:none}
+.us-lock{font-size:11px;color:var(--text-dim)}
 /* ── LOGIN ── */
 .login-card{max-width:440px}
 .login-busca{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);
@@ -1379,7 +1382,7 @@ function msgErro(e) {
 
 // Versao deste arquivo. Trocar a cada deploy — e o que permite uma aba antiga
 // se reconhecer como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.09.29-users1';
+const APP_VERSION = '2026.09.29-users2';
 
 // Momento em que a medicao de execucao passa a valer. Fica em 12:30 de
 // 30/07/2026 e nao no horario do deploy (10:53) porque as duas horas seguintes
@@ -3376,7 +3379,8 @@ function renderUsuarios() {
       if (u.bloqueado_ate && new Date(u.bloqueado_ate) > new Date()) alerta = '<span class="us-alerta">bloqueado</span>';
       else if (u.precisa_trocar_pin) alerta = '<span class="us-alerta">código provisório</span>';
       else if ((u.modulos||[]).includes('comercial') && !u.vinculado) alerta = '<span class="us-alerta">sem vínculo</span>';
-      return '<tr class="'+(u.ativo?'':'off')+'" data-id="'+u.id+'">' +
+      if(!u.editavel) al = '<span class="us-lock">somente leitura</span>';
+      return '<tr class="'+(u.ativo?'':'off')+(u.editavel?'':' somenteleitura')+'" data-id="'+u.id+'">' +
         '<td>'+esc(u.nome)+(u.ativo?'':' <span style="font-size:11px;color:var(--text-dim)">(inativo)</span>')+'</td>' +
         '<td>'+esc(u.setor||'—')+'</td>' +
         '<td><span class="us-papel '+u.papel+'">'+u.papel+'</span></td>' +
@@ -3388,7 +3392,8 @@ function renderUsuarios() {
   wrap.querySelectorAll('tbody tr').forEach(tr => {
     tr.addEventListener('click', () => {
       const u = USUARIOS.find(x => x.id === tr.dataset.id);
-      if (u) abrirUser(u);
+      // Quem tem modulo alem dos meus nao e meu para editar
+      if (u && u.editavel) abrirUser(u);
     });
   });
 }
