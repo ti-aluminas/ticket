@@ -1293,7 +1293,7 @@ function msgErro(e) {
 
 // Versao deste arquivo. Trocar a cada deploy — e o que permite uma aba antiga
 // se reconhecer como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.09.29-auth2';
+const APP_VERSION = '2026.09.29-auth3';
 
 // Momento em que a medicao de execucao passa a valer. Fica em 12:30 de
 // 30/07/2026 e nao no horario do deploy (10:53) porque as duas horas seguintes
@@ -1873,11 +1873,25 @@ function pinAtualProvisorio() { return _pinDigitado; }
 // ── ROTEAMENTO ──
 function aplicarSessao(s) {
   SESSAO = s;
+  // Quem nao tem o Comercial nao fica nesta tela, mesmo que tenha aberto ela
+  // direto pelo endereco ou por um favorito antigo.
+  if (!podeModulo('comercial')) {
+    if (podeModulo('pontta')) { location.replace('pontta.html'); return; }
+    semAcesso();
+    return;
+  }
   document.body.classList.toggle('dono', s.papel === 'master');
   // Atalho para o outro modulo, so para quem tem acesso a ele
   if (podeModulo('pontta')) document.getElementById('btnPontta').classList.add('show');
   if (s.papel === 'solicitante') entrarComoSolicitante(s);
   else entrarAdmin(s);
+}
+
+function semAcesso() {
+  document.getElementById('modeScreen').innerHTML =
+    '<div class="mode-card"><h2>Sem acesso</h2>' +
+    '<p>Seu usuário não tem acesso a nenhum sistema. Fale com o PCP.</p>' +
+    '<button class="btn-cancel" style="padding:10px 20px;cursor:pointer" onclick="sairSessao()">Sair</button></div>';
 }
 
 function entrarComoSolicitante(s) {
