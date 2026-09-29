@@ -80,6 +80,8 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 tr.somenteleitura{cursor:default}
 tr.somenteleitura:hover{background:none}
 .us-lock{font-size:11px;color:var(--text-dim)}
+
+
 /* ── LOGIN ── */
 .login-card{max-width:440px}
 .login-busca{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);
@@ -95,6 +97,28 @@ tr.somenteleitura:hover{background:none}
   justify-content:center;background:var(--surface);color:var(--accent);font-size:10px;font-weight:700}
 .login-item .lname{font-size:13px}
 .login-vazio{padding:20px;text-align:center;color:var(--text-dim);font-size:12px}
+/* ── LOGIN: atalho e setores recolhiveis ── */
+.login-ultimo{display:flex;align-items:center;gap:11px;width:100%;background:rgba(192,146,42,.08);
+  border:1px solid rgba(192,146,42,.4);padding:12px 14px;cursor:pointer;margin-bottom:12px;
+  font-family:'Inter',sans-serif;color:var(--text);text-align:left}
+.login-ultimo:hover{background:rgba(192,146,42,.16)}
+.login-ultimo .avatar{background:var(--accent);color:#000}
+.login-ultimo .lu-txt{flex:1;display:flex;flex-direction:column;gap:2px}
+.login-ultimo .lu-cap{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)}
+.login-ultimo .lu-nome{font-size:14px;font-weight:600}
+.login-ultimo .lu-seta{color:var(--accent)}
+.login-outro{display:block;width:100%;background:none;border:none;color:var(--text-dim);
+  font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;margin:-4px 0 12px;text-align:center}
+.login-outro:hover{color:var(--text-muted)}
+.login-setor{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--text-muted);padding:11px 12px;background:var(--surface);
+  cursor:pointer;border-top:1px solid var(--border);user-select:none}
+.login-setor:first-child{border-top:none}
+.login-setor:hover{color:var(--text)}
+.login-setor .seta{display:inline-block;transition:transform .15s;font-size:9px;color:var(--text-dim)}
+.login-setor .seta.on{transform:rotate(90deg);color:var(--accent)}
+.login-setor .qtd{margin-left:auto;font-size:10px;color:var(--text-dim);letter-spacing:0}
+.login-grupo .login-item{padding-left:28px}
 .pin-quem{font-size:12px;color:var(--accent);margin-bottom:14px;font-weight:600}
 .troca-aviso{font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:16px}
 .mode-card{background:var(--surface);border:1px solid var(--border);padding:36px 32px;max-width:420px;width:100%;text-align:center}
@@ -613,6 +637,8 @@ body.dono .col-dono{display:table-cell}
   <div class="mode-card login-card">
     <h2>Entrar</h2>
     <p>Selecione seu nome para continuar</p>
+
+    <div id="loginUltimo"></div>
 
     <input class="login-busca" id="loginBusca" placeholder="Buscar seu nome..." oninput="filtrarLogin()" autocomplete="off">
     <div class="login-lista" id="loginLista">
@@ -1382,7 +1408,7 @@ function msgErro(e) {
 
 // Versao deste arquivo. Trocar a cada deploy — e o que permite uma aba antiga
 // se reconhecer como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.09.29-users2';
+const APP_VERSION = '2026.09.29-login1';
 
 // Momento em que a medicao de execucao passa a valer. Fica em 12:30 de
 // 30/07/2026 e nao no horario do deploy (10:53) porque as duas horas seguintes
@@ -1861,6 +1887,7 @@ async function verificarSenha() {
   }
   try {
     const s = await rpc('pontta_login', {p_usuario_id: loginEscolhido.id, p_pin: val});
+    lembrarUltimo(loginEscolhido);
     fecharModalSenha();
     salvarSessao(s);
     if (s.precisa_trocar_pin) abrirTroca(); else aplicarSessao(s);
@@ -1886,22 +1913,83 @@ async function carregarLoginUsuarios() {
   renderLoginUsuarios(LOGIN_USERS);
 }
 
-function renderLoginUsuarios(lista) {
+// ── Tela de login: atalho do ultimo e setores recolhiveis ──
+// Com mais de 30 cadastros a lista esticada fica impraticavel. O atalho cobre
+// o caso comum (mesma pessoa, mesma maquina) e os setores cortam a rolagem.
+// Nada disso afrouxa o acesso: o codigo continua sendo exigido sempre.
+const ULTIMO_KEY = 'pontta_ultimo';
+let setoresAbertos = new Set();
+
+function lembrarUltimo(u){
+  try { localStorage.setItem(ULTIMO_KEY, JSON.stringify({id:u.id, nome:u.nome, setor:u.setor})); } catch(e){}
+}
+function esquecerUltimo(){
+  try { localStorage.removeItem(ULTIMO_KEY); } catch(e){}
+  renderLoginUsuarios(LOGIN_USERS);
+}
+
+function renderAtalho(){
+  const el = document.getElementById('loginUltimo');
+  if(!el) return;
+  let salvo = null;
+  try { salvo = JSON.parse(localStorage.getItem(ULTIMO_KEY) || 'null'); } catch(e){}
+  // So oferece se a pessoa ainda estiver ativa na lista
+  const u = salvo && LOGIN_USERS.find(x => String(x.id) === String(salvo.id));
+  if(!u){ el.innerHTML = ''; return; }
+  el.innerHTML =
+    '<button class="login-ultimo" id="btnUltimo">' +
+      '<span class="avatar">' + initials(u.nome) + '</span>' +
+      '<span class="lu-txt"><span class="lu-cap">Continuar como</span>' +
+      '<span class="lu-nome">' + esc(u.nome) + '</span></span>' +
+      '<span class="lu-seta">&rarr;</span>' +
+    '</button>' +
+    '<button class="login-outro" onclick="esquecerUltimo()">Não sou eu — ver a lista</button>';
+  document.getElementById('btnUltimo').addEventListener('click', ()=>escolherLogin(u));
+}
+
+function renderLoginUsuarios(lista){
+  renderAtalho();
   const el = document.getElementById('loginLista');
-  if (!lista.length) { el.innerHTML = '<div class="login-vazio">Nenhum nome encontrado.</div>'; return; }
-  let html = '', setorAtual = null;
-  lista.forEach(u => {
-    if (u.setor !== setorAtual) { setorAtual = u.setor; html += '<div class="login-setor">'+esc(setorAtual)+'</div>'; }
-    html += '<div class="login-item" data-id="'+u.id+'">'
-          +   '<div class="avatar">'+initials(u.nome)+'</div>'
-          +   '<span class="lname">'+esc(u.nome)+'</span>'
-          + '</div>';
+  if(!lista.length){ el.innerHTML = '<div class="login-vazio">Nenhum nome encontrado.</div>'; return; }
+
+  const busca = (document.getElementById('loginBusca').value || '').trim();
+  const grupos = [];
+  lista.forEach(u=>{
+    const st = u.setor || 'Sem setor';
+    let g = grupos.find(x=>x.setor === st);
+    if(!g){ g = {setor: st, itens: []}; grupos.push(g); }
+    g.itens.push(u);
   });
-  el.innerHTML = html;
-  el.querySelectorAll('.login-item').forEach(d => {
-    d.addEventListener('click', () => {
-      const u = LOGIN_USERS.find(x => String(x.id) === d.dataset.id);
-      if (u) escolherLogin(u);
+
+  // Buscando, ou havendo um setor so, nao faz sentido esconder nada
+  const abrirTudo = !!busca || grupos.length === 1;
+
+  el.innerHTML = grupos.map((g, i) => {
+    const aberto = abrirTudo || setoresAbertos.has(g.setor);
+    return '<div class="login-setor" data-i="'+i+'">' +
+             '<span class="seta'+(aberto?' on':'')+'">&#9656;</span>' +
+             esc(g.setor) + '<span class="qtd">'+g.itens.length+'</span>' +
+           '</div>' +
+           '<div class="login-grupo" data-g="'+i+'" style="display:'+(aberto?'block':'none')+'">' +
+             g.itens.map(u =>
+               '<div class="login-item" data-id="'+u.id+'">' +
+                 '<div class="avatar">'+initials(u.nome)+'</div>' +
+                 '<span class="lname">'+esc(u.nome)+'</span>' +
+               '</div>').join('') +
+           '</div>';
+  }).join('');
+
+  el.querySelectorAll('.login-setor').forEach(h=>{
+    h.addEventListener('click', ()=>{
+      const st = grupos[+h.dataset.i].setor;
+      if(setoresAbertos.has(st)) setoresAbertos.delete(st); else setoresAbertos.add(st);
+      renderLoginUsuarios(lista);
+    });
+  });
+  el.querySelectorAll('.login-item').forEach(d=>{
+    d.addEventListener('click', ()=>{
+      const u = LOGIN_USERS.find(x=>String(x.id)===d.dataset.id);
+      if(u) escolherLogin(u);
     });
   });
 }
