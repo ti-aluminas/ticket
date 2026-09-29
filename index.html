@@ -52,6 +52,31 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 /* MODE SCREEN */
 .mode-screen{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 20px}
 
+
+/* ── GESTAO DE USUARIOS ── */
+.us-top{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.us-busca{flex:1;min-width:180px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:9px 12px;font-family:'Inter',sans-serif;font-size:13px}
+.us-busca:focus{outline:none;border-color:var(--accent)}
+.us-novo{background:var(--accent);color:#000;border:none;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif}
+.us-tab{width:100%;border-collapse:collapse}
+.us-tab th{text-align:left;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);padding:10px;border-bottom:1px solid var(--border)}
+.us-tab td{padding:11px 10px;border-bottom:1px solid var(--border);font-size:13px}
+.us-tab tbody tr{cursor:pointer}
+.us-tab tbody tr:hover{background:var(--surface2)}
+.us-tab tr.off{opacity:.45}
+.us-chip{display:inline-block;font-size:10px;padding:2px 7px;border:1px solid var(--border);margin-right:4px;letter-spacing:.04em}
+.us-chip.pontta{color:var(--blue);border-color:rgba(100,181,246,.4)}
+.us-chip.comercial{color:var(--accent);border-color:rgba(192,146,42,.4)}
+.us-papel{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.us-papel.master{color:var(--accent)}
+.us-papel.admin{color:var(--green)}
+.us-papel.solicitante{color:var(--text-muted)}
+.us-alerta{font-size:11px;color:var(--yellow)}
+.us-campo{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 12px;font-family:'Inter',sans-serif;font-size:13px;margin-bottom:12px}
+.us-campo:focus{outline:none;border-color:var(--accent)}
+.us-lb{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px}
+.us-linha{display:flex;gap:10px;align-items:center;margin-bottom:12px;font-size:13px}
+.us-ajuda{font-size:11px;color:var(--text-dim);margin:-6px 0 14px;line-height:1.5}
 /* ── LOGIN ── */
 .login-card{max-width:440px}
 .login-busca{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);
@@ -654,6 +679,57 @@ body.dono .col-dono{display:table-cell}
   </div>
 </div>
 
+<!-- MODAL USUARIO -->
+<div class="modal-bg" id="modalUser" onclick="if(event.target===this)fecharUser()">
+  <div class="modal-box" style="max-width:460px;text-align:left">
+    <h3 id="usTitulo" style="text-align:left;margin-bottom:18px">Novo usuário</h3>
+
+    <label class="us-lb">Nome</label>
+    <input class="us-campo" id="usNome" maxlength="60" placeholder="Como aparece na tela de login">
+
+    <label class="us-lb">Setor</label>
+    <input class="us-campo" id="usSetor" list="usSetores" maxlength="40" placeholder="Comercial, PCP, Expedição...">
+    <datalist id="usSetores"></datalist>
+
+    <label class="us-lb">Papel</label>
+    <select class="us-campo" id="usPapel">
+      <option value="solicitante">Solicitante — só abre chamado</option>
+      <option value="admin">Admin — atende chamados</option>
+      <option value="master">Master — atende e gerencia usuários</option>
+    </select>
+
+    <label class="us-lb">Sistemas que enxerga</label>
+    <div class="us-linha">
+      <label><input type="checkbox" id="usModPontta"> Chamados do Pontta</label>
+      <label><input type="checkbox" id="usModComercial"> Tickets do Comercial</label>
+    </div>
+    <div class="us-ajuda">Quem recebe o Comercial é cadastrado automaticamente no sistema antigo, para o ticket sair com o nome certo.</div>
+
+    <div class="us-linha"><label><input type="checkbox" id="usAtivo" checked> Ativo (aparece na tela de login)</label></div>
+
+    <div id="usPinWrap">
+      <label class="us-lb">Código provisório</label>
+      <input class="us-campo" id="usPin" type="text" inputmode="numeric" maxlength="10" placeholder="Ex: 1234">
+      <div class="us-ajuda">A pessoa é obrigada a trocar no primeiro acesso.</div>
+    </div>
+
+    <div id="usResetWrap" style="display:none">
+      <label class="us-lb">Resetar código</label>
+      <div style="display:flex;gap:8px;margin-bottom:6px">
+        <input class="us-campo" id="usPinNovo" type="text" inputmode="numeric" maxlength="10" placeholder="Novo provisório" style="margin:0">
+        <button class="btn-cancel" style="padding:0 16px;cursor:pointer;white-space:nowrap" onclick="resetarPin()">Resetar</button>
+      </div>
+      <div class="us-ajuda">Derruba a sessão da pessoa e exige troca no próximo acesso.</div>
+    </div>
+
+    <div class="modal-err" id="usErro"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="fecharUser()">Cancelar</button>
+      <button class="btn-confirm" id="usSalvar" onclick="salvarUser()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL IMAGEM -->
 <div class="modal-bg" id="modalImg" onclick="if(event.target===this)fecharModalImg()">
   <div class="img-modal">
@@ -928,6 +1004,7 @@ body.dono .col-dono{display:table-cell}
           <button class="admin-tab-btn active" id="atab-tickets" onclick="switchAdminTab('tickets')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M9 3h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1z"/><path d="M16 5h2a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h2"/><path d="M9 11h6M9 15h4"/></svg> Tickets</button>
           <button class="admin-tab-btn" id="atab-analytics" onclick="switchAdminTab('analytics')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M3 3v18h18"/><path d="M7 15v3M12 10v8M17 6v12"/></svg> Analytics</button>
           <button class="admin-tab-btn" id="atab-relatorio" onclick="switchAdminTab('relatorio')" style="display:none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="4" y="10" width="16" height="10" rx="1"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg> Relatório Geral</button>
+          <button class="admin-tab-btn" id="atab-usuarios" onclick="switchAdminTab('usuarios')" style="display:none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg> Usuários</button>
         </div>
 
         <!-- PANE TICKETS -->
@@ -1073,6 +1150,15 @@ body.dono .col-dono{display:table-cell}
         </div><!-- /analytics-wrap -->
 
         <!-- PANE RELATÓRIO GERAL (exclusivo) -->
+        <!-- PANE USUARIOS -->
+        <div id="apane-usuarios" style="display:none">
+          <div class="us-top">
+            <input class="us-busca" id="usBusca" placeholder="Buscar por nome ou setor..." oninput="renderUsuarios()">
+            <button class="us-novo" onclick="abrirUser(null)">+ Novo usuário</button>
+          </div>
+          <div id="usWrap"><div class="anl-empty">Carregando...</div></div>
+        </div>
+
         <div class="analytics-wrap" id="apane-relatorio" style="display:none">
 
           <div style="background:rgba(192,146,42,.08);border:1px solid rgba(192,146,42,.3);padding:10px 14px;margin-bottom:18px;font-size:11px;color:var(--accent);letter-spacing:.02em">
@@ -1293,7 +1379,7 @@ function msgErro(e) {
 
 // Versao deste arquivo. Trocar a cada deploy — e o que permite uma aba antiga
 // se reconhecer como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.09.29-auth3';
+const APP_VERSION = '2026.09.29-users1';
 
 // Momento em que a medicao de execucao passa a valer. Fica em 12:30 de
 // 30/07/2026 e nao no horario do deploy (10:53) porque as duas horas seguintes
@@ -1970,6 +2056,7 @@ function entrarAdmin(s) {
   document.getElementById('headerSub').textContent = 'Painel do Admin · PCP';
   document.getElementById('btnSair').style.display = '';
   document.getElementById('atab-relatorio').style.display = (s.papel === 'master') ? '' : 'none';
+  document.getElementById('atab-usuarios').style.display  = (s.papel === 'master') ? '' : 'none';
   // body.dono libera a coluna Execução e o bloco de execução no modal
   document.body.classList.toggle('dono', s.papel === 'master');
   loadTickets();
@@ -3252,15 +3339,155 @@ async function excluirUsuario(id) {
 // ── ADMIN TABS ──
 let _anlCharts = {};
 let _chartRanges = {}; // guarda os limites de data/hora de cada barra, para os cliques abrirem o modal de info
+
+// ════════════════════════════════════════════════════════════════════════════
+// GESTAO DE USUARIOS  (somente master)
+// ════════════════════════════════════════════════════════════════════════════
+let USUARIOS = [], usEditando = null;
+
+async function carregarUsuarios() {
+  const wrap = document.getElementById('usWrap');
+  try {
+    USUARIOS = await rpc('pontta_admin_listar_usuarios', {p_token: SESSAO.token});
+  } catch (e) {
+    wrap.innerHTML = '<div class="anl-empty">'+esc(msgErro(e))+'</div>'; return;
+  }
+  try {
+    const setores = await rpc('pontta_admin_setores', {p_token: SESSAO.token});
+    document.getElementById('usSetores').innerHTML =
+      setores.map(s=>'<option value="'+esc(s.setor)+'">').join('');
+  } catch (e) {}
+  renderUsuarios();
+}
+
+function renderUsuarios() {
+  const q = (document.getElementById('usBusca').value || '').toLowerCase();
+  const lista = USUARIOS.filter(u =>
+    u.nome.toLowerCase().includes(q) || (u.setor||'').toLowerCase().includes(q));
+  const wrap = document.getElementById('usWrap');
+  if (!lista.length) { wrap.innerHTML = '<div class="anl-empty">Ninguém encontrado.</div>'; return; }
+
+  wrap.innerHTML = '<table class="us-tab"><thead><tr>' +
+    '<th>Nome</th><th>Setor</th><th>Papel</th><th>Sistemas</th><th>Último acesso</th><th></th>' +
+    '</tr></thead><tbody>' +
+    lista.map(u => {
+      const mods = (u.modulos||[]).map(m=>'<span class="us-chip '+m+'">'+m+'</span>').join('');
+      let alerta = '';
+      if (u.bloqueado_ate && new Date(u.bloqueado_ate) > new Date()) alerta = '<span class="us-alerta">bloqueado</span>';
+      else if (u.precisa_trocar_pin) alerta = '<span class="us-alerta">código provisório</span>';
+      else if ((u.modulos||[]).includes('comercial') && !u.vinculado) alerta = '<span class="us-alerta">sem vínculo</span>';
+      return '<tr class="'+(u.ativo?'':'off')+'" data-id="'+u.id+'">' +
+        '<td>'+esc(u.nome)+(u.ativo?'':' <span style="font-size:11px;color:var(--text-dim)">(inativo)</span>')+'</td>' +
+        '<td>'+esc(u.setor||'—')+'</td>' +
+        '<td><span class="us-papel '+u.papel+'">'+u.papel+'</span></td>' +
+        '<td>'+mods+'</td>' +
+        '<td style="font-size:12px;color:var(--text-dim)">'+(u.ultimo_acesso ? fmtDataHora(u.ultimo_acesso) : 'nunca')+'</td>' +
+        '<td>'+alerta+'</td></tr>';
+    }).join('') + '</tbody></table>';
+
+  wrap.querySelectorAll('tbody tr').forEach(tr => {
+    tr.addEventListener('click', () => {
+      const u = USUARIOS.find(x => x.id === tr.dataset.id);
+      if (u) abrirUser(u);
+    });
+  });
+}
+
+function abrirUser(u) {
+  usEditando = u;
+  document.getElementById('usTitulo').textContent = u ? 'Editar ' + u.nome : 'Novo usuário';
+  document.getElementById('usNome').value  = u ? u.nome : '';
+  document.getElementById('usSetor').value = u ? (u.setor||'') : '';
+  document.getElementById('usPapel').value = u ? u.papel : 'solicitante';
+  document.getElementById('usModPontta').checked    = u ? (u.modulos||[]).includes('pontta')    : true;
+  document.getElementById('usModComercial').checked = u ? (u.modulos||[]).includes('comercial') : false;
+  document.getElementById('usAtivo').checked = u ? u.ativo : true;
+  document.getElementById('usPin').value = '';
+  document.getElementById('usPinNovo').value = '';
+  document.getElementById('usErro').style.display = 'none';
+  // Codigo so se define na criacao; depois e reset, que e outra operacao
+  document.getElementById('usPinWrap').style.display   = u ? 'none'  : 'block';
+  document.getElementById('usResetWrap').style.display = u ? 'block' : 'none';
+  document.getElementById('modalUser').classList.add('show');
+}
+function fecharUser() { document.getElementById('modalUser').classList.remove('show'); usEditando = null; }
+
+function usFalha(m) {
+  const e = document.getElementById('usErro');
+  e.textContent = m; e.style.display = 'block';
+}
+
+async function salvarUser() {
+  const nome  = document.getElementById('usNome').value.trim();
+  const setor = document.getElementById('usSetor').value.trim();
+  const papel = document.getElementById('usPapel').value;
+  const mods  = [];
+  if (document.getElementById('usModPontta').checked)    mods.push('pontta');
+  if (document.getElementById('usModComercial').checked) mods.push('comercial');
+
+  if (!nome)        return usFalha('Informe o nome.');
+  if (!setor)       return usFalha('Informe o setor.');
+  if (!mods.length) return usFalha('Escolha ao menos um sistema.');
+
+  const pin = document.getElementById('usPin').value.replace(/\D/g,'');
+  if (!usEditando && pin.length < 4) return usFalha('O código provisório precisa ter ao menos 4 dígitos.');
+
+  // Tirar o proprio master do ar deixaria o sistema sem quem gerencia
+  if (usEditando && usEditando.id === SESSAO.id && (papel !== 'master' || !document.getElementById('usAtivo').checked)) {
+    return usFalha('Você não pode tirar o próprio acesso de master.');
+  }
+
+  const btn = document.getElementById('usSalvar');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  try {
+    await rpc('pontta_admin_salvar_usuario', {
+      p_token:   SESSAO.token,
+      p_id:      usEditando ? usEditando.id : null,
+      p_nome:    nome,
+      p_setor:   setor,
+      p_papel:   papel,
+      p_pin:     usEditando ? null : pin,
+      p_ativo:   document.getElementById('usAtivo').checked,
+      p_modulos: mods,
+      p_tela_inicial: null
+    });
+    showToast(usEditando ? 'Usuário atualizado' : 'Usuário criado', 'success');
+    fecharUser();
+    carregarUsuarios();
+  } catch (e) {
+    usFalha(msgErro(e));
+  } finally {
+    btn.disabled = false; btn.textContent = 'Salvar';
+  }
+}
+
+async function resetarPin() {
+  if (!usEditando) return;
+  const novo = document.getElementById('usPinNovo').value.replace(/\D/g,'');
+  if (novo.length < 4) return usFalha('O código provisório precisa ter ao menos 4 dígitos.');
+  if (!confirm('Resetar o código de ' + usEditando.nome + '? A sessão dela cai na hora.')) return;
+  try {
+    await rpc('pontta_admin_resetar_pin', {
+      p_token: SESSAO.token, p_usuario_id: usEditando.id, p_pin_novo: novo
+    });
+    showToast('Código resetado — avise ' + usEditando.nome, 'success');
+    fecharUser();
+    carregarUsuarios();
+  } catch (e) { usFalha(msgErro(e)); }
+}
+
 function switchAdminTab(tab) {
-  if(tab==='relatorio' && window._adminNome !== 'João Pedro') tab = 'tickets';
+  // Permissao vem do papel gravado no banco, nao mais de comparar o nome
+  if((tab==='relatorio' || tab==='usuarios') && !ehDono()) tab = 'tickets';
   document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('atab-'+tab).classList.add('active');
   document.getElementById('apane-tickets').style.display = tab==='tickets' ? 'block' : 'none';
   document.getElementById('apane-analytics').style.display = tab==='analytics' ? 'block' : 'none';
   document.getElementById('apane-relatorio').style.display = tab==='relatorio' ? 'block' : 'none';
+  document.getElementById('apane-usuarios').style.display = tab==='usuarios' ? 'block' : 'none';
   if(tab==='analytics') renderAnalytics();
   if(tab==='relatorio') renderRelatorioGeral();
+  if(tab==='usuarios') carregarUsuarios();
 }
 
 // ── HORAS ÚTEIS — expediente real do PCP ──
