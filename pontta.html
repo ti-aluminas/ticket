@@ -34,6 +34,8 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .btn-sair{font-size:11px;color:var(--text-muted);background:none;border:1px solid var(--border);padding:4px 10px;cursor:pointer;font-family:'Inter',sans-serif}
 .btn-sair:hover{color:var(--text);border-color:var(--border-light)}
 
+
+
 /* ── LOGIN ── */
 .mode-screen{flex:1;display:flex;align-items:center;justify-content:center;padding:20px}
 .mode-card{background:var(--surface);border:1px solid var(--border);padding:36px 32px;max-width:440px;width:100%;text-align:center}
@@ -47,6 +49,28 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .login-item:hover{background:rgba(192,146,42,.07)}
 .avatar{width:28px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--surface);color:var(--accent);font-size:10px;font-weight:700}
 .login-vazio{padding:20px;text-align:center;color:var(--text-dim);font-size:12px}
+/* ── LOGIN: atalho e setores recolhiveis ── */
+.login-ultimo{display:flex;align-items:center;gap:11px;width:100%;background:rgba(192,146,42,.08);
+  border:1px solid rgba(192,146,42,.4);padding:12px 14px;cursor:pointer;margin-bottom:12px;
+  font-family:'Inter',sans-serif;color:var(--text);text-align:left}
+.login-ultimo:hover{background:rgba(192,146,42,.16)}
+.login-ultimo .avatar{background:var(--accent);color:#000}
+.login-ultimo .lu-txt{flex:1;display:flex;flex-direction:column;gap:2px}
+.login-ultimo .lu-cap{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)}
+.login-ultimo .lu-nome{font-size:14px;font-weight:600}
+.login-ultimo .lu-seta{color:var(--accent)}
+.login-outro{display:block;width:100%;background:none;border:none;color:var(--text-dim);
+  font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;margin:-4px 0 12px;text-align:center}
+.login-outro:hover{color:var(--text-muted)}
+.login-setor{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--text-muted);padding:11px 12px;background:var(--surface);
+  cursor:pointer;border-top:1px solid var(--border);user-select:none}
+.login-setor:first-child{border-top:none}
+.login-setor:hover{color:var(--text)}
+.login-setor .seta{display:inline-block;transition:transform .15s;font-size:9px;color:var(--text-dim)}
+.login-setor .seta.on{transform:rotate(90deg);color:var(--accent)}
+.login-setor .qtd{margin-left:auto;font-size:10px;color:var(--text-dim);letter-spacing:0}
+.login-grupo .login-item{padding-left:28px}
 
 /* ── MODAIS ── */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;align-items:center;justify-content:center;padding:20px}
@@ -200,6 +224,7 @@ tr.off{opacity:.45}
   <div class="mode-card">
     <h2>Entrar</h2>
     <p>Selecione seu nome para continuar</p>
+    <div id="loginUltimo"></div>
     <input class="campo" id="loginBusca" placeholder="Buscar seu nome..." oninput="filtrarLogin()" autocomplete="off">
     <div class="login-lista" id="loginLista">
       <div class="login-vazio" id="loginCarregando">Carregando...</div>
@@ -437,7 +462,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Trocar a cada deploy
-const APP_VERSION = '2026.09.29-pontta3';
+const APP_VERSION = '2026.09.29-login1';
 
 // ── SESSAO ──
 // Mesma chave do index.html de proposito: a sessao vale nos dois arquivos.
@@ -504,15 +529,79 @@ async function carregarLoginUsuarios(){
   renderLoginUsuarios(LOGIN_USERS);
 }
 
+// ── Tela de login: atalho do ultimo e setores recolhiveis ──
+// Com mais de 30 cadastros a lista esticada fica impraticavel. O atalho cobre
+// o caso comum (mesma pessoa, mesma maquina) e os setores cortam a rolagem.
+// Nada disso afrouxa o acesso: o codigo continua sendo exigido sempre.
+const ULTIMO_KEY = 'pontta_ultimo';
+let setoresAbertos = new Set();
+
+function lembrarUltimo(u){
+  try { localStorage.setItem(ULTIMO_KEY, JSON.stringify({id:u.id, nome:u.nome, setor:u.setor})); } catch(e){}
+}
+function esquecerUltimo(){
+  try { localStorage.removeItem(ULTIMO_KEY); } catch(e){}
+  renderLoginUsuarios(LOGIN_USERS);
+}
+
+function renderAtalho(){
+  const el = document.getElementById('loginUltimo');
+  if(!el) return;
+  let salvo = null;
+  try { salvo = JSON.parse(localStorage.getItem(ULTIMO_KEY) || 'null'); } catch(e){}
+  // So oferece se a pessoa ainda estiver ativa na lista
+  const u = salvo && LOGIN_USERS.find(x => String(x.id) === String(salvo.id));
+  if(!u){ el.innerHTML = ''; return; }
+  el.innerHTML =
+    '<button class="login-ultimo" id="btnUltimo">' +
+      '<span class="avatar">' + initials(u.nome) + '</span>' +
+      '<span class="lu-txt"><span class="lu-cap">Continuar como</span>' +
+      '<span class="lu-nome">' + esc(u.nome) + '</span></span>' +
+      '<span class="lu-seta">&rarr;</span>' +
+    '</button>' +
+    '<button class="login-outro" onclick="esquecerUltimo()">Não sou eu — ver a lista</button>';
+  document.getElementById('btnUltimo').addEventListener('click', ()=>escolherLogin(u));
+}
+
 function renderLoginUsuarios(lista){
+  renderAtalho();
   const el = document.getElementById('loginLista');
   if(!lista.length){ el.innerHTML = '<div class="login-vazio">Nenhum nome encontrado.</div>'; return; }
-  let html = '', setor = null;
+
+  const busca = (document.getElementById('loginBusca').value || '').trim();
+  const grupos = [];
   lista.forEach(u=>{
-    if(u.setor !== setor){ setor = u.setor; html += '<div class="login-setor">'+esc(setor)+'</div>'; }
-    html += '<div class="login-item" data-id="'+u.id+'"><div class="avatar">'+initials(u.nome)+'</div><span>'+esc(u.nome)+'</span></div>';
+    const st = u.setor || 'Sem setor';
+    let g = grupos.find(x=>x.setor === st);
+    if(!g){ g = {setor: st, itens: []}; grupos.push(g); }
+    g.itens.push(u);
   });
-  el.innerHTML = html;
+
+  // Buscando, ou havendo um setor so, nao faz sentido esconder nada
+  const abrirTudo = !!busca || grupos.length === 1;
+
+  el.innerHTML = grupos.map((g, i) => {
+    const aberto = abrirTudo || setoresAbertos.has(g.setor);
+    return '<div class="login-setor" data-i="'+i+'">' +
+             '<span class="seta'+(aberto?' on':'')+'">&#9656;</span>' +
+             esc(g.setor) + '<span class="qtd">'+g.itens.length+'</span>' +
+           '</div>' +
+           '<div class="login-grupo" data-g="'+i+'" style="display:'+(aberto?'block':'none')+'">' +
+             g.itens.map(u =>
+               '<div class="login-item" data-id="'+u.id+'">' +
+                 '<div class="avatar">'+initials(u.nome)+'</div>' +
+                 '<span class="lname">'+esc(u.nome)+'</span>' +
+               '</div>').join('') +
+           '</div>';
+  }).join('');
+
+  el.querySelectorAll('.login-setor').forEach(h=>{
+    h.addEventListener('click', ()=>{
+      const st = grupos[+h.dataset.i].setor;
+      if(setoresAbertos.has(st)) setoresAbertos.delete(st); else setoresAbertos.add(st);
+      renderLoginUsuarios(lista);
+    });
+  });
   el.querySelectorAll('.login-item').forEach(d=>{
     d.addEventListener('click', ()=>{
       const u = LOGIN_USERS.find(x=>String(x.id)===d.dataset.id);
@@ -555,6 +644,7 @@ async function verificarSenha(){
   _pinDigitado = val;
   try {
     const s = await rpc('pontta_login', {p_usuario_id: loginEscolhido.id, p_pin: val});
+    lembrarUltimo(loginEscolhido);
     document.getElementById('modalSenha').classList.remove('show');
     salvarSessao(s);
     if(s.precisa_trocar_pin) abrirTroca(); else aplicarSessao(s);
