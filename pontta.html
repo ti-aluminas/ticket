@@ -264,9 +264,19 @@ tr.off{opacity:.45}
     <div class="troca-aviso">
       Primeiro acesso. Escolha um código pessoal — ele identifica tudo que você abrir ou atender.
     </div>
-    <input class="campo" id="trocaNovo" type="password" inputmode="numeric" maxlength="10" placeholder="Novo código" autocomplete="new-password">
-    <input class="campo" id="trocaConf" type="password" inputmode="numeric" maxlength="10" placeholder="Repita o novo código" autocomplete="new-password">
+    <input class="campo" id="trocaNovo" type="password" inputmode="numeric" maxlength="4" placeholder="4 dígitos" autocomplete="new-password">
+    <input class="campo" id="trocaConf" type="password" inputmode="numeric" maxlength="4" placeholder="Repita os 4 dígitos" autocomplete="new-password">
     <div class="modal-err" id="trocaErro"></div>
+    <script>
+      // A tela de login tem 4 caixinhas: codigo maior que isso trancaria a
+      // pessoa do lado de fora. Aqui so entra digito, e so quatro.
+      ['trocaNovo','trocaConf','usPin','usPinNovo'].forEach(function(id){
+        var el = document.getElementById(id);
+        if(el) el.addEventListener('input', function(){
+          el.value = el.value.replace(/\D/g,'').slice(0,4);
+        });
+      });
+    </script>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="sairSessao()">Sair</button>
       <button class="btn-confirm" onclick="confirmarTroca()">Salvar</button>
@@ -421,14 +431,14 @@ tr.off{opacity:.45}
 
     <div id="usPinWrap">
       <label class="lb">Código provisório</label>
-      <input class="campo" id="usPin" type="text" inputmode="numeric" maxlength="10" placeholder="Ex: 1234">
+      <input class="campo" id="usPin" type="text" inputmode="numeric" maxlength="4" placeholder="4 dígitos">
       <div class="us-ajuda">A pessoa é obrigada a trocar no primeiro acesso.</div>
     </div>
 
     <div id="usResetWrap" style="display:none">
       <label class="lb">Resetar código</label>
       <div style="display:flex;gap:8px;margin-bottom:6px">
-        <input class="campo" id="usPinNovo" type="text" inputmode="numeric" maxlength="10" placeholder="Novo provisório" style="margin:0">
+        <input class="campo" id="usPinNovo" type="text" inputmode="numeric" maxlength="4" placeholder="4 dígitos" style="margin:0">
         <button class="btn-cancel" style="padding:0 16px;cursor:pointer;white-space:nowrap;border:1px solid var(--border)" onclick="resetarPin()">Resetar</button>
       </div>
       <div class="us-ajuda">Derruba a sessão da pessoa e exige troca no próximo acesso.</div>
@@ -462,7 +472,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Trocar a cada deploy
-const APP_VERSION = '2026.09.29-login1';
+const APP_VERSION = '2026.09.30-pin4';
 
 // ── SESSAO ──
 // Mesma chave do index.html de proposito: a sessao vale nos dois arquivos.
@@ -482,7 +492,7 @@ function msgErro(e) {
   const m = (e && e.message) || '';
   if (m.includes('PIN_INCORRETO'))       return 'Código incorreto. Tente novamente.';
   if (m.includes('PIN_ATUAL_INCORRETO')) return 'O código atual não confere.';
-  if (m.includes('PIN_CURTO'))           return 'O código precisa ter ao menos 4 dígitos.';
+  if (m.includes('PIN_CURTO'))           return 'O código precisa ter exatamente 4 dígitos.';
   if (m.includes('USUARIO_INVALIDO'))    return 'Usuário inativo. Fale com o PCP.';
   if (m.includes('SESSAO_INVALIDA'))     return 'Sua sessão expirou. Entre novamente.';
   if (m.includes('SEM_ACESSO_MODULO'))   return 'Você não tem acesso aos chamados do Pontta.';
@@ -688,7 +698,7 @@ async function confirmarTroca(){
   const conf = document.getElementById('trocaConf').value.replace(/\D/g,'');
   const err  = document.getElementById('trocaErro');
   const falha = m => { err.textContent = m; err.style.display = 'block'; };
-  if(novo.length < 4) return falha('O código precisa ter ao menos 4 dígitos.');
+  if(novo.length !== 4) return falha('O código precisa ter exatamente 4 dígitos.');
   if(novo !== conf)   return falha('Os dois campos não conferem.');
   if(novo === '1234') return falha('Escolha um código diferente do provisório.');
   try {
@@ -1131,7 +1141,7 @@ async function salvarUser(){
   if(!setor)       return usFalha('Informe o setor.');
   if(!mods.length) return usFalha('Escolha ao menos um sistema.');
   const pin = document.getElementById('usPin').value.replace(/\D/g,'');
-  if(!usEditando && pin.length < 4) return usFalha('O código provisório precisa ter ao menos 4 dígitos.');
+  if(!usEditando && pin.length !== 4) return usFalha('O código provisório precisa ter exatamente 4 dígitos.');
   // Tirar o proprio master do ar deixaria o sistema sem quem gerencia
   if(usEditando && usEditando.id === SESSAO.id && (papel !== 'master' || !document.getElementById('usAtivo').checked)) {
     return usFalha('Você não pode tirar o próprio acesso de master.');
@@ -1156,7 +1166,7 @@ async function salvarUser(){
 async function resetarPin(){
   if(!usEditando) return;
   const novo = document.getElementById('usPinNovo').value.replace(/\D/g,'');
-  if(novo.length < 4) return usFalha('O código provisório precisa ter ao menos 4 dígitos.');
+  if(novo.length !== 4) return usFalha('O código provisório precisa ter exatamente 4 dígitos.');
   if(!confirm('Resetar o código de ' + usEditando.nome + '? A sessão dela cai na hora.')) return;
   try {
     await rpc('pontta_admin_resetar_pin', {p_token: SESSAO.token, p_usuario_id: usEditando.id, p_pin_novo: novo});
