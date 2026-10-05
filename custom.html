@@ -217,6 +217,20 @@ body:not(.adm) .so-adm{display:none !important}
 .pri u{color:var(--border-light);text-decoration:none}
 .pri.zero u{color:#333}
 .tag-atalho{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:2px 7px;background:rgba(249,168,37,.15);color:var(--yellow);border:1px solid rgba(249,168,37,.3)}
+.tag-sinfo{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:2px 7px;background:rgba(229,57,53,.15);color:#ff8a80;border:1px solid rgba(229,57,53,.35)}
+
+/* SEM INFORMAÇÃO */
+.sinfo-box{display:flex;align-items:flex-start;gap:11px;background:rgba(229,57,53,.07);border:1px solid rgba(229,57,53,.28);padding:11px 13px;margin-bottom:12px;cursor:pointer;user-select:none;transition:border-color .15s,background .15s}
+.sinfo-box:hover{border-color:rgba(229,57,53,.45)}
+.sinfo-box.on{background:rgba(229,57,53,.13);border-color:rgba(229,57,53,.5)}
+.sinfo-box.lock{cursor:default;opacity:.65}
+.sinfo-box.lock:hover{border-color:rgba(229,57,53,.28)}
+.sinfo-box input{width:16px;height:16px;accent-color:#e53935;cursor:pointer;flex-shrink:0;margin-top:1px}
+.sinfo-box.lock input{cursor:default}
+.sinfo-box .t{font-size:13px;font-weight:600;color:#ff8a80;display:block}
+.sinfo-box .d{font-size:11px;color:var(--text-muted);margin-top:2px;line-height:1.4;display:block}
+.filter-clear-btn.active{background:rgba(229,57,53,.13);border-color:rgba(229,57,53,.45);color:#ff8a80;font-weight:600}
+.filter-clear-btn .qt{font-family:'Roboto Mono',monospace;font-size:10px;opacity:.7;margin-left:5px}
 
 /* PAINEL */
 .anl-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
@@ -412,6 +426,10 @@ body:not(.adm) .so-adm{display:none !important}
       <div class="kpi-bar"><div class="kpi-fill conc" id="bConc" style="width:0"></div></div>
     </div>
     <div class="kpi-block">
+      <div class="kpi-label">Sem informação</div>
+      <div class="kpi-val" style="color:#ff8a80" id="kSinfo">0</div>
+    </div>
+    <div class="kpi-block">
       <div class="kpi-label" style="margin-bottom:8px">Por pessoa</div>
       <div id="sbPessoas"></div>
     </div>
@@ -455,6 +473,7 @@ body:not(.adm) .so-adm{display:none !important}
           <option value="rec">Mais recentes</option>
           <option value="espera" class="so-adm">Mais tempo na fila</option>
         </select>
+        <button class="filter-clear-btn" id="btnFiltroSinfo" onclick="toggleFiltroSinfo()" title="Mostrar só itens sem informação">⚠ Sem info <span class="qt" id="qSinfoFil"></span></button>
         <button class="filter-clear-btn" onclick="limparFiltros()">Limpar</button>
         <button class="filter-clear-btn" onclick="exportarLista()">Exportar</button>
         <span class="res-count" id="resCount"></span>
@@ -660,7 +679,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // Trocar a cada deploy — e o que permite uma aba antiga se reconhecer
 // como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.09.01-2230';
+const APP_VERSION = '2026.10.05-1200';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -769,6 +788,7 @@ let user = null;
 let produtos = [], usuarios = [];
 let itemAberto = null, pendenteImport = null;
 let filtroStatus = '', filtroBusca = '', filtroResp = '', filtroOrg = '', filtroPri = '', ordem = 'pri';
+let filtroSemInfo = false;
 let modoImport = 'catalogo';
 let _rtChannel = null;
 
@@ -942,6 +962,10 @@ function renderKpis(){
    ['em_lancamento','kLanc','bLanc'],['concluido','kConc','bConc']]
    .forEach(([st,k,b])=>{ set(k, c(st)); bar(b, c(st)); });
 
+  const nSinfo = produtos.filter(p=>p.sem_info).length;
+  set('kSinfo', nSinfo);
+  document.getElementById('qSinfoFil').textContent = nSinfo;
+
   document.getElementById('sbPessoas').innerHTML = usuarios.map(u=>{
     const n = produtos.filter(p=>p.assumido_por===u.id && p.status==='em_lancamento').length
             + produtos.filter(p=>p.concluido_por===u.id).length;
@@ -958,6 +982,7 @@ function renderKpis(){
 function filtrar(){
   const q = filtroBusca.trim().toLowerCase();
   let out = produtos.filter(p=>{
+    if(filtroSemInfo && !p.sem_info) return false;
     if(filtroStatus && p.status !== filtroStatus) return false;
     if(filtroResp === '0' && p.assumido_por) return false;
     if(filtroResp && filtroResp !== '0' && String(p.assumido_por) !== filtroResp) return false;
@@ -1004,7 +1029,7 @@ function linhaProduto(p, comPeso){
     ${comPeso ? `<td class="td-num">${peso}</td>` : ''}
     <td><div class="strip" title="${nChecks(p)} de ${N_CHECKS}">${segs}</div></td>
     <td class="so-adm">${celulaTempo(p)}</td>
-    <td><span class="sbadge ${p.status}">${STATUS_LABEL[p.status]}</span></td>
+    <td><span class="sbadge ${p.status}">${STATUS_LABEL[p.status]}</span>${p.sem_info ? ` <span class="tag-sinfo" title="${esc(p.sem_info_obs||'Sem informação disponível')}">sem info</span>` : ''}</td>
     <td class="td-quem">${p.assumido_por ? esc(nomeDe(p.assumido_por).split(' ')[0]) : '<span style="color:#555">—</span>'}</td>
   </tr>`;
 }
@@ -1057,8 +1082,16 @@ document.querySelectorAll('.admin-tab-btn').forEach(b=>{
   };
 });
 
+function toggleFiltroSinfo(){
+  filtroSemInfo = !filtroSemInfo;
+  document.getElementById('btnFiltroSinfo').classList.toggle('active', filtroSemInfo);
+  renderFila();
+}
+
 function limparFiltros(){
   filtroStatus=''; filtroBusca=''; filtroResp=''; filtroOrg=''; filtroPri=''; ordem='pri';
+  filtroSemInfo=false;
+  document.getElementById('btnFiltroSinfo').classList.remove('active');
   document.querySelectorAll('.filter-btn[data-st]').forEach(x=>x.classList.toggle('active', !x.dataset.st));
   document.getElementById('fBusca').value='';
   document.getElementById('fResp').value=''; document.getElementById('fOrg').value='';
@@ -1071,7 +1104,7 @@ function exportarLista(){
   const lista = filtrar();
   const adm = user.papel === 'admin';
   const cab = ['Codigo','Nome','Organizadores','Prioridade','Peso bruto','Status','Conferencias',
-               'Liberado por','Assumido por','Concluido por']
+               'Liberado por','Assumido por','Concluido por','Sem info','Obs sem info']
     .concat(adm ? ['Liberado em','Assumido em','Concluido em',
                    'Horas ate assumir','Horas execucao','Horas ciclo'] : []);
   const num = v => v==null ? '' : String(v.toFixed(2)).replace('.',',');
@@ -1081,6 +1114,7 @@ function exportarLista(){
     p.liberado_por?nomeDe(p.liberado_por):'',
     p.assumido_por?nomeDe(p.assumido_por):'',
     p.concluido_por?nomeDe(p.concluido_por):'',
+    p.sem_info?'Sim':'', p.sem_info_obs||'',
   ].concat(adm ? [
     fmtDataHora(p.liberado_em)||'', fmtDataHora(p.assumido_em)||'', fmtDataHora(p.concluido_em)||'',
     num(tEspera(p)), num(tExec(p)), num(tCiclo(p)),
@@ -1295,8 +1329,25 @@ function desenharItem(){
       </select>
     </div>` : '';
 
+  // Marcador de "sem informação": flag independente do status. Quem coleta
+  // (Nível 1 / admin) marca; os demais só enxergam o estado.
+  const podeInfo = podeN1();
+  const blocoSemInfo = `
+    <label class="sinfo-box ${p.sem_info?'on':''} ${podeInfo?'':'lock'}">
+      <input type="checkbox" id="iSemInfo" ${p.sem_info?'checked':''} ${podeInfo?'':'disabled'}>
+      <span>
+        <span class="t">Sem informação disponível</span>
+        <span class="d">Marque quando ainda não há dados para coletar ou cadastrar este item.</span>
+      </span>
+    </label>
+    <div class="field" id="semInfoWrap" style="${p.sem_info?'':'display:none'}">
+      <label for="iSemInfoObs">O que está faltando / aguardando</label>
+      <textarea id="iSemInfoObs" rows="2" placeholder="ex.: aguardando foto e NCM do fornecedor" ${podeInfo?'':'disabled'}>${esc(p.sem_info_obs||'')}</textarea>
+    </div>`;
+
   document.getElementById('mBody').innerHTML = `
     ${blocoPri}
+    ${blocoSemInfo}
     ${blocoN1}
     <div class="divider"><span>Nível 2 · lançamento &nbsp;·&nbsp; ${nChecks(p)}/${N_CHECKS}</span></div>
     ${avisoN2}
@@ -1337,6 +1388,16 @@ function desenharItem(){
   });
   const o2 = document.getElementById('iObs2');
   if(o2 && podeMarcar) o2.onchange = salvarObs2;
+  const cbSi = document.getElementById('iSemInfo');
+  if(cbSi && podeInfo) cbSi.onchange = ()=>{
+    // feedback imediato antes do ida-e-volta do banco
+    const w = document.getElementById('semInfoWrap');
+    if(w) w.style.display = cbSi.checked ? '' : 'none';
+    cbSi.closest('.sinfo-box').classList.toggle('on', cbSi.checked);
+    marcarSemInfo(cbSi.checked);
+  };
+  const obSi = document.getElementById('iSemInfoObs');
+  if(obSi && podeInfo) obSi.onchange = salvarSemInfoObs;
   const sp = document.getElementById('iPri');
   if(sp) sp.onchange = ()=>gravar({prioridade: Number(sp.value)}, 'mudou prioridade',
                                   'prioridade', priLabel(itemAberto.prioridade), priLabel(Number(sp.value)),
@@ -1461,6 +1522,19 @@ async function marcar(campo, valor){
 
 function salvarObs2(){
   gravar({obs_nivel2: document.getElementById('iObs2').value || null});
+}
+
+// Marca/desmarca "sem informação". Ao desmarcar, limpa a anotação para não
+// deixar texto velho preso num item que voltou a ter dado.
+async function marcarSemInfo(valor){
+  const el = document.getElementById('iSemInfoObs');
+  const body = {sem_info: valor, sem_info_obs: valor ? (el && el.value ? el.value : null) : null};
+  await gravar(body, valor?'marcou sem informação':'tirou sem informação', 'sem_info', !valor, valor,
+               valor ? 'Marcado como sem informação.' : 'Marcação removida.');
+}
+function salvarSemInfoObs(){
+  if(!itemAberto.sem_info) return;
+  gravar({sem_info_obs: document.getElementById('iSemInfoObs').value || null});
 }
 
 // ── PAINEL ──
