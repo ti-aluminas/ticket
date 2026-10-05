@@ -229,8 +229,9 @@ body:not(.adm) .so-adm{display:none !important}
 .sinfo-box.lock input{cursor:default}
 .sinfo-box .t{font-size:13px;font-weight:600;color:#ff8a80;display:block}
 .sinfo-box .d{font-size:11px;color:var(--text-muted);margin-top:2px;line-height:1.4;display:block}
-.filter-clear-btn.active{background:rgba(229,57,53,.13);border-color:rgba(229,57,53,.45);color:#ff8a80;font-weight:600}
-.filter-clear-btn .qt{font-family:'Roboto Mono',monospace;font-size:10px;opacity:.7;margin-left:5px}
+.filter-btn.sinfo{color:#c76b68}
+.filter-btn.sinfo:hover{border-color:rgba(229,57,53,.45);color:#ff8a80}
+.filter-btn.sinfo.active{background:rgba(229,57,53,.13);border-color:rgba(229,57,53,.5);color:#ff8a80;font-weight:600}
 
 /* PAINEL */
 .anl-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
@@ -451,6 +452,7 @@ body:not(.adm) .so-adm{display:none !important}
         <button class="filter-btn" data-st="liberado">Liberado <span class="qt" id="qLiberado"></span></button>
         <button class="filter-btn" data-st="em_lancamento">Em lançamento <span class="qt" id="qEm_lancamento"></span></button>
         <button class="filter-btn" data-st="concluido">Concluído <span class="qt" id="qConcluido"></span></button>
+        <button class="filter-btn sinfo" id="btnFiltroSinfo" onclick="toggleFiltroSinfo()" title="Mostrar só itens sem informação (combina com o status)">Sem info <span class="qt" id="qSinfoFil"></span></button>
       </div>
       <div class="filter-row">
         <input class="filter-search" id="fBusca" placeholder="Buscar por código, nome ou organizador…">
@@ -473,7 +475,6 @@ body:not(.adm) .so-adm{display:none !important}
           <option value="rec">Mais recentes</option>
           <option value="espera" class="so-adm">Mais tempo na fila</option>
         </select>
-        <button class="filter-clear-btn" id="btnFiltroSinfo" onclick="toggleFiltroSinfo()" title="Mostrar só itens sem informação">⚠ Sem info <span class="qt" id="qSinfoFil"></span></button>
         <button class="filter-clear-btn" onclick="limparFiltros()">Limpar</button>
         <button class="filter-clear-btn" onclick="exportarLista()">Exportar</button>
         <span class="res-count" id="resCount"></span>
