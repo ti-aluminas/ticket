@@ -323,6 +323,12 @@ body:not(.adm) .so-adm{display:none !important}
 .drop strong em{color:var(--accent);font-style:normal}
 .drop p{font-size:12px;color:var(--text-muted);line-height:1.6}
 .drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.imp-cola p{font-size:12px;color:var(--text-muted);margin:0 0 10px;line-height:1.5}
+.imp-cola textarea,.imp-cola input[type=text]{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:9px 11px;font-size:13px;font-family:'Inter',sans-serif;outline:none;resize:vertical;box-sizing:border-box}
+.imp-cola textarea{font-family:'Roboto Mono',monospace;line-height:1.5}
+.imp-cola textarea:focus,.imp-cola input[type=text]:focus{border-color:var(--accent)}
+.imp-cola .acoes{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.imp-cola .acoes input{flex:1;min-width:200px}
 .imp-resumo{background:var(--surface2);border:1px solid var(--border);padding:12px 14px;margin:16px 0 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--text-muted)}
 .imp-resumo b{font-family:'Roboto Mono',monospace;color:var(--text);font-weight:600}
 .imp-resumo .acoes{margin-left:auto;display:flex;gap:8px}
@@ -588,6 +594,15 @@ body:not(.adm) .so-adm{display:none !important}
 
     <!-- ---------- IMPORTAR ---------- -->
     <section class="tabview" id="tv-importar">
+      <div class="anl-box imp-cola" style="margin-bottom:18px">
+        <div class="anl-title">Marcar “sem informação” em massa</div>
+        <p>Cole os códigos dos itens que estão sem informação — um por linha, ou separados por vírgula/espaço. Só numéricos. Isso só liga a marcação <b>sem informação</b>; não mexe em conferência nem em prioridade.</p>
+        <textarea id="colaCodigos" rows="5" placeholder="Ex.:&#10;10432&#10;10876&#10;11005"></textarea>
+        <div class="acoes">
+          <input id="colaObs" type="text" placeholder="Observação (opcional, aplicada a todos)">
+          <button class="btn-primary" onclick="analisarColagem()">Analisar</button>
+        </div>
+      </div>
       <div class="drop" id="drop">
         <strong>Solte o CSV aqui ou <em>clique para escolher</em></strong>
         <p><b>Catálogo</b> — relatório de customizáveis do Pontta. Só entram códigos numéricos.<br>
@@ -680,7 +695,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // Trocar a cada deploy — e o que permite uma aba antiga se reconhecer
 // como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.10.05-1200';
+const APP_VERSION = '2026.10.07-1615';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -955,7 +970,9 @@ function montarSelects(){
 
 // ── KPIs DA SIDEBAR ──
 function renderKpis(){
-  const t = produtos.length, c = s => produtos.filter(p=>p.status===s).length;
+  const t = produtos.length;
+  // Pendente exclui os marcados "sem info" — eles viram um bucket à parte (kSinfo).
+  const c = s => produtos.filter(p => p.status===s && !(s==='pendente' && p.sem_info)).length;
   const set = (id,v)=>document.getElementById(id).textContent = v;
   const bar = (id,v)=>document.getElementById(id).style.width = (t? v/t*100 : 0)+'%';
   set('kTotal', t);
@@ -984,6 +1001,9 @@ function filtrar(){
   const q = filtroBusca.trim().toLowerCase();
   let out = produtos.filter(p=>{
     if(filtroSemInfo && !p.sem_info) return false;
+    // Itens sem informação saem da fila de Pendente (não dá pra trabalhar neles).
+    // Continuam visíveis em "Todos" e aparecem se o filtro "Sem info" estiver ligado.
+    if(filtroStatus === 'pendente' && p.sem_info && !filtroSemInfo) return false;
     if(filtroStatus && p.status !== filtroStatus) return false;
     if(filtroResp === '0' && p.assumido_por) return false;
     if(filtroResp && filtroResp !== '0' && String(p.assumido_por) !== filtroResp) return false;
@@ -1959,6 +1979,27 @@ function analisarCatalogo(linhas, iCab){
   return res;
 }
 
+// Marcação "sem informação" em massa a partir de uma lista de códigos colada.
+// Não lê arquivo: aproveita o mesmo preview e o mesmo botão Aplicar.
+function analisarColagem(){
+  const txt = document.getElementById('colaCodigos').value || '';
+  const brutos = txt.split(/[^0-9]+/).map(s=>s.trim()).filter(Boolean);
+  if(!brutos.length){ showToast('Cole ao menos um código numérico.', 'error'); return; }
+  const mapa = new Map(produtos.map(p=>[p.codigo,p]));
+  const vistos = new Set(); const res = [];
+  for(const codigo of brutos){
+    if(vistos.has(codigo)){ res.push({codigo, nome:'', r:'duplicado', d:'repetido na lista'}); continue; }
+    vistos.add(codigo);
+    const ex = mapa.get(codigo);
+    if(!ex){ res.push({codigo, nome:'', r:'descartado', d:'não está cadastrado'}); continue; }
+    if(ex.sem_info){ res.push({codigo, nome:ex.nome, r:'inalterado', d:'já estava sem informação'}); continue; }
+    res.push({codigo, nome:ex.nome, r:'atualizado', d:`${STATUS_LABEL[ex.status]} → marcar sem informação`});
+  }
+  modoImport = 'faltainfo';
+  mostrarPreview(res);
+  document.getElementById('preview').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
 function mostrarPreview(res){
   pendenteImport = res;
   const n = r => res.filter(x=>x.r===r).length;
@@ -1967,6 +2008,8 @@ function mostrarPreview(res){
     (modoImport==='vendas'
       ? `<b>Relatório de vendas</b> · ` + [5,4,3,2,1].map(v=>`<b>${f[v]}</b> ${'★'.repeat(v)}`).join(' · ')
         + ` · ${f[0]} sem estrela &nbsp;|&nbsp; <b>${n('atualizado')}</b> mudam · `
+      : modoImport==='faltainfo'
+      ? `<b>Sem informação</b> · <b>${res.length}</b> códigos · <b>${n('atualizado')}</b> a marcar · `
       : modoImport==='prioridade'
       ? `<b>Prioridades</b> · <b>${res.length}</b> linhas · <b>${n('atualizado')}</b> mudam de faixa · `
       : `<b>Catálogo</b> · <b>${res.length}</b> linhas · <b>${n('novo')}</b> novos · <b>${n('atualizado')}</b> atualizados · `)
@@ -2001,10 +2044,13 @@ function cancelarImport(){
   pendenteImport = null; modoImport = 'catalogo';
   document.getElementById('preview').style.display = 'none';
   document.getElementById('arquivo').value = '';
+  const cc = document.getElementById('colaCodigos'); if(cc) cc.value = '';
+  const co = document.getElementById('colaObs');     if(co) co.value = '';
 }
 
 async function aplicarImport(){
   if(!pendenteImport) return;
+  if(modoImport === 'faltainfo') return aplicarFaltaInfo();
   if(modoImport === 'prioridade' || modoImport === 'vendas') return aplicarPrioridades();
   const btn = document.getElementById('btnAplicar');
   btn.disabled = true; overlay(true);
@@ -2076,6 +2122,41 @@ async function aplicarPrioridades(){
     });
     renderTudo();
     showToast(mudam.length + ' itens mudaram de prioridade.');
+    cancelarImport();
+    carregarHistImport();
+  } catch(e){
+    showToast('Falhou: ' + e.message, 'error');
+  } finally { btn.disabled = false; overlay(false); }
+}
+
+// Liga sem_info=true para todos os códigos válidos da colagem, em lotes.
+async function aplicarFaltaInfo(){
+  const btn = document.getElementById('btnAplicar');
+  btn.disabled = true; overlay(true);
+  const marcar = pendenteImport.filter(x=>x.r==='atualizado');
+  const obs = (document.getElementById('colaObs').value || '').trim() || null;
+  try {
+    const cods = marcar.map(x=>x.codigo);
+    const patch = obs ? {sem_info:true, sem_info_obs:obs} : {sem_info:true};
+    for(let i=0;i<cods.length;i+=200){
+      const {error} = await sb.from('produtos').update(patch).in('codigo', cods.slice(i,i+200));
+      if(error) throw error;
+    }
+    await sb.from('importacoes').insert({
+      usuario_id: user.id,
+      arquivo: 'sem info · colado',
+      total_linhas: pendenteImport.length,
+      novos: 0, atualizados: marcar.length,
+      inalterados: pendenteImport.filter(x=>x.r==='inalterado').length,
+      duplicados: pendenteImport.filter(x=>x.r==='duplicado'||x.r==='descartado').length,
+    });
+    // Reflete na tela sem recarregar tudo do servidor
+    marcar.forEach(x=>{
+      const p = produtos.find(y=>y.codigo===x.codigo);
+      if(p){ p.sem_info = true; if(obs) p.sem_info_obs = obs; }
+    });
+    renderTudo();
+    showToast(marcar.length + ' itens marcados como sem informação.');
     cancelarImport();
     carregarHistImport();
   } catch(e){
