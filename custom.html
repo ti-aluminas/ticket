@@ -690,8 +690,8 @@ body:not(.adm) .so-adm{display:none !important}
 <div class="overlay" id="overlay"><div class="spinner"></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SUPABASE_URL = 'https://kxcczvsavdnpzvfmmcdq.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4Y2N6dnNhdmRucHp2Zm1tY2RxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwMjkwOTYsImV4cCI6MjA5ODYwNTA5Nn0.EQOBtgLDeEtv_9dpvvpzQEk7JsLqE_kCqRQeUfvGQEs';
+const SUPABASE_URL = 'https://zeaknzyvlgawtjjdfluc.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InplYWtuenl2bGdhd3RqamRmbHVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwMDg3NDgsImV4cCI6MjA5ODU4NDc0OH0.YzYuE6fm6F0wvbDtmCVmWDrMXa7biEbcRZ2a8AfdR7s';
 
 // Trocar a cada deploy — e o que permite uma aba antiga se reconhecer
 // como desatualizada em vez de gravar dados pela metade.
@@ -858,7 +858,7 @@ const podeAtalho = () => podeN1() && podeN2();
 // ── RESUMO NA TELA DE CÓDIGO ──
 (async function resumoPreLogin(){
   try {
-    const {data} = await sb.from('produtos').select('status').eq('ativo', true);
+    const {data} = await sb.from('custom_produtos').select('status').eq('ativo', true);
     if(!data) return;
     const t = data.length, c = data.filter(p=>p.status==='concluido').length;
     const el = (id,v)=>{ const e=document.getElementById(id); e.textContent=v; e.classList.add('carregado'); };
@@ -897,7 +897,7 @@ async function entrar(){
   if(cod.length !== 4) return;
   overlay(true);
   try {
-    const {data, error} = await sb.from('usuarios').select('*').eq('id', Number(cod)).eq('ativo', true);
+    const {data, error} = await sb.from('custom_usuarios').select('*').eq('id', Number(cod)).eq('ativo', true);
     overlay(false);
     if(error) throw error;
     if(!data.length){
@@ -939,8 +939,8 @@ async function carregar(){
   overlay(true);
   try {
     const [p, u] = await Promise.all([
-      sb.from('produtos').select('*').eq('ativo', true).order('codigo').limit(20000),
-      sb.from('usuarios').select('*').order('id'),
+      sb.from('custom_produtos').select('*').eq('ativo', true).order('codigo').limit(20000),
+      sb.from('custom_usuarios').select('*').order('id'),
     ]);
     if(p.error) throw p.error;
     produtos = p.data || []; usuarios = u.data || [];
@@ -1212,7 +1212,7 @@ async function liberarLinha(cod, inp){
   const marca = tr.querySelector('.lib-mark');
   tr.classList.add('salvando'); marca.textContent = '…';
   try {
-    const {data, error} = await sb.from('produtos').update({
+    const {data, error} = await sb.from('custom_produtos').update({
       peso_bruto: peso, liberado_por: user.id, liberado_em: new Date().toISOString(),
     }).eq('codigo', cod).select();
     if(error) throw error;
@@ -1424,7 +1424,7 @@ function desenharItem(){
                                   'prioridade', priLabel(itemAberto.prioridade), priLabel(Number(sp.value)),
                                   'Prioridade alterada.');
 
-  sb.from('historico').select('*').eq('produto_codigo', p.codigo)
+  sb.from('custom_historico').select('*').eq('produto_codigo', p.codigo)
     .order('criado_em',{ascending:false}).limit(25)
     .then(({data})=>{
       const el = document.getElementById('iHist');
@@ -1436,7 +1436,7 @@ function desenharItem(){
 }
 
 function logar(codigo, acao, campo, ant, novo){
-  sb.from('historico').insert({
+  sb.from('custom_historico').insert({
     produto_codigo: codigo, usuario_id: user.id, acao,
     campo: campo ?? null,
     valor_anterior: ant==null?null:String(ant),
@@ -1453,7 +1453,7 @@ function aplicarLocal(novo){
 
 async function gravar(body, acao, campo, ant, novo, msg){
   try {
-    const {data, error} = await sb.from('produtos').update(body).eq('codigo', itemAberto.codigo).select();
+    const {data, error} = await sb.from('custom_produtos').update(body).eq('codigo', itemAberto.codigo).select();
     if(error) throw error;
     aplicarLocal(data[0]);
     if(acao) logar(itemAberto.codigo, acao, campo, ant, novo);
@@ -2058,16 +2058,16 @@ async function aplicarImport(){
   const upd   = pendenteImport.filter(x=>x.r==='atualizado');
   try {
     for(let i=0;i<novos.length;i+=200){
-      const {error} = await sb.from('produtos').insert(novos.slice(i,i+200)
+      const {error} = await sb.from('custom_produtos').insert(novos.slice(i,i+200)
         .map(x=>({codigo:x.codigo, nome:x.nome, unidade:x.un, organizadores:x.orgs})));
       if(error) throw error;
     }
     for(const x of upd){
-      const {error} = await sb.from('produtos')
+      const {error} = await sb.from('custom_produtos')
         .update({nome:x.nome, unidade:x.un, organizadores:x.orgs}).eq('codigo', x.codigo);
       if(error) throw error;
     }
-    const {data:imp} = await sb.from('importacoes').insert({
+    const {data:imp} = await sb.from('custom_importacoes').insert({
       usuario_id: user.id,
       arquivo: (document.getElementById('arquivo').files[0]||{}).name || 'csv',
       total_linhas: pendenteImport.length,
@@ -2080,7 +2080,7 @@ async function aplicarImport(){
       const linhas = pendenteImport.filter(x=>x.r!=='inalterado')
         .map(x=>({importacao_id:impId, codigo:x.codigo,
                   resultado: x.r==='descartado' ? 'duplicado' : x.r, detalhe:x.d||null}));
-      for(let i=0;i<linhas.length;i+=300) await sb.from('importacao_linhas').insert(linhas.slice(i,i+300));
+      for(let i=0;i<linhas.length;i+=300) await sb.from('custom_importacao_linhas').insert(linhas.slice(i,i+300));
     }
     showToast(`${novos.length} novos e ${upd.length} atualizados.`);
     cancelarImport();
@@ -2101,12 +2101,12 @@ async function aplicarPrioridades(){
     mudam.forEach(x=>{ (porFaixa[x.pri] = porFaixa[x.pri] || []).push(x.codigo); });
     for(const [pri, codigos] of Object.entries(porFaixa)){
       for(let i=0;i<codigos.length;i+=200){
-        const {error} = await sb.from('produtos')
+        const {error} = await sb.from('custom_produtos')
           .update({prioridade: Number(pri)}).in('codigo', codigos.slice(i,i+200));
         if(error) throw error;
       }
     }
-    await sb.from('importacoes').insert({
+    await sb.from('custom_importacoes').insert({
       usuario_id: user.id,
       arquivo: (modoImport==='vendas' ? 'vendas · ' : 'prioridades · ')
              + ((document.getElementById('arquivo').files[0]||{}).name || 'csv'),
@@ -2139,10 +2139,10 @@ async function aplicarFaltaInfo(){
     const cods = marcar.map(x=>x.codigo);
     const patch = obs ? {sem_info:true, sem_info_obs:obs} : {sem_info:true};
     for(let i=0;i<cods.length;i+=200){
-      const {error} = await sb.from('produtos').update(patch).in('codigo', cods.slice(i,i+200));
+      const {error} = await sb.from('custom_produtos').update(patch).in('codigo', cods.slice(i,i+200));
       if(error) throw error;
     }
-    await sb.from('importacoes').insert({
+    await sb.from('custom_importacoes').insert({
       usuario_id: user.id,
       arquivo: 'sem info · colado',
       total_linhas: pendenteImport.length,
@@ -2165,7 +2165,7 @@ async function aplicarFaltaInfo(){
 }
 
 function carregarHistImport(){
-  sb.from('importacoes').select('*').order('criado_em',{ascending:false}).limit(12)
+  sb.from('custom_importacoes').select('*').order('criado_em',{ascending:false}).limit(12)
     .then(({data})=>{
       document.getElementById('impHist').innerHTML = (data && data.length)
         ? data.map(x=>`<tr><td>${fmtDataHora(x.criado_em)}</td><td>${esc(nomeDe(x.usuario_id))}</td>
@@ -2182,7 +2182,7 @@ function ligarRealtime(){
   const badge = document.getElementById('syncBadge');
   badge.style.display = '';
   _rtChannel = sb.channel('cust-produtos')
-    .on('postgres_changes', {event:'*', schema:'public', table:'produtos'}, payload=>{
+    .on('postgres_changes', {event:'*', schema:'public', table:'custom_produtos'}, payload=>{
       const novo = payload.new;
       if(!novo || !novo.codigo) return;
       const i = produtos.findIndex(p=>p.codigo===novo.codigo);
@@ -2210,7 +2210,7 @@ setInterval(()=>{ if(user && produtos.length) renderFila(); }, 60000);
   try { salvo = localStorage.getItem('cust_uid'); } catch(e) {}
   if(!salvo) return;
   try {
-    const {data} = await sb.from('usuarios').select('*').eq('id', Number(salvo)).eq('ativo', true);
+    const {data} = await sb.from('custom_usuarios').select('*').eq('id', Number(salvo)).eq('ativo', true);
     if(data && data.length){ user = data[0]; abrirApp(); }
     else try { localStorage.removeItem('cust_uid'); } catch(e) {}
   } catch(e) {}
