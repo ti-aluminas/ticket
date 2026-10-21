@@ -180,6 +180,7 @@ tr.somenteleitura:hover{background:none}
 .us-chip{display:inline-block;font-size:10px;padding:2px 7px;border:1px solid var(--border);margin-right:4px}
 .us-chip.pontta{color:var(--blue);border-color:rgba(100,181,246,.4)}
 .us-chip.comercial{color:var(--accent);border-color:rgba(192,146,42,.4)}
+.us-chip.custom{color:var(--green,#66bb6a);border-color:rgba(102,187,106,.4)}
 .us-papel{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
 .us-papel.master{color:var(--accent)}
 .us-papel.admin{color:var(--green)}
@@ -426,6 +427,16 @@ tr.off{opacity:.45}
       <label><input type="checkbox" id="usModPontta"> Chamados do Pontta</label>
       <label id="usModComercialWrap"><input type="checkbox" id="usModComercial"> Tickets do Comercial</label>
     </div>
+    <div class="us-linha">
+      <label><input type="checkbox" id="usModCustom" onchange="usCustomToggle()"> Customizáveis</label>
+      <select class="campo" id="usCustomPapel" style="margin:0;width:auto;padding:4px 8px">
+        <option value="nivel1">Nível 1</option>
+        <option value="nivel2">Nível 2</option>
+        <option value="ambos">Níveis 1 e 2</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <div class="us-ajuda">No Customizáveis, se já existir cadastro antigo com o mesmo nome, ele é aproveitado (mantém o histórico).</div>
 
     <div class="us-linha"><label><input type="checkbox" id="usAtivo" checked> Ativo (aparece na tela de login)</label></div>
 
@@ -472,7 +483,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Trocar a cada deploy
-const APP_VERSION = '2026.10.21-seguranca';
+const APP_VERSION = '2026.10.21-cadastro-custom';
 
 // ── SESSAO ──
 // Mesma chave do index.html de proposito: a sessao vale nos dois arquivos.
@@ -1075,7 +1086,8 @@ function renderUsuarios(){
   wrap.innerHTML = '<table><thead><tr><th>Nome</th><th class="op">Setor</th><th>Papel</th>' +
     '<th class="op">Sistemas</th><th class="op">Último acesso</th><th></th></tr></thead><tbody>' +
     lista.map(u=>{
-      const mods = (u.modulos||[]).map(m=>'<span class="us-chip '+esc(m)+'">'+esc(m)+'</span>').join('');
+      const mods = (u.modulos||[]).map(m=>'<span class="us-chip '+esc(m)+'">'+esc(m)+'</span>').join('')
+        + (u.custom_papel ? '<span class="us-chip custom">custom</span>' : '');
       let al = '';
       if(u.bloqueado_ate && new Date(u.bloqueado_ate) > new Date()) al = '<span class="us-alerta">bloqueado</span>';
       else if(u.precisa_trocar_pin) al = '<span class="us-alerta">código provisório</span>';
@@ -1104,11 +1116,15 @@ function abrirUser(u){
   document.getElementById('usSetor').value = u ? (u.setor||'') : '';
   document.getElementById('usPapel').value = u ? u.papel : 'solicitante';
   document.getElementById('usModPontta').checked    = u ? (u.modulos||[]).includes('pontta')    : true;
-  document.getElementById('usModComercial').checked = u ? (u.modulos||[]).includes('comercial') : false;
   // Conceder um modulo que o proprio master nao tem e recusado no servidor;
   // esconder aqui evita oferecer uma opcao que so daria erro.
-  document.getElementById('usModComercialWrap').style.display =
-    (SESSAO.modulos||[]).includes('comercial') ? '' : 'none';
+  const temComercial = (SESSAO.modulos||[]).includes('comercial');
+  // Cadastro novo já entra em todos os sistemas; desmarca quem não precisa
+  document.getElementById('usModComercial').checked = u ? (u.modulos||[]).includes('comercial') : temComercial;
+  document.getElementById('usModComercialWrap').style.display = temComercial ? '' : 'none';
+  document.getElementById('usModCustom').checked    = u ? !!u.custom_papel : true;
+  document.getElementById('usCustomPapel').value    = (u && u.custom_papel) || 'nivel1';
+  usCustomToggle();
   document.getElementById('usAtivo').checked = u ? u.ativo : true;
   document.getElementById('usPin').value = '';
   document.getElementById('usPinNovo').value = '';
@@ -1118,6 +1134,10 @@ function abrirUser(u){
   document.getElementById('modalUser').classList.add('show');
 }
 function fecharUser(){ document.getElementById('modalUser').classList.remove('show'); usEditando = null; }
+function usCustomToggle(){
+  document.getElementById('usCustomPapel').style.visibility =
+    document.getElementById('usModCustom').checked ? 'visible' : 'hidden';
+}
 function usFalha(m){ const e = document.getElementById('usErro'); e.textContent = m; e.style.display='block'; }
 
 async function salvarUser(){
@@ -1145,7 +1165,9 @@ async function salvarUser(){
       p_nome: nome, p_setor: setor, p_papel: papel,
       p_pin: usEditando ? null : pin,
       p_ativo: document.getElementById('usAtivo').checked,
-      p_modulos: mods, p_tela_inicial: null
+      p_modulos: mods, p_tela_inicial: null,
+      p_custom_papel: document.getElementById('usModCustom').checked
+        ? document.getElementById('usCustomPapel').value : ''
     });
     showToast(usEditando ? 'Usuário atualizado' : 'Usuário criado', 'success');
     fecharUser(); carregarUsuarios();
