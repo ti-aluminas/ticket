@@ -249,6 +249,12 @@ body:not(.adm) .so-adm{display:none !important}
 .pend-reabre{color:#ff8a80;font-weight:600}
 .pend-repete{color:var(--text-dim)}
 tr.pend-corrigida td{opacity:.6}
+tr.pend-grupo td{background:var(--surface2);border-top:2px solid var(--border-light);cursor:pointer;padding:10px 12px}
+tr.pend-grupo:hover td{background:rgba(192,146,42,.06)}
+.pend-grupo-in{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pend-grupo-in b{font-size:13px;letter-spacing:.02em}
+.pend-grupo-in .seta{color:var(--accent);width:12px}
+.pend-grupo-in .btn-sec{margin-left:auto;padding:6px 12px;font-size:11px}
 
 /* PAINEL */
 .anl-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
@@ -658,7 +664,8 @@ tr.pend-corrigida td{opacity:.6}
          com controle do que já foi corrigido. -->
     <section class="tabview" id="tv-pendencias">
       <div class="anl-kpi-row" id="pendKpis"></div>
-      <div class="anl-box imp-cola" style="margin-bottom:18px">
+      <!-- só o admin cola conferência; os demais veem o que está aberto para arrumar -->
+      <div class="anl-box imp-cola so-adm" id="pendCola" style="margin-bottom:18px">
         <div class="anl-title">Colar conferência da engenharia</div>
         <p>No Painel Pontta, em <b>Cadastro → serviços</b>, clique em <b>Copiar para WhatsApp</b> e cole aqui. Pendência que já existe não duplica; se uma corrigida aparecer de novo numa conferência mais nova, ela volta a ficar aberta.</p>
         <textarea id="pendTexto" rows="6" placeholder="*Conferência da engenharia (20/10 17:05)*&#10;3 pedidos conferidos · 2 com problema&#10;&#10;*⛔ Opção que não gera componente (1)*&#10;• ..."></textarea>
@@ -2362,13 +2369,16 @@ function lerMensagemPend(txt){
         const m = corpo.match(/^(\S+)\s+–\s+(.+?):\s/);
         if(m){ pedidos = [pendLimpa(m[1])]; produto = pendLimpa(m[2]); }
       }
-      atual = {tipo, codigo, produto, pedidos, linhas: [pendLimpa(corpo)]};
+      // no Tek o item é o próprio produto da linha
+      atual = {tipo, codigo, produto, pedidos, itens: tipo==='tek' && produto ? [produto] : [], linhas: [pendLimpa(corpo)]};
       continue;
     }
-    if(atual && /^\s{2,}\S/.test(l)){   // continuação: "   Pedidos: ..." ou "   Está: / Certo:"
+    if(atual && /^\s{2,}\S/.test(l)){   // continuação: "   Pedidos: ...", "   Item: ..." ou "   Está: / Certo:"
       const t = l.trim();
       const pm = t.match(/^Pedidos:\s*(.+)$/);
+      const im = t.match(/^Item:\s*(.+)$/);
       if(pm) atual.pedidos = pm[1].split(',').map(pendLimpa).filter(Boolean);
+      else if(im) atual.itens = im[1].split(',').map(pendLimpa).filter(Boolean);
       else atual.linhas.push(pendLimpa(t));
       continue;
     }
@@ -2386,6 +2396,10 @@ function pendDesc(p){
 }
 const pendTipoTag = t => { const [rot, cl] = PEND_TIPOS[t] || [t, 'aviso']; return `<span class="ptipo ${cl}">${esc(rot)}</span>`; };
 const pendPedidos = v => (v && v.length) ? `<div class="pend-ped">${v.map(esc).join('<br>')}</div>` : '<span class="meta">—</span>';
+const pendItens = x => (x.itens && x.itens.length) ? `<div class="meta">Item: ${x.itens.map(esc).join(', ')}</div>` : '';
+// Grupo = item do pedido (produto vendido). Conferências antigas, sem a linha "Item:", ficam no próprio produto.
+const pendGrupos = p => (p.itens && p.itens.length) ? p.itens : [p.produto || '(sem item)'];
+let pendFechados = new Set();
 
 async function carregarPend(){
   try {
@@ -2430,7 +2444,50 @@ function renderPend(){
 
   document.getElementById('pendCount').innerHTML = `<b>${lista.length}</b> / ${pendencias.length}`;
   document.getElementById('pendVazio').style.display = lista.length ? 'none' : '';
-  document.getElementById('pendBody').innerHTML = lista.map(p=>{
+  // agrupa por item; uma pendência que aparece em dois itens fica nos dois grupos
+  const grupos = new Map();
+  lista.forEach(p => pendGrupos(p).forEach(g => {
+    if(!grupos.has(g)) grupos.set(g, []);
+    grupos.get(g).push(p);
+  }));
+  const ordenados = [...grupos.entries()].sort((a,b)=>
+    b[1].filter(p=>p.status==='aberta').length - a[1].filter(p=>p.status==='aberta').length || a[0].localeCompare(b[0], 'pt-BR'));
+  document.getElementById('pendBody').innerHTML = ordenados.map(([g, ps], gi)=>{
+    const abertas = ps.filter(p=>p.status==='aberta');
+    const pedidos = [...new Set(ps.flatMap(p=>p.pedidos||[]))];
+    const fechado = pendFechados.has(g);
+    const cab = `<tr class="pend-grupo" data-g="${gi}">
+      <td colspan="6"><div class="pend-grupo-in">
+        <span class="seta">${fechado ? '▸' : '▾'}</span>
+        <b>${esc(g)}</b>
+        <span class="meta">${abertas.length} aberta${abertas.length===1?'':'s'} · ${ps.length} no total${pedidos.length ? ' · ' + pedidos.map(esc).join(', ') : ''}</span>
+        ${abertas.length ? `<button class="btn-sec" data-todas="${gi}" title="Corrigiu no produto pai? Marca todas as abertas deste item">Marcar o item todo corrigido</button>` : ''}
+      </div></td></tr>`;
+    return cab + (fechado ? '' : ps.map(p=>pendLinha(p)).join(''));
+  }).join('');
+  document.querySelectorAll('#pendBody tr.pend-grupo').forEach(tr=>{
+    tr.onclick = e=>{
+      if(e.target.closest('button')) return;
+      const g = ordenados[+tr.dataset.g][0];
+      if(pendFechados.has(g)) pendFechados.delete(g); else pendFechados.add(g);
+      renderPend();
+    };
+  });
+  document.querySelectorAll('#pendBody button[data-todas]').forEach(b=>{
+    b.onclick = ()=>{
+      const [g, ps] = ordenados[+b.dataset.todas];
+      marcarItemTodo(g, ps.filter(p=>p.status==='aberta').map(p=>p.id), b);
+    };
+  });
+  document.querySelectorAll('#pendBody .pend-obs').forEach(inp=>{
+    inp.onchange = ()=>{
+      const p = pendencias.find(x=>x.id===Number(inp.dataset.id));
+      if(p) marcarPend(p.id, p.status, inp.value);
+    };
+  });
+}
+
+function pendLinha(p){
     const corrigida = p.status === 'corrigida';
     const situacao = corrigida
       ? `<span class="sbadge concluido">Corrigida</span>
@@ -2447,13 +2504,27 @@ function renderPend(){
       <td><input class="pend-obs" data-id="${p.id}" value="${esc(p.obs||'')}" placeholder="anotar…"></td>
       <td><div class="pend-acao">${situacao}</div></td>
     </tr>`;
-  }).join('');
-  document.querySelectorAll('#pendBody .pend-obs').forEach(inp=>{
-    inp.onchange = ()=>{
-      const p = pendencias.find(x=>x.id===Number(inp.dataset.id));
-      if(p) marcarPend(p.id, p.status, inp.value);
-    };
-  });
+}
+
+// Corrigir no produto pai resolve todas as pendências do item: marca todas de uma vez.
+async function marcarItemTodo(g, ids, btn){
+  if(!ids.length) return;
+  if(btn.dataset.armado !== '1'){   // dois cliques: o primeiro arma, o segundo confirma
+    btn.dataset.armado = '1';
+    btn.textContent = `Confirmar ${ids.length}?`;
+    btn.classList.add('btn-armado');
+    setTimeout(()=>{ if(btn.isConnected){ btn.dataset.armado = ''; btn.textContent = 'Marcar o item todo corrigido'; btn.classList.remove('btn-armado'); } }, 4000);
+    return;
+  }
+  try {
+    const r = await rpc('custom_pendencias_marcar_varias', {p_token: token(), p_ids: ids, p_status: 'corrigida'}) || [];
+    r.forEach(n=>{ const i = pendencias.findIndex(p=>p.id===n.id); if(i>=0) pendencias[i] = n; });
+    renderPend();
+    showToast(`${r.length} pendências de ${g} marcadas como corrigidas.`);
+  } catch(e){
+    if(sessaoCaiu(e)) return;
+    showToast('Não salvou: ' + msgErro(e), 'error');
+  }
 }
 
 async function marcarPend(id, status, obs){
@@ -2493,7 +2564,7 @@ function analisarPend(){
     if(!ex){ sit = '<span class="pend-novo">nova</span>'; nNovas++; }
     else if(ex.status==='corrigida' && ref > new Date(ex.corrigido_em)){ sit = '<span class="pend-reabre">volta a abrir</span>'; nReabre++; }
     else { sit = `<span class="pend-repete">já ${ex.status==='aberta'?'aberta':'corrigida'}</span>`; nRepete++; }
-    return `<tr><td>${pendTipoTag(x.tipo)}</td><td>${pendDesc(x)}</td><td>${pendPedidos(x.pedidos)}</td><td>${sit}</td></tr>`;
+    return `<tr><td>${pendTipoTag(x.tipo)}</td><td>${pendDesc(x)}${pendItens(x)}</td><td>${pendPedidos(x.pedidos)}</td><td>${sit}</td></tr>`;
   }).join('');
   document.getElementById('pendPreviaResumo').innerHTML =
     `<b>${pendPrevia.itens.length}</b> pendências · ${nNovas} novas · ${nReabre} voltam a abrir · ${nRepete} já registradas`;
@@ -2517,7 +2588,7 @@ async function salvarPend(){
     const r = await rpc('custom_pendencias_importar', {
       p_token: token(),
       p_conferido_em: pendPrevia.quando ? pendPrevia.quando.toISOString() : null,
-      p_itens: pendPrevia.itens.map(x=>({tipo:x.tipo, codigo:x.codigo, produto:x.produto, descricao:x.descricao, pedidos:x.pedidos})),
+      p_itens: pendPrevia.itens.map(x=>({tipo:x.tipo, codigo:x.codigo, produto:x.produto, descricao:x.descricao, pedidos:x.pedidos, itens:x.itens})),
     });
     showToast(`${r.novas} novas, ${r.reabertas} reabertas, ${r.repetidas} já registradas.`);
     cancelarPend();
