@@ -780,7 +780,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // Trocar a cada deploy — e o que permite uma aba antiga se reconhecer
 // como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.10.20-pendencias';
+const APP_VERSION = '2026.10.21-pend-sku';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -2361,8 +2361,12 @@ function lerMensagemPend(txt){
     if(!tipo) continue;
     if(/^\s*•/.test(l)){
       fecha();
-      const corpo = l.replace(/^\s*•\s*/, '');
-      const codigo = (corpo.match(/`([^`]+)`/) || [])[1] || null;
+      let corpo = l.replace(/^\s*•\s*/, '');
+      const sku = (corpo.match(/`([^`]+)`/) || [])[1] || null;
+      // SKU (65309.000.000.000.008) é variação do mesmo produto: corrigir no produto resolve
+      // todas, então cada produto conta uma vez só (código base no lugar do SKU)
+      const codigo = sku && /^\d+(\.\d+)+$/.test(sku) ? sku.split('.')[0] : sku;
+      if(sku && codigo !== sku) corpo = corpo.split(sku).join(codigo);
       let produto = pendLimpa(corpo.split(/ \(`|: /)[0]);
       let pedidos = [];
       if(tipo === 'tek'){                // • PV-ALU-1402 – PRODUTO (resto): falta *X*
@@ -2550,13 +2554,17 @@ function analisarPend(){
   lido.textContent = quando ? 'Conferência de ' + fmtDataHora(quando) : 'Mensagem sem data: vale a hora de agora.';
   const ref = quando || new Date();
   const porChave = new Map(pendencias.map(p=>[p.chave, p]));
-  // a mesma pendência repetida dentro da mensagem conta uma vez só
-  const vistos = new Set();
-  pendPrevia = {quando, itens: itens.filter(x=>{
+  // a mesma pendência repetida dentro da mensagem (ex.: vários SKUs do mesmo produto) vira uma só,
+  // somando pedidos e itens
+  const unicas = new Map();
+  itens.forEach(x=>{
     const k = pendChave(x.tipo, x.descricao);
-    if(vistos.has(k)) return false;
-    vistos.add(k); return true;
-  })};
+    const u = unicas.get(k);
+    if(!u){ unicas.set(k, {...x, pedidos:[...x.pedidos], itens:[...x.itens]}); return; }
+    x.pedidos.forEach(p=>{ if(!u.pedidos.includes(p)) u.pedidos.push(p); });
+    x.itens.forEach(i=>{ if(!u.itens.includes(i)) u.itens.push(i); });
+  });
+  pendPrevia = {quando, itens: [...unicas.values()]};
   let nNovas = 0, nRepete = 0, nReabre = 0;
   document.getElementById('pendPreviaBody').innerHTML = pendPrevia.itens.map(x=>{
     const ex = porChave.get(pendChave(x.tipo, x.descricao));
