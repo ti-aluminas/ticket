@@ -616,7 +616,8 @@ body.dono .col-dono{display:table-cell}
   <div class="hr">
     <div class="clock" id="clock">--:--:--</div>
     <div class="mbadge" id="modeBadge" style="display:none"></div>
-    <a class="btn-custom show" id="btnConversas" href="chat.html" target="_blank" rel="noopener" title="Abrir as conversas com o Comercial">
+    <!-- Conversas fora do ar até o chat usar o login único -->
+    <a class="btn-custom" id="btnConversas" href="chat.html" target="_blank" rel="noopener" title="Abrir as conversas com o Comercial">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.8-.9L3 21l1.9-5.2A8.4 8.4 0 0 1 4 11.5a8.4 8.4 0 0 1 9-8.4 8.4 8.4 0 0 1 8 8.4z"/></svg>
       <span class="rot">Conversas</span>
     </a>
@@ -1439,6 +1440,8 @@ let ticketAberto = null, statusModalSel = null;
 let _rtStatus = 'conectando';
 let _sincDesde = null;        // hora do servidor na última consulta de mudanças
 let _ultimoNumeroVisto = 0;   // maior nº de ticket já notificado (admin)
+let _ticketsCarregados = false; // só avisa "ticket novo" depois da 1ª carga completa
+let _sincRodando = false;       // evita duas consultas de mudanças ao mesmo tempo
 let _ultimasRespostas = 0;    // qtd de respostas não lidas já notificadas (solicitante)
 
 // ── CHECAGEM DE VERSAO ──
@@ -1480,7 +1483,9 @@ function getNow() {
   return { date: n.toLocaleDateString('pt-BR'), time: n.toLocaleTimeString('pt-BR'), iso: n.toISOString() };
 }
 function fmtNum(n) { return '#' + String(n||0).padStart(4,'0'); }
-function initials(n) { return n.trim().split(/\s+/).map(p=>p[0]).slice(0,2).join('').toUpperCase(); }
+function initials(n) { return esc(String(n||'').trim().split(/\s+/).map(p=>p[0]).slice(0,2).join('').toUpperCase()); }
+// Só aceita foto em base64 de imagem: impede que um texto montado vire HTML/JS na tela
+function fotoSegura(s) { return typeof s === 'string' && /^data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+\/=]+$/i.test(s); }
 
 // ── ÍCONES SVG (substituem emojis: renderizam igual em todo sistema) ──
 const ICO = (()=> {
@@ -2196,19 +2201,21 @@ async function sincronizarTickets() {
   if (!SESSAO || !SESSAO.token) return;
   const adminVisivel = document.getElementById('adminLayout').style.display !== 'none';
   if (!adminVisivel && !selectedUser) return;
+  if (_sincRodando) return;
+  _sincRodando = true;
   try {
     // 30 s de folga: pega também gravações que terminaram logo depois da última consulta
     const desde = _sincDesde ? new Date(new Date(_sincDesde).getTime() - 30000).toISOString()
                              : new Date(Date.now() - 60000).toISOString();
     const r = await rpc('tickets_mudancas', {p_token: SESSAO.token, p_desde: desde});
-    _sincDesde = r.agora;
+    if (!_sincDesde || r.agora > _sincDesde) _sincDesde = r.agora;
     atualizarSyncUI('ao-vivo');
     const mudou = r.tickets || [];
     if (!mudou.length) return;
 
     if (adminVisivel) {
       // Ticket novo: aviso uma vez só por número
-      const novos = mudou.filter(t => (t.numero||0) > _ultimoNumeroVisto && t.status === 'pendente');
+      const novos = _ticketsCarregados ? mudou.filter(t => (t.numero||0) > _ultimoNumeroVisto && t.status === 'pendente') : [];
       if (novos.length) {
         _ultimoNumeroVisto = Math.max(...novos.map(t=>t.numero||0));
         if (somAtivo()) bipeTicketNovo();
@@ -2246,6 +2253,8 @@ async function sincronizarTickets() {
   } catch (e) {
     if (/SESSAO_INVALIDA/.test((e && e.message) || '')) { limparSessao(); location.reload(); return; }
     atualizarSyncUI('erro');
+  } finally {
+    _sincRodando = false;
   }
 }
 
@@ -2258,7 +2267,7 @@ function atualizarSyncUI(estado) {
   else { el.className = 'sync-badge conn'; el.innerHTML = '<span class="dot"></span>conectando'; }
 }
 
-function syncManual() { loadTickets(); showToast('Sincronizado!','success'); }
+async function syncManual() { if (await loadTickets()) showToast('Sincronizado!','success'); }
 
 // ── VIGIA ──
 // Consulta as mudanças de tempos em tempos e também ao voltar para a aba, ao
@@ -2354,7 +2363,7 @@ function exportarCSV() {
   const blob = new Blob(['\uFEFF'+linhas.join('\r\n')], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const hoje = new Date().toISOString().slice(0,10);
+  const hoje = new Date().toLocaleDateString('sv-SE'); // AAAA-MM-DD no fuso local
   a.href = url; a.download = `tickets_aluminas_${hoje}.csv`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
@@ -2540,7 +2549,7 @@ function renderFotoPreview() {
   const el = document.getElementById('fotoPreviewList'); el.innerHTML='';
   fotosBase64.forEach((f,i)=>{
     const d = document.createElement('div'); d.className='foto-prev';
-    d.innerHTML = `<img src="${f.base64}" onclick="abrirImg('${f.base64}','${f.name}')"><button class="rm" onclick="removerFoto(${i})">×</button>`;
+    d.innerHTML = `<img src="${fotoSegura(f.base64)?f.base64:''}" onclick="abrirImg(fotosBase64[${i}].base64, fotosBase64[${i}].name)"><button class="rm" onclick="removerFoto(${i})">×</button>`;
     el.appendChild(d);
   });
 }
@@ -2660,7 +2669,7 @@ function renderMeusTickets() {
     if(novo) div.classList.add('nova-resposta');
     const sl = stLabel(t.status);
     let fotosHtml='';
-    if(t.fotos){ try{ const arr=JSON.parse(t.fotos); if(arr.length>0) fotosHtml='<div class="mcard-fotos">'+arr.map((s,i)=>`<img class="mthumb" src="${s}" onclick="abrirImg('${s}','Foto ${i+1}')"`+' alt="foto">').join('')+'</div>'; }catch(e){} }
+    if(t.fotos){ try{ const arr=JSON.parse(t.fotos).filter(fotoSegura); if(arr.length>0) fotosHtml='<div class="mcard-fotos">'+arr.map((s,i)=>`<img class="mthumb" src="${s}" onclick="abrirImg('${s}','Foto ${i+1}')"`+' alt="foto">').join('')+'</div>'; }catch(e){} }
     let respHtml='';
     if(t.status==='cancelado'){
       respHtml = `<div class="mcard-resp">
@@ -2693,7 +2702,7 @@ function renderMeusTickets() {
     } else {
       const icon = t.status==='ok'?ICO.check:t.status==='andamento'?ICO.andamento:ICO.alerta;
       const label = t.status==='ok'?'Concluído':t.status==='andamento'?'Em Andamento':'Precisa de ajuste';
-      const por = t.respondido_por?' · '+t.respondido_por:'';
+      const por = t.respondido_por?' · '+esc(t.respondido_por):'';
       const resStr = fmtDataHora(t.resolvido_em, true);
       const reabrirBtns = t.status!=='andamento' ? `
         <br><button class="btn-reabrir" id="btn-reabrir-${t.id}" onclick="mostrarReabrirForm('${t.id}')">↩ Reabrir Ticket</button>
@@ -2793,7 +2802,11 @@ async function loadTickets() {
   for (let de = 0; ; de += PAGINA) {
     let data;
     try { data = await rpc('tickets_listar', {p_token: SESSAO.token, p_de: de, p_qtd: PAGINA}); }
-    catch(e){ showToast('Erro: '+msgErro(e),'error'); return; }
+    catch(e){
+      showToast('Erro: '+msgErro(e),'error');
+      document.getElementById('adminSub').textContent = 'Falha ao carregar — clique em sincronizar';
+      return false;
+    }
     acc.push(...(data||[]));
     if (!data || data.length < PAGINA) break;
     if (de > 50000) break;              // trava de seguranca
@@ -2802,6 +2815,8 @@ async function loadTickets() {
   // Marca o teto conhecido para a varredura não avisar de ticket antigo
   const maior = allTickets.reduce((m,t)=> Math.max(m, t.numero||0), 0);
   if (maior > _ultimoNumeroVisto) _ultimoNumeroVisto = maior;
+  _ticketsCarregados = true;
+  return true;
 }
 
 function setFilter(f, btn) {
@@ -3157,7 +3172,7 @@ function renderTmFooter(t) {
       <div class="tm-resp-dado" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">
         <span class="ico-status">${icon}</span>
         <div style="font-size:12px;color:var(--text-muted);line-height:1.5">
-          <strong style="color:var(--text);display:block;margin-bottom:2px">${label}${t.respondido_por?' · '+t.respondido_por:''}</strong>
+          <strong style="color:var(--text);display:block;margin-bottom:2px">${label}${t.respondido_por?' · '+esc(t.respondido_por):''}</strong>
           ${t.comentario_admin ? esc(t.comentario_admin) : '<span style="opacity:.5">Sem comentário.</span>'}
           ${resolStr?'<br><span style="font-size:11px;color:var(--text-dim);font-family:Roboto Mono,monospace">⏱ '+resolStr+'</span>':''}
         </div>
@@ -4118,8 +4133,8 @@ function renderRelatorioGeral() {
         const paradoTxt = fmtHorasUteis(horasUteisParado);
         return `<tr onclick="abrirTicketPorId('${t.id}')">
           <td>${i+1}</td>
-          <td>${t.operador||'—'}</td>
-          <td>${t.categoria||'—'}</td>
+          <td>${esc(t.operador||'—')}</td>
+          <td>${esc(t.categoria||'—')}</td>
           <td>${fmtDataHora(t.criado_em)}</td>
           <td style="color:var(--yellow);font-weight:600">${paradoTxt}</td>
           <td>${stLabel(t.status)}</td>
@@ -4338,11 +4353,11 @@ function renderRelatorioTabela() {
   body.innerHTML = filtrados.map((t,i)=>`
     <tr onclick="abrirTicketPorId('${t.id}')">
       <td>${filtrados.length-i}</td>
-      <td>${t.operador||'—'}</td>
-      <td>${t.categoria||'—'}</td>
+      <td>${esc(t.operador||'—')}</td>
+      <td>${esc(t.categoria||'—')}</td>
       <td>${fmtDataHora(t.criado_em) || '—'}</td>
       <td>${fmtDataHora(t.resolvido_em) || '—'}</td>
-      <td>${t.respondido_por||'—'}</td>
+      <td>${esc(t.respondido_por||'—')}</td>
       <td>${stLabel(t.status)||'—'}</td>
     </tr>`).join('');
 }

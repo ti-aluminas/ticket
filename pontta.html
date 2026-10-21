@@ -757,9 +757,8 @@ function aplicarSessao(s){
 let CATEGORIAS = [], catSel = null, prioSel = 'normal', fotos = [];
 
 async function carregarCategorias(){
-  const {data, error} = await sb.from('pontta_categorias').select('*').eq('ativo', true).order('ordem');
-  if(error){ showToast(msgErro(error), 'error'); return; }
-  CATEGORIAS = data || [];
+  try { CATEGORIAS = await rpc('pontta_categorias_listar', {p_token: SESSAO.token}) || []; }
+  catch(e){ showToast(msgErro(e), 'error'); return; }
   document.getElementById('listaCats').innerHTML = CATEGORIAS.map(c =>
     '<div class="cat" data-n="'+esc(c.nome)+'"><span class="bola" style="background:'+esc(c.cor)+'"></span><span>'+esc(c.nome)+'</span></div>'
   ).join('');
@@ -854,12 +853,11 @@ async function enviarChamado(){
 
 async function carregarMeus(){
   const el = document.getElementById('meusLista');
-  const {data, error} = await sb.from('pontta_chamados')
-    .select('id,numero,categoria,titulo,status,prioridade,criado_em,resolvido_em,comentario_admin,atendente_nome,qtd_fotos,descricao,setor,solicitante_nome,historico')
-    .eq('solicitante_id', SESSAO.id)
-    .order('criado_em', {ascending:false})
-    .limit(100);
-  if(error){ el.innerHTML = '<div class="vazio">'+esc(msgErro(error))+'</div>'; return; }
+  if(!el.innerHTML.trim()) el.innerHTML = '<div class="vazio">Carregando...</div>';
+  let data;
+  try { data = await rpc('pontta_chamados_listar', {p_token: SESSAO.token}) || []; }
+  catch(e){ el.innerHTML = '<div class="vazio">'+esc(msgErro(e))+'</div>'; return; }
+  data = data.filter(c=>c.solicitante_id === SESSAO.id).slice(0, 100);
   if(!data.length){ el.innerHTML = '<div class="vazio">Você ainda não abriu chamados.</div>'; return; }
   CHAMADOS = data;
   el.innerHTML = montarTabela(data, false);
@@ -871,26 +869,18 @@ async function carregarMeus(){
 // ════════════════════════════════════════════════════════════════════════════
 let CHAMADOS = [], filtroAtual = 'abertos', chAberto = null, statusSel = null;
 
-const COLS = 'id,numero,solicitante_id,solicitante_nome,setor,categoria,titulo,descricao,' +
-             'prioridade,status,atendente_nome,comentario_admin,criado_em,andamento_em,' +
-             'resolvido_em,reaberto_em,reaberto_por,qtd_fotos,historico';
-
+// Guarda de sequência: uma resposta atrasada não sobrescreve uma mais nova
+let _seqFila = 0;
 async function loadChamados(){
-  const PAGINA = 500;
-  const acc = [];
-  for(let de = 0; ; de += PAGINA){
-    const {data, error} = await sb.from('pontta_chamados')
-      .select(COLS)
-      .order('criado_em', {ascending:false})
-      .order('id', {ascending:false})
-      .range(de, de + PAGINA - 1);
-    if(error){ showToast(msgErro(error), 'error'); return; }
-    acc.push(...(data||[]));
-    if(!data || data.length < PAGINA) break;
-    if(de > 50000) break;
+  const seq = ++_seqFila;
+  try {
+    const data = await rpc('pontta_chamados_listar', {p_token: SESSAO.token}) || [];
+    if(seq !== _seqFila) return;
+    CHAMADOS = data;
+    renderFila();
+  } catch(e){
+    if(seq === _seqFila) showToast(msgErro(e), 'error');
   }
-  CHAMADOS = acc;
-  renderFila();
 }
 
 document.querySelectorAll('#filtros .filtro').forEach(d=>{
@@ -924,14 +914,14 @@ function montarTabela(lista, comQuem){
     '<th class="op">Categoria</th><th>Resumo</th><th class="op">Abertura</th>' +
     '<th>Prio</th><th>Status</th></tr></thead><tbody>' +
     lista.map(c =>
-      '<tr data-id="'+c.id+'">' +
+      '<tr data-id="'+esc(c.id)+'">' +
       '<td class="num">#'+c.numero+'</td>' +
       (comQuem ? '<td class="op">'+esc(c.solicitante_nome)+'<br><span style="font-size:11px;color:var(--text-dim)">'+esc(c.setor)+'</span></td>' : '') +
       '<td class="op"><span class="tag">'+esc(c.categoria)+'</span></td>' +
       '<td>'+esc(c.titulo)+(c.qtd_fotos ? ' <span style="color:var(--text-dim);font-size:11px">📎'+c.qtd_fotos+'</span>' : '')+'</td>' +
       '<td class="op num">'+fmtData(c.criado_em)+'</td>' +
-      '<td><span class="pbadge '+c.prioridade+'">'+c.prioridade+'</span></td>' +
-      '<td><span class="sbadge '+c.status+'">'+ST_LABEL[c.status]+'</span>' +
+      '<td><span class="pbadge '+esc(c.prioridade)+'">'+esc(c.prioridade)+'</span></td>' +
+      '<td><span class="sbadge '+esc(c.status)+'">'+esc(ST_LABEL[c.status]||c.status)+'</span>' +
         (c.atendente_nome ? '<br><span style="font-size:11px;color:var(--text-dim)">'+esc(c.atendente_nome)+'</span>' : '') +
       '</td></tr>'
     ).join('') + '</tbody></table>';
@@ -979,11 +969,11 @@ async function carregarFotosCh(c){
   const fw = document.getElementById('chFotos');
   fw.innerHTML = '<span style="font-size:11px;color:var(--text-dim)">Carregando fotos...</span>';
   try {
-    const txt = await rpc('pontta_fotos', {p_chamado_id: c.id});
+    const txt = await rpc('pontta_fotos', {p_token: SESSAO.token, p_chamado_id: c.id});
     if(chAberto !== c) return;
     const arr = JSON.parse(txt || '[]');
     fw.innerHTML = '';
-    arr.forEach(s=>{
+    arr.filter(s=>typeof s === 'string' && s.startsWith('data:image/')).forEach(s=>{
       const img = document.createElement('img');
       img.className = 'thumb'; img.src = s;
       img.onclick = ()=>verImg(s);
@@ -1085,7 +1075,7 @@ function renderUsuarios(){
   wrap.innerHTML = '<table><thead><tr><th>Nome</th><th class="op">Setor</th><th>Papel</th>' +
     '<th class="op">Sistemas</th><th class="op">Último acesso</th><th></th></tr></thead><tbody>' +
     lista.map(u=>{
-      const mods = (u.modulos||[]).map(m=>'<span class="us-chip '+m+'">'+m+'</span>').join('');
+      const mods = (u.modulos||[]).map(m=>'<span class="us-chip '+esc(m)+'">'+esc(m)+'</span>').join('');
       let al = '';
       if(u.bloqueado_ate && new Date(u.bloqueado_ate) > new Date()) al = '<span class="us-alerta">bloqueado</span>';
       else if(u.precisa_trocar_pin) al = '<span class="us-alerta">código provisório</span>';
@@ -1093,7 +1083,7 @@ function renderUsuarios(){
       return '<tr class="'+(u.ativo?'':'off')+(u.editavel?'':' somenteleitura')+'" data-id="'+u.id+'">' +
         '<td>'+esc(u.nome)+(u.ativo?'':' <span style="font-size:11px;color:var(--text-dim)">(inativo)</span>')+'</td>' +
         '<td class="op">'+esc(u.setor||'—')+'</td>' +
-        '<td><span class="us-papel '+u.papel+'">'+u.papel+'</span></td>' +
+        '<td><span class="us-papel '+esc(u.papel)+'">'+esc(u.papel)+'</span></td>' +
         '<td class="op">'+mods+'</td>' +
         '<td class="op num" style="font-size:12px;color:var(--text-dim)">'+(u.ultimo_acesso?fmtData(u.ultimo_acesso):'nunca')+'</td>' +
         '<td>'+al+'</td></tr>';
@@ -1175,15 +1165,14 @@ async function resetarPin(){
   } catch(e){ usFalha(msgErro(e)); }
 }
 
-// ── Realtime ──
-let _debounce = null;
+// ── Atualização da fila ──
+// Consulta periódica pela RPC (as tabelas não ficam mais abertas para o realtime).
+// Pausa com a aba escondida e atualiza na hora ao voltar.
+let _vigiaFila = null;
 function ligarRealtime(){
-  sb.channel('pontta')
-    .on('postgres_changes', {event:'*', schema:'public', table:'pontta_chamados'}, ()=>{
-      clearTimeout(_debounce);
-      _debounce = setTimeout(loadChamados, 400);
-    })
-    .subscribe();
+  if(_vigiaFila) return;
+  _vigiaFila = setInterval(()=>{ if(!document.hidden && SESSAO) loadChamados(); }, 20000);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && SESSAO) loadChamados(); });
 }
 
 // ════════════════════════════════════════════════════════════════════════════

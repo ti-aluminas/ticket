@@ -951,6 +951,10 @@ setInterval(()=>{ document.getElementById('clock').textContent = new Date().toLo
 document.getElementById('clock').textContent = new Date().toLocaleTimeString('pt-BR');
 
 // ── HELPERS ──
+// Valor para dentro de onclick='...': JSON vale como JS e o esc protege o atributo
+function jsA(v){ return esc(JSON.stringify(v)); }
+// Data AAAA-MM-DD no fuso local (o banco grava em UTC)
+function diaLocal(ts){ return ts ? new Date(ts).toLocaleDateString('sv-SE') : ''; }
 function esc(v){
   if(v===null||v===undefined) return '';
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1199,7 +1203,7 @@ function linhaProduto(p, comPeso){
   const peso = p.peso_bruto!=null
     ? Number(p.peso_bruto).toLocaleString('pt-BR',{minimumFractionDigits:2})
     : '<span style="color:#555">—</span>';
-  return `<tr onclick="abrirItem('${esc(p.codigo)}')">
+  return `<tr onclick="abrirItem(${jsA(p.codigo)})">
     <td class="td-cod">${esc(p.codigo)}</td>
     <td>${priEstrelas(p.prioridade)}</td>
     <td><div class="td-nome">${esc(p.nome)}</div><div class="td-orgs">${esc((p.organizadores||[]).join(' · '))}</div></td>
@@ -1300,7 +1304,7 @@ function exportarLista(){
   const csv = [cab,...linhas].map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\r\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'}));
-  a.download = 'customizaveis_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.download = 'customizaveis_' + diaLocal(Date.now()) + '.csv';
   a.click();
   showToast(lista.length + ' itens exportados.');
 }
@@ -1593,10 +1597,14 @@ function desenharItem(){
     });
 }
 
+// O modal pode ter fechado (ou trocado de item) enquanto a gravação ia ao banco
 function aplicarLocal(novo){
-  Object.assign(itemAberto, novo);
-  const i = produtos.findIndex(p=>p.codigo===itemAberto.codigo);
-  if(i>=0) produtos[i] = itemAberto;
+  if(!novo) return;
+  const i = produtos.findIndex(p=>p.codigo===novo.codigo);
+  if(itemAberto && itemAberto.codigo===novo.codigo){
+    Object.assign(itemAberto, novo);
+    if(i>=0) produtos[i] = itemAberto;
+  } else if(i>=0) Object.assign(produtos[i], novo);
   renderKpis(); renderFila(); renderPainel();
 }
 
@@ -1609,13 +1617,13 @@ async function gravar(body, acao, campo, ant, novo, msg){
       p_ant: ant==null ? null : String(ant), p_novo: novo==null ? null : String(novo),
     });
     aplicarLocal(linha);
-    desenharItem();
+    if(itemAberto) desenharItem();
     if(msg) showToast(msg);
     return true;
   } catch(e){
     if(sessaoCaiu(e)) return false;
     showToast('Não salvou: ' + msgErro(e), 'error');
-    desenharItem();
+    if(itemAberto) desenharItem();
     return false;
   }
 }
@@ -1734,7 +1742,7 @@ function renderPainel(){
 
   // ── KPIs, todos abrindo a lista por trás ──
   const kpi = (rot,val,cor,sub,titulo,itens)=>
-    `<div class="anl-kpi clic" onclick='abrirLista(${JSON.stringify(titulo)}, _kpi[${itens}])'>
+    `<div class="anl-kpi clic" onclick='abrirLista(${jsA(titulo)}, _kpi[${itens}])'>
        <div class="anl-kpi-label">${rot}</div>
        <div class="anl-kpi-val ${cor}">${val}</div>
        <div class="anl-kpi-sub">${sub}<span class="lupa">ver itens</span></div>
@@ -1759,7 +1767,7 @@ function renderPainel(){
   const porItem = concMedidos ? horasTotais/concMedidos : null;
   window._kpiT = [naFila, conc, conc, conc];
   const kpiT = (rot,val,cor,sub,titulo,i)=>
-    `<div class="anl-kpi clic" onclick='abrirLista(${JSON.stringify(titulo)}, _kpiT[${i}])'>
+    `<div class="anl-kpi clic" onclick='abrirLista(${jsA(titulo)}, _kpiT[${i}])'>
        <div class="anl-kpi-label">${rot}</div>
        <div class="anl-kpi-val ${cor}">${val}</div>
        <div class="anl-kpi-sub">${sub}<span class="lupa">ver itens</span></div>
@@ -1841,7 +1849,7 @@ function renderPainel(){
     const real = horasReais(fimM);                       // intervalos unidos
     const med  = fimM.length ? real/fimM.length : null;  // tempo efetivo por item
     const cel = (n,itens,titulo)=> n
-      ? `<td class="n clic" onclick='event.stopPropagation();abrirLista(${JSON.stringify(titulo)}, ${itens})'>${n}</td>`
+      ? `<td class="n clic" onclick='event.stopPropagation();abrirLista(${jsA(titulo)}, ${itens})'>${n}</td>`
       : '<td class="n">—</td>';
     return `<tr>
       <td>${esc(u.nome)}</td>
@@ -1893,7 +1901,7 @@ function renderPainel(){
   const agora = new Date().toISOString();
   const parados = naFila.slice().sort((a,b)=>(a.liberado_em||'').localeCompare(b.liberado_em||'')).slice(0,8);
   document.getElementById('pParados').innerHTML = parados.length
-    ? parados.map(p=>`<tr class="clic" onclick="abrirItem('${esc(p.codigo)}')">
+    ? parados.map(p=>`<tr class="clic" onclick="abrirItem(${jsA(p.codigo)})">
         <td class="td-cod">${esc(p.codigo)}</td>
         <td class="td-nome">${esc(p.nome)}</td>
         <td>${priEstrelas(p.prioridade)}</td>
@@ -1910,14 +1918,14 @@ function renderPainel(){
     d.setHours(0,0,0,0);
     const iso = new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
     const fds = d.getDay()===0 || d.getDay()===6;
-    dias.push({d, iso, fds, hoje:i===0, n: produtos.filter(p=>(p.concluido_em||'').slice(0,10)===iso).length});
+    dias.push({d, iso, fds, hoje:i===0, n: produtos.filter(p=>diaLocal(p.concluido_em)===iso).length});
   }
   const mx = Math.max(1, ...dias.map(x=>x.n));
   document.getElementById('pRitmo').innerHTML = dias.map(x=>{
     const rot = String(x.d.getDate()).padStart(2,'0');
     const cls = (x.n?'temItem ':'') + (x.fds?'fds ':'') + (x.hoje?'hoje':'');
     const clique = x.n
-      ? ` onclick='abrirLista("Concluídos em ${x.d.toLocaleDateString("pt-BR")}", produtos.filter(p=>(p.concluido_em||"").slice(0,10)===${JSON.stringify(x.iso)}))'`
+      ? ` onclick='abrirLista("Concluídos em ${x.d.toLocaleDateString("pt-BR")}", produtos.filter(p=>diaLocal(p.concluido_em)===${jsA(x.iso)}))'`
       : '';
     return `<div class="chart-col ${cls}"${clique} title="${x.d.toLocaleDateString('pt-BR')}: ${x.n}">
       <div class="chart-top">
@@ -1955,7 +1963,7 @@ function renderPainel(){
         const w = v.e[n]/v.t*100;
         return w ? `<i class="s${n}" style="width:${w}%" title="${v.e[n]} com ${priLabel(n)}"></i>` : '';
       }).join('');
-      return `<tr class="clic" onclick='abrirLista("Organizador: "+${JSON.stringify(o)}, produtos.filter(p=>(p.organizadores||[]).includes(${JSON.stringify(o)})))'>
+      return `<tr class="clic" onclick='abrirLista("Organizador: "+${jsA(o)}, produtos.filter(p=>(p.organizadores||[]).includes(${jsA(o)})))'>
         <td>${esc(o)}</td>
         <td><div class="stack">${barra}</div></td>
         <td class="n" style="color:${v.alta?'var(--accent)':'var(--text-dim)'}">${v.alta||'—'}</td>
@@ -2624,6 +2632,7 @@ document.getElementById('pendTipo').addEventListener('change', renderPend);
 // tela pergunta ao banco o que mudou desde a última vez.
 const SINC_MS = 10000;
 async function sincronizar(){
+  if(document.hidden) return;   // aba escondida não consulta; ao voltar sincroniza na hora
   const badge = document.getElementById('syncBadge');
   try {
     // 30 s de folga: pega também gravações que terminaram logo depois da última consulta
@@ -2656,6 +2665,7 @@ function ligarSincronia(){
   if(_sincTimer) return;
   document.getElementById('syncBadge').style.display = '';
   _sincTimer = setInterval(sincronizar, SINC_MS);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && _sincTimer) sincronizar(); });
   sincronizar();
 }
 
