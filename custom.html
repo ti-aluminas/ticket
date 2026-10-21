@@ -233,6 +233,29 @@ body:not(.adm) .so-adm{display:none !important}
 .filter-btn.sinfo:hover{border-color:rgba(229,57,53,.45);color:#ff8a80}
 .filter-btn.sinfo.active{background:rgba(229,57,53,.13);border-color:rgba(229,57,53,.5);color:#ff8a80;font-weight:600}
 
+/* PENDÊNCIAS */
+.pend-qt{font-family:'Roboto Mono',monospace;font-size:10px;margin-left:4px;color:#ff8a80}
+.ptipo{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 7px;display:inline-block;border:1px solid}
+.ptipo.grave{background:rgba(229,57,53,.12);color:#ff8a80;border-color:rgba(229,57,53,.35)}
+.ptipo.aviso{background:rgba(249,168,37,.12);color:var(--yellow);border-color:rgba(249,168,37,.3)}
+.pend-desc{white-space:pre-line;font-size:13px;line-height:1.5}
+.pend-desc .cod{font-family:'Roboto Mono',monospace;font-size:12px;color:var(--accent)}
+.pend-ped{font-family:'Roboto Mono',monospace;font-size:11px;color:var(--text-muted);line-height:1.6}
+.pend-obs{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 8px;font-size:12px;font-family:'Inter',sans-serif;outline:none;box-sizing:border-box}
+.pend-obs:focus{border-color:var(--accent)}
+.pend-acao{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.pend-acao .btn-sec{padding:6px 10px;font-size:11px}
+.pend-novo{color:#69f0ae;font-weight:600}
+.pend-reabre{color:#ff8a80;font-weight:600}
+.pend-repete{color:var(--text-dim)}
+tr.pend-corrigida td{opacity:.6}
+tr.pend-grupo td{background:var(--surface2);border-top:2px solid var(--border-light);cursor:pointer;padding:10px 12px}
+tr.pend-grupo:hover td{background:rgba(192,146,42,.06)}
+.pend-grupo-in{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pend-grupo-in b{font-size:13px;letter-spacing:.02em}
+.pend-grupo-in .seta{color:var(--accent);width:12px}
+.pend-grupo-in .btn-sec{margin-left:auto;padding:6px 12px;font-size:11px}
+
 /* PAINEL */
 .anl-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
 .anl-kpi{background:var(--surface2);border:1px solid var(--border);padding:16px 18px}
@@ -387,8 +410,11 @@ body:not(.adm) .so-adm{display:none !important}
         <rect x="3" y="11" width="18" height="11" rx="1"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
       </svg>
     </div>
-    <h2>Código de acesso</h2>
-    <p>Use o mesmo código do sistema de tickets</p>
+    <h2>Entrar</h2>
+    <p>Mesmo nome e código do sistema de tickets</p>
+    <select class="filter-select" id="loginNome" style="max-width:none;width:100%;margin-bottom:16px;padding:9px 11px">
+      <option value="">Carregando nomes…</option>
+    </select>
     <div class="pin-row" id="pinRow">
       <input class="pin-box" type="password" inputmode="numeric" autocomplete="off" maxlength="1" data-i="0">
       <input class="pin-box" type="password" inputmode="numeric" autocomplete="off" maxlength="1" data-i="1">
@@ -448,6 +474,7 @@ body:not(.adm) .so-adm{display:none !important}
       <button class="admin-tab-btn" data-tab="painel">Painel</button>
       <button class="admin-tab-btn" data-tab="liberar" id="tabLiberar">Liberar em lote</button>
       <button class="admin-tab-btn" data-tab="importar" id="tabImportar">Importar</button>
+      <button class="admin-tab-btn" data-tab="pendencias">Pendências <span class="pend-qt" id="qPendTab"></span></button>
     </div>
 
     <!-- ---------- FILA ---------- -->
@@ -631,6 +658,64 @@ body:not(.adm) .so-adm{display:none !important}
         <table><thead><tr><th>Quando</th><th>Por</th><th class="n">Linhas</th><th class="n">Novos</th><th class="n">Atualizados</th><th class="n">Descartados</th></tr></thead><tbody id="impHist"></tbody></table>
       </div>
     </section>
+
+    <!-- ---------- PENDÊNCIAS DA ENGENHARIA ---------- -->
+    <!-- A mensagem "Copiar para WhatsApp" do Cadastro → serviços (Painel Pontta) colada aqui vira uma lista
+         com controle do que já foi corrigido. -->
+    <section class="tabview" id="tv-pendencias">
+      <div class="anl-kpi-row" id="pendKpis"></div>
+      <!-- só o admin cola conferência; os demais veem o que está aberto para arrumar -->
+      <div class="anl-box imp-cola so-adm" id="pendCola" style="margin-bottom:18px">
+        <div class="anl-title">Colar conferência da engenharia</div>
+        <p>No Painel Pontta, em <b>Cadastro → serviços</b>, clique em <b>Copiar para WhatsApp</b> e cole aqui. Pendência que já existe não duplica; se uma corrigida aparecer de novo numa conferência mais nova, ela volta a ficar aberta.</p>
+        <textarea id="pendTexto" rows="6" placeholder="*Conferência da engenharia (20/10 17:05)*&#10;3 pedidos conferidos · 2 com problema&#10;&#10;*⛔ Opção que não gera componente (1)*&#10;• ..."></textarea>
+        <div class="acoes">
+          <button class="btn-primary" onclick="analisarPend()">Analisar</button>
+          <span class="meta" id="pendLido"></span>
+        </div>
+      </div>
+      <div id="pendPrevia" style="display:none;margin-bottom:22px">
+        <div class="imp-resumo">
+          <span id="pendPreviaResumo"></span>
+          <span class="acoes">
+            <button class="btn-sec" onclick="cancelarPend()">Cancelar</button>
+            <button class="btn-primary" id="btnSalvarPend" onclick="salvarPend()">Salvar</button>
+          </span>
+        </div>
+        <div class="rows-wrap">
+          <table class="admin-table">
+            <thead><tr><th style="width:150px">Tipo</th><th>Pendência</th><th style="width:170px">Pedidos</th><th style="width:120px">Ao salvar</th></tr></thead>
+            <tbody id="pendPreviaBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="filter-row">
+        <button class="filter-btn active" data-pst="aberta">Abertas <span class="qt" id="qPendAb"></span></button>
+        <button class="filter-btn" data-pst="corrigida">Corrigidas <span class="qt" id="qPendCo"></span></button>
+        <button class="filter-btn" data-pst="">Todas <span class="qt" id="qPendTo"></span></button>
+      </div>
+      <div class="filter-row">
+        <input class="filter-search" id="pendBusca" placeholder="Buscar por produto, código, pedido ou texto…">
+        <select class="filter-select" id="pendTipo"><option value="">Todos os tipos</option></select>
+        <span class="res-count" id="pendCount"></span>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr>
+            <th style="width:150px">Tipo</th>
+            <th>Pendência</th>
+            <th style="width:150px">Pedidos</th>
+            <th style="width:120px">Visto em</th>
+            <th style="width:220px">Observação</th>
+            <th style="width:150px">Situação</th>
+          </tr></thead>
+          <tbody id="pendBody"></tbody>
+        </table>
+        <div class="no-itens" id="pendVazio" style="display:none">
+          <strong>Nenhuma pendência aqui</strong>Cole a conferência do Painel Pontta acima ou ajuste os filtros.
+        </div>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -695,9 +780,44 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // Trocar a cada deploy — e o que permite uma aba antiga se reconhecer
 // como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.10.07-1615';
+const APP_VERSION = '2026.10.20-pendencias';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── SESSÃO ──
+// Mesmo login do index.html e do pontta.html (mesma chave no localStorage):
+// quem já entrou num deles não digita código aqui. Tudo que lê ou grava passa
+// por funções no banco que conferem o token; as tabelas não são acessadas direto.
+const SESSAO_KEY = 'pontta_sessao';
+function lerSessao(){ try { return JSON.parse(localStorage.getItem(SESSAO_KEY) || 'null'); } catch(e){ return null; } }
+function salvarSessao(s){ try { localStorage.setItem(SESSAO_KEY, JSON.stringify(s)); } catch(e){} }
+function limparSessao(){ try { localStorage.removeItem(SESSAO_KEY); } catch(e){} }
+const token = () => (lerSessao() || {}).token;
+
+async function rpc(nome, args){
+  const {data, error} = await sb.rpc(nome, args || {});
+  if(error) throw error;
+  return data;
+}
+function msgErro(e){
+  const m = (e && e.message) || '';
+  if(m.includes('PIN_INCORRETO'))        return 'Código incorreto.';
+  if(m.includes('USUARIO_INVALIDO'))     return 'Usuário inativo.';
+  if(m.includes('SESSAO_INVALIDA'))      return 'Sua sessão expirou. Entre novamente.';
+  if(m.includes('SEM_ACESSO_CUSTOM'))    return 'Você não tem acesso aos customizáveis.';
+  if(m.includes('ITEM_DE_OUTRA_PESSOA')) return 'Este item está com outra pessoa. Assuma antes de conferir.';
+  if(m.includes('SEM_PERMISSAO'))        return 'Você não tem permissão para isso.';
+  const b = m.match(/BLOQUEADO_ATE (\d{2}:\d{2})/);
+  if(b) return 'Muitas tentativas. Tente de novo após ' + b[1] + '.';
+  return m || 'Erro inesperado.';
+}
+// Sessão caiu no meio do uso (expirou ou foi encerrada em outra aba): volta ao login.
+function sessaoCaiu(e){
+  if(!/SESSAO_INVALIDA|SEM_ACESSO_CUSTOM/.test((e && e.message) || '')) return false;
+  limparSessao();
+  location.reload();
+  return true;
+}
 
 // As 8 conferências do nível 2, na ordem em que aparecem na tira da fila.
 const CHECKS = [
@@ -806,7 +926,7 @@ let itemAberto = null, pendenteImport = null;
 let filtroStatus = '', filtroBusca = '', filtroResp = '', filtroOrg = '', filtroPri = '', ordem = 'pri';
 let filtroSemInfo = false;
 let modoImport = 'catalogo';
-let _rtChannel = null;
+let _sincTimer = null, _desde = null;
 
 // ── CHECAGEM DE VERSAO ──
 function recarregarForcado(){ location.replace(location.pathname + '?v=' + Date.now()); }
@@ -858,9 +978,9 @@ const podeAtalho = () => podeN1() && podeN2();
 // ── RESUMO NA TELA DE CÓDIGO ──
 (async function resumoPreLogin(){
   try {
-    const {data} = await sb.from('custom_produtos').select('status').eq('ativo', true);
-    if(!data) return;
-    const t = data.length, c = data.filter(p=>p.status==='concluido').length;
+    const r = await rpc('custom_resumo');
+    if(!r) return;
+    const t = r.total, c = r.concluidos;
     const el = (id,v)=>{ const e=document.getElementById(id); e.textContent=v; e.classList.add('carregado'); };
     el('rsTotal', t); el('rsPend', t-c); el('rsPct', t ? Math.round(c/t*100)+'%' : '0%');
   } catch(e) {}
@@ -890,32 +1010,68 @@ pinCaixas().forEach((cx,i,arr)=>{
     if(d.length===4) entrar();
   });
 });
-pinCaixas()[0].focus();
+// Nomes da tela de entrada: só quem tem acesso aos customizáveis.
+const ULTIMO_KEY = 'pontta_ultimo';
+(async function carregarNomes(){
+  const sel = document.getElementById('loginNome');
+  try {
+    const lista = await rpc('custom_listar_login');
+    let ultimo = null;
+    try { ultimo = (JSON.parse(localStorage.getItem(ULTIMO_KEY) || 'null') || {}).id; } catch(e) {}
+    sel.innerHTML = '<option value="">Escolha seu nome</option>'
+      + lista.map(u=>`<option value="${esc(u.id)}">${esc(u.nome)}</option>`).join('');
+    if(ultimo && lista.some(u=>String(u.id)===String(ultimo))) sel.value = ultimo;
+  } catch(e){
+    sel.innerHTML = '<option value="">Sem conexão com o servidor</option>';
+  }
+  sel.onchange = ()=>{ document.getElementById('pinErr').textContent = ''; pinLimpar(); };
+})();
 
 async function entrar(){
   const cod = pinValor();
   if(cod.length !== 4) return;
+  const sel = document.getElementById('loginNome');
+  const erro = msg => {
+    const row = document.getElementById('pinRow');
+    row.classList.add('erro'); setTimeout(()=>row.classList.remove('erro'), 400);
+    document.getElementById('pinErr').textContent = msg;
+    pinLimpar();
+  };
+  if(!sel.value){ sel.focus(); return erro('Escolha seu nome primeiro.'); }
   overlay(true);
   try {
-    const {data, error} = await sb.from('custom_usuarios').select('*').eq('id', Number(cod)).eq('ativo', true);
-    overlay(false);
-    if(error) throw error;
-    if(!data.length){
-      const row = document.getElementById('pinRow');
-      row.classList.add('erro'); setTimeout(()=>row.classList.remove('erro'), 400);
-      document.getElementById('pinErr').textContent = 'Código não encontrado.';
-      pinLimpar(); return;
+    const s = await rpc('pontta_login', {p_usuario_id: sel.value, p_pin: cod});
+    salvarSessao(s);
+    try { localStorage.setItem(ULTIMO_KEY, JSON.stringify({id:s.id, nome:s.nome, setor:s.setor})); } catch(e) {}
+    if(s.precisa_trocar_pin){
+      overlay(false);
+      return erro('Seu código é provisório. Defina um novo no sistema de tickets e volte aqui.');
     }
-    user = data[0];
-    try { localStorage.setItem('cust_uid', String(user.id)); } catch(e) {}
-    abrirApp();
+    await iniciar();
   } catch(e){
     overlay(false);
-    document.getElementById('pinErr').textContent = 'Sem conexão com o servidor.';
-    pinLimpar();
+    erro(msgErro(e));
   }
 }
-function sair(){ try { localStorage.removeItem('cust_uid'); } catch(e) {} location.reload(); }
+async function sair(){
+  try { if(token()) await rpc('pontta_logout', {p_token: token()}); } catch(e) {}
+  limparSessao();
+  location.reload();
+}
+
+// Carrega usuário, equipe e produtos numa chamada só e abre a aplicação.
+async function iniciar(){
+  overlay(true);
+  try {
+    const d = await rpc('custom_entrar', {p_token: token()});
+    user = d.usuario; usuarios = d.usuarios || []; produtos = d.produtos || [];
+    _desde = d.agora;
+    abrirApp();
+  } catch(e){
+    if(/SESSAO_INVALIDA/.test(e.message || '')) limparSessao();
+    else document.getElementById('pinErr').textContent = msgErro(e);
+  } finally { overlay(false); }
+}
 
 async function abrirApp(){
   document.getElementById('modeScreen').style.display = 'none';
@@ -930,24 +1086,24 @@ async function abrirApp(){
   document.body.classList.toggle('adm', user.papel === 'admin');
   if(user.papel !== 'admin') document.getElementById('tabImportar').style.display = 'none';
   if(!podeN1()) document.getElementById('tabLiberar').style.display = 'none';
-  await carregar();
-  ligarRealtime();
+  montarSelects(); renderTudo();
+  if(user.papel === 'admin') carregarHistImport();
+  carregarPend();
+  ligarSincronia();
 }
 
 // ── CARGA ──
 async function carregar(){
   overlay(true);
   try {
-    const [p, u] = await Promise.all([
-      sb.from('custom_produtos').select('*').eq('ativo', true).order('codigo').limit(20000),
-      sb.from('custom_usuarios').select('*').order('id'),
-    ]);
-    if(p.error) throw p.error;
-    produtos = p.data || []; usuarios = u.data || [];
+    const d = await rpc('custom_entrar', {p_token: token()});
+    produtos = d.produtos || []; usuarios = d.usuarios || [];
+    _desde = d.agora;
     montarSelects(); renderTudo();
     if(user.papel === 'admin') carregarHistImport();
   } catch(e){
-    showToast('Não consegui carregar: ' + e.message, 'error');
+    if(sessaoCaiu(e)) return;
+    showToast('Não consegui carregar: ' + msgErro(e), 'error');
   } finally { overlay(false); }
 }
 function renderTudo(){ renderKpis(); renderFila(); renderPainel(); renderLiberar(); }
@@ -1095,6 +1251,7 @@ document.querySelectorAll('.admin-tab-btn').forEach(b=>{
     document.querySelectorAll('.tabview').forEach(v=>v.classList.remove('active'));
     b.classList.add('active');
     document.getElementById('tv-'+b.dataset.tab).classList.add('active');
+    if(b.dataset.tab === 'pendencias') carregarPend();
     if(b.dataset.tab === 'liberar'){
       renderLiberar();
       const p = document.querySelector('#tbLiberar .lib-input');
@@ -1212,13 +1369,13 @@ async function liberarLinha(cod, inp){
   const marca = tr.querySelector('.lib-mark');
   tr.classList.add('salvando'); marca.textContent = '…';
   try {
-    const {data, error} = await sb.from('custom_produtos').update({
-      peso_bruto: peso, liberado_por: user.id, liberado_em: new Date().toISOString(),
-    }).eq('codigo', cod).select();
-    if(error) throw error;
+    const novo = await rpc('custom_atualizar', {
+      p_token: token(), p_codigo: cod,
+      p_patch: {peso_bruto: peso, liberado_por: user.id, liberado_em: new Date().toISOString()},
+      p_acao: 'liberou', p_campo: 'peso_bruto', p_novo: String(peso),
+    });
     const i = produtos.findIndex(p=>p.codigo===cod);
-    if(i>=0) produtos[i] = {...produtos[i], ...data[0]};
-    logar(cod, 'liberou', 'peso_bruto', null, peso);
+    if(i>=0) produtos[i] = {...produtos[i], ...novo};
     tr.classList.remove('salvando'); tr.classList.add('ok');
     marca.textContent = '✓'; marca.className = 'lib-mark ok';
     _libFeitos++;
@@ -1228,7 +1385,8 @@ async function liberarLinha(cod, inp){
     tr.classList.remove('salvando'); tr.classList.add('falhou');
     marca.textContent = '!'; marca.className = 'lib-mark err';
     inp.disabled = false;
-    showToast('Não liberou ' + cod + ': ' + e.message, 'error');
+    if(sessaoCaiu(e)) return;
+    showToast('Não liberou ' + cod + ': ' + msgErro(e), 'error');
   }
 }
 
@@ -1424,24 +1582,15 @@ function desenharItem(){
                                   'prioridade', priLabel(itemAberto.prioridade), priLabel(Number(sp.value)),
                                   'Prioridade alterada.');
 
-  sb.from('custom_historico').select('*').eq('produto_codigo', p.codigo)
-    .order('criado_em',{ascending:false}).limit(25)
-    .then(({data})=>{
+  rpc('custom_historico_item', {p_token: token(), p_codigo: p.codigo})
+    .catch(()=>null)
+    .then(data=>{
       const el = document.getElementById('iHist');
       if(!el) return;
       el.innerHTML = (data && data.length)
         ? data.map(x=>`${fmtDataHora(x.criado_em)} · <b>${esc(nomeDe(x.usuario_id))}</b> · ${esc(x.acao)}${x.campo?' '+esc(x.campo):''}`).join('<br>')
         : 'Sem movimentação registrada.';
     });
-}
-
-function logar(codigo, acao, campo, ant, novo){
-  sb.from('custom_historico').insert({
-    produto_codigo: codigo, usuario_id: user.id, acao,
-    campo: campo ?? null,
-    valor_anterior: ant==null?null:String(ant),
-    valor_novo: novo==null?null:String(novo),
-  }).then(()=>{});
 }
 
 function aplicarLocal(novo){
@@ -1453,15 +1602,19 @@ function aplicarLocal(novo){
 
 async function gravar(body, acao, campo, ant, novo, msg){
   try {
-    const {data, error} = await sb.from('custom_produtos').update(body).eq('codigo', itemAberto.codigo).select();
-    if(error) throw error;
-    aplicarLocal(data[0]);
-    if(acao) logar(itemAberto.codigo, acao, campo, ant, novo);
+    // O histórico é gravado pelo próprio banco, na mesma chamada.
+    const linha = await rpc('custom_atualizar', {
+      p_token: token(), p_codigo: itemAberto.codigo, p_patch: body,
+      p_acao: acao || null, p_campo: campo ?? null,
+      p_ant: ant==null ? null : String(ant), p_novo: novo==null ? null : String(novo),
+    });
+    aplicarLocal(linha);
     desenharItem();
     if(msg) showToast(msg);
     return true;
   } catch(e){
-    showToast('Não salvou: ' + e.message, 'error');
+    if(sessaoCaiu(e)) return false;
+    showToast('Não salvou: ' + msgErro(e), 'error');
     desenharItem();
     return false;
   }
@@ -2057,63 +2210,45 @@ async function aplicarImport(){
   const novos = pendenteImport.filter(x=>x.r==='novo');
   const upd   = pendenteImport.filter(x=>x.r==='atualizado');
   try {
-    for(let i=0;i<novos.length;i+=200){
-      const {error} = await sb.from('custom_produtos').insert(novos.slice(i,i+200)
-        .map(x=>({codigo:x.codigo, nome:x.nome, unidade:x.un, organizadores:x.orgs})));
-      if(error) throw error;
-    }
-    for(const x of upd){
-      const {error} = await sb.from('custom_produtos')
-        .update({nome:x.nome, unidade:x.un, organizadores:x.orgs}).eq('codigo', x.codigo);
-      if(error) throw error;
-    }
-    const {data:imp} = await sb.from('custom_importacoes').insert({
-      usuario_id: user.id,
-      arquivo: (document.getElementById('arquivo').files[0]||{}).name || 'csv',
-      total_linhas: pendenteImport.length,
-      novos: novos.length, atualizados: upd.length,
-      inalterados: pendenteImport.filter(x=>x.r==='inalterado').length,
-      duplicados: pendenteImport.filter(x=>x.r==='duplicado'||x.r==='descartado').length,
-    }).select();
-    const impId = imp && imp[0] && imp[0].id;
-    if(impId){
-      const linhas = pendenteImport.filter(x=>x.r!=='inalterado')
-        .map(x=>({importacao_id:impId, codigo:x.codigo,
-                  resultado: x.r==='descartado' ? 'duplicado' : x.r, detalhe:x.d||null}));
-      for(let i=0;i<linhas.length;i+=300) await sb.from('custom_importacao_linhas').insert(linhas.slice(i,i+300));
-    }
+    // Uma chamada só: o banco grava produtos, importação e linhas juntos, ou nada.
+    await rpc('custom_importar', {
+      p_token: token(), p_modo: 'catalogo',
+      p_arquivo: (document.getElementById('arquivo').files[0]||{}).name || 'csv',
+      p_itens: [...novos, ...upd].map(x=>({codigo:x.codigo, nome:x.nome, un:x.un, orgs:x.orgs})),
+      p_resumo: resumoImport(novos.length, upd.length),
+      p_linhas: pendenteImport.filter(x=>x.r!=='inalterado')
+        .map(x=>({codigo:x.codigo, resultado: x.r==='descartado' ? 'duplicado' : x.r, detalhe:x.d||null})),
+    });
     showToast(`${novos.length} novos e ${upd.length} atualizados.`);
     cancelarImport();
     await carregar();
     carregarHistImport();
   } catch(e){
-    showToast('Falhou: ' + e.message, 'error');
+    if(sessaoCaiu(e)) return;
+    showToast('Falhou: ' + msgErro(e), 'error');
   } finally { btn.disabled = false; overlay(false); }
 }
 
-// 608 linhas viram poucas chamadas: agrupa por faixa e manda um update por faixa.
+function resumoImport(novos, atualizados){
+  return {
+    total_linhas: pendenteImport.length, novos, atualizados,
+    inalterados: pendenteImport.filter(x=>x.r==='inalterado').length,
+    duplicados: pendenteImport.filter(x=>x.r==='duplicado'||x.r==='descartado').length,
+  };
+}
+
+// Todas as prioridades numa chamada só, gravadas juntas no banco.
 async function aplicarPrioridades(){
   const btn = document.getElementById('btnAplicar');
   btn.disabled = true; overlay(true);
   const mudam = pendenteImport.filter(x=>x.r==='atualizado');
   try {
-    const porFaixa = {};
-    mudam.forEach(x=>{ (porFaixa[x.pri] = porFaixa[x.pri] || []).push(x.codigo); });
-    for(const [pri, codigos] of Object.entries(porFaixa)){
-      for(let i=0;i<codigos.length;i+=200){
-        const {error} = await sb.from('custom_produtos')
-          .update({prioridade: Number(pri)}).in('codigo', codigos.slice(i,i+200));
-        if(error) throw error;
-      }
-    }
-    await sb.from('custom_importacoes').insert({
-      usuario_id: user.id,
-      arquivo: (modoImport==='vendas' ? 'vendas · ' : 'prioridades · ')
-             + ((document.getElementById('arquivo').files[0]||{}).name || 'csv'),
-      total_linhas: pendenteImport.length,
-      novos: 0, atualizados: mudam.length,
-      inalterados: pendenteImport.filter(x=>x.r==='inalterado').length,
-      duplicados: pendenteImport.filter(x=>x.r==='duplicado'||x.r==='descartado').length,
+    await rpc('custom_importar', {
+      p_token: token(), p_modo: 'prioridade',
+      p_arquivo: (modoImport==='vendas' ? 'vendas · ' : 'prioridades · ')
+               + ((document.getElementById('arquivo').files[0]||{}).name || 'csv'),
+      p_itens: mudam.map(x=>({codigo:x.codigo, pri:Number(x.pri)})),
+      p_resumo: resumoImport(0, mudam.length),
     });
     // Reflete na tela sem recarregar os 608 do servidor
     mudam.forEach(x=>{
@@ -2125,30 +2260,21 @@ async function aplicarPrioridades(){
     cancelarImport();
     carregarHistImport();
   } catch(e){
-    showToast('Falhou: ' + e.message, 'error');
+    if(sessaoCaiu(e)) return;
+    showToast('Falhou: ' + msgErro(e), 'error');
   } finally { btn.disabled = false; overlay(false); }
 }
 
-// Liga sem_info=true para todos os códigos válidos da colagem, em lotes.
+// Liga sem_info=true para todos os códigos válidos da colagem, numa chamada só.
 async function aplicarFaltaInfo(){
   const btn = document.getElementById('btnAplicar');
   btn.disabled = true; overlay(true);
   const marcar = pendenteImport.filter(x=>x.r==='atualizado');
   const obs = (document.getElementById('colaObs').value || '').trim() || null;
   try {
-    const cods = marcar.map(x=>x.codigo);
-    const patch = obs ? {sem_info:true, sem_info_obs:obs} : {sem_info:true};
-    for(let i=0;i<cods.length;i+=200){
-      const {error} = await sb.from('custom_produtos').update(patch).in('codigo', cods.slice(i,i+200));
-      if(error) throw error;
-    }
-    await sb.from('custom_importacoes').insert({
-      usuario_id: user.id,
-      arquivo: 'sem info · colado',
-      total_linhas: pendenteImport.length,
-      novos: 0, atualizados: marcar.length,
-      inalterados: pendenteImport.filter(x=>x.r==='inalterado').length,
-      duplicados: pendenteImport.filter(x=>x.r==='duplicado'||x.r==='descartado').length,
+    await rpc('custom_importar', {
+      p_token: token(), p_modo: 'faltainfo', p_arquivo: 'sem info · colado',
+      p_itens: marcar.map(x=>x.codigo), p_resumo: resumoImport(0, marcar.length), p_obs: obs,
     });
     // Reflete na tela sem recarregar tudo do servidor
     marcar.forEach(x=>{
@@ -2160,13 +2286,15 @@ async function aplicarFaltaInfo(){
     cancelarImport();
     carregarHistImport();
   } catch(e){
-    showToast('Falhou: ' + e.message, 'error');
+    if(sessaoCaiu(e)) return;
+    showToast('Falhou: ' + msgErro(e), 'error');
   } finally { btn.disabled = false; overlay(false); }
 }
 
 function carregarHistImport(){
-  sb.from('custom_importacoes').select('*').order('criado_em',{ascending:false}).limit(12)
-    .then(({data})=>{
+  rpc('custom_importacoes_recentes', {p_token: token()})
+    .catch(()=>null)
+    .then(data=>{
       document.getElementById('impHist').innerHTML = (data && data.length)
         ? data.map(x=>`<tr><td>${fmtDataHora(x.criado_em)}</td><td>${esc(nomeDe(x.usuario_id))}</td>
             <td class="n">${x.total_linhas}</td><td class="n">${x.novos}</td>
@@ -2175,45 +2303,362 @@ function carregarHistImport(){
     });
 }
 
-// ── REALTIME ──
-// Item assumido por um some da fila livre do outro na hora, sem recarregar.
-function ligarRealtime(){
-  if(_rtChannel) return;
+// ── PENDÊNCIAS DA ENGENHARIA ──
+// Lê a mensagem "Copiar para WhatsApp" do Cadastro → serviços (Painel Pontta, telas/cadastro.html,
+// textoWhats). Cada "•" é uma pendência; o título da seção diz o tipo. Se o formato de lá mudar,
+// ajustar PEND_TITULOS e lerMensagemPend.
+const PEND_TIPOS = {
+  nome_op:     ['Nome da OP', 'grave'],
+  opcao:       ['Opção sem componente', 'grave'],
+  tek:         ['Faltam setores (Tek)', 'grave'],
+  montagem:    ['Montagem e embalagem', 'grave'],
+  sem_servico: ['Componente sem serviço', 'aviso'],
+  ordem:       ['Ordem dos serviços', 'aviso'],
+};
+const PEND_TITULOS = [
+  [/^Nome da OP/i, 'nome_op'],
+  [/^Op[çc][ãa]o que n[ãa]o gera componente/i, 'opcao'],
+  [/^Faltam setores/i, 'tek'],
+  [/^Montagem e embalagem/i, 'montagem'],
+  [/^Componente sem servi[çc]o/i, 'sem_servico'],
+  [/^Ordem dos servi[çc]os/i, 'ordem'],
+];
+let pendencias = [], pendPrevia = null, pendFiltroSt = 'aberta';
+
+const pendLimpa = s => String(s||'').replace(/[*`]/g, '').trim();
+// Mesma chave que o banco usa (custom_pendencias_importar): tipo + descrição sem espaços repetidos
+const pendChave = (tipo, desc) => tipo + '|' + desc.trim().replace(/\s+/g, ' ').toLowerCase();
+
+function lerMensagemPend(txt){
+  const linhas = String(txt||'').replace(/\r/g, '').split('\n');
+  let quando = null, tipo = null, atual = null;
+  const itens = [];
+  const fecha = ()=>{
+    if(!atual) return;
+    atual.descricao = atual.linhas.join('\n');
+    delete atual.linhas;
+    itens.push(atual); atual = null;
+  };
+  for(const bruta of linhas){
+    const l = bruta.replace(/\s+$/, '');
+    // cabeçalho: *Conferência da engenharia (20/10 17:05)* — sem ano: o mais recente que não está no futuro
+    const cab = l.match(/Confer[êe]ncia da engenharia \((\d{2})\/(\d{2}) (\d{2}):(\d{2})\)/);
+    if(cab){
+      const hoje = new Date();
+      const d = new Date(hoje.getFullYear(), +cab[2]-1, +cab[1], +cab[3], +cab[4]);
+      if(d - hoje > 86400000) d.setFullYear(d.getFullYear()-1);
+      quando = d; continue;
+    }
+    // título de seção: *⛔ Opção que não gera componente (2)*
+    const tit = l.match(/^\*(.+)\*$/);
+    if(tit && !/^\s*•/.test(l)){
+      fecha();
+      const t = tit[1].replace(/^[^A-Za-zÀ-ú]+/, '');
+      const m = PEND_TITULOS.find(([re])=>re.test(t));
+      tipo = m ? m[1] : null;            // "Não deu para ler" e afins não viram pendência
+      continue;
+    }
+    if(!tipo) continue;
+    if(/^\s*•/.test(l)){
+      fecha();
+      const corpo = l.replace(/^\s*•\s*/, '');
+      const codigo = (corpo.match(/`([^`]+)`/) || [])[1] || null;
+      let produto = pendLimpa(corpo.split(/ \(`|: /)[0]);
+      let pedidos = [];
+      if(tipo === 'tek'){                // • PV-ALU-1402 – PRODUTO (resto): falta *X*
+        const m = corpo.match(/^(\S+)\s+–\s+(.+?):\s/);
+        if(m){ pedidos = [pendLimpa(m[1])]; produto = pendLimpa(m[2]); }
+      }
+      // no Tek o item é o próprio produto da linha
+      atual = {tipo, codigo, produto, pedidos, itens: tipo==='tek' && produto ? [produto] : [], linhas: [pendLimpa(corpo)]};
+      continue;
+    }
+    if(atual && /^\s{2,}\S/.test(l)){   // continuação: "   Pedidos: ...", "   Item: ..." ou "   Está: / Certo:"
+      const t = l.trim();
+      const pm = t.match(/^Pedidos:\s*(.+)$/);
+      const im = t.match(/^Item:\s*(.+)$/);
+      if(pm) atual.pedidos = pm[1].split(',').map(pendLimpa).filter(Boolean);
+      else if(im) atual.itens = im[1].split(',').map(pendLimpa).filter(Boolean);
+      else atual.linhas.push(pendLimpa(t));
+      continue;
+    }
+    if(!l.trim()) fecha();
+  }
+  fecha();
+  return {quando, itens};
+}
+
+function pendDesc(p){
+  // destaca o código do produto dentro do texto
+  let h = esc(p.descricao);
+  if(p.codigo) h = h.split(esc(p.codigo)).join(`<span class="cod">${esc(p.codigo)}</span>`);
+  return `<div class="pend-desc">${h}</div>`;
+}
+const pendTipoTag = t => { const [rot, cl] = PEND_TIPOS[t] || [t, 'aviso']; return `<span class="ptipo ${cl}">${esc(rot)}</span>`; };
+const pendPedidos = v => (v && v.length) ? `<div class="pend-ped">${v.map(esc).join('<br>')}</div>` : '<span class="meta">—</span>';
+const pendItens = x => (x.itens && x.itens.length) ? `<div class="meta">Item: ${x.itens.map(esc).join(', ')}</div>` : '';
+// Grupo = item do pedido (produto vendido). Conferências antigas, sem a linha "Item:", ficam no próprio produto.
+const pendGrupos = p => (p.itens && p.itens.length) ? p.itens : [p.produto || '(sem item)'];
+let pendFechados = new Set();
+
+async function carregarPend(){
+  try {
+    pendencias = await rpc('custom_pendencias_listar', {p_token: token()}) || [];
+    renderPend();
+  } catch(e){
+    if(sessaoCaiu(e)) return;
+    showToast('Não carreguei as pendências: ' + msgErro(e), 'error');
+  }
+}
+
+function renderPend(){
+  const ab = pendencias.filter(p=>p.status==='aberta');
+  const co = pendencias.filter(p=>p.status==='corrigida');
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const semana = new Date(hoje); semana.setDate(semana.getDate()-semana.getDay());
+  const coHoje = co.filter(p=>new Date(p.corrigido_em) >= hoje).length;
+  const coSem  = co.filter(p=>new Date(p.corrigido_em) >= semana).length;
+  const graves = ab.filter(p=>(PEND_TIPOS[p.tipo]||[])[1]==='grave').length;
+  const kpi = (rot, v, cl, sub) => `<div class="anl-kpi"><div class="anl-kpi-label">${rot}</div>
+    <div class="anl-kpi-val ${cl}">${v}</div><div class="anl-kpi-sub">${sub}</div></div>`;
+  document.getElementById('pendKpis').innerHTML =
+      kpi('Abertas', ab.length, 'yellow', `${graves} impedem a OP (⛔)`)
+    + kpi('Corrigidas hoje', coHoje, 'green', 'marcadas desde 00:00')
+    + kpi('Corrigidas na semana', coSem, 'green', 'desde domingo')
+    + kpi('Já voltaram', pendencias.filter(p=>p.reaberturas>0).length, 'accent', 'reapareceram depois de corrigidas');
+  document.getElementById('qPendTab').textContent = ab.length || '';
+  document.getElementById('qPendAb').textContent = ab.length;
+  document.getElementById('qPendCo').textContent = co.length;
+  document.getElementById('qPendTo').textContent = pendencias.length;
+
+  const sel = document.getElementById('pendTipo'), antes = sel.value;
+  sel.innerHTML = '<option value="">Todos os tipos</option>'
+    + Object.entries(PEND_TIPOS).map(([k,[rot]])=>`<option value="${k}">${esc(rot)}</option>`).join('');
+  sel.value = antes;
+
+  const q = (document.getElementById('pendBusca').value || '').trim().toLowerCase();
+  const lista = pendencias.filter(p =>
+       (!pendFiltroSt || p.status === pendFiltroSt)
+    && (!sel.value || p.tipo === sel.value)
+    && (!q || [p.descricao, p.produto, p.codigo, (p.pedidos||[]).join(' ')].join(' ').toLowerCase().includes(q)));
+
+  document.getElementById('pendCount').innerHTML = `<b>${lista.length}</b> / ${pendencias.length}`;
+  document.getElementById('pendVazio').style.display = lista.length ? 'none' : '';
+  // agrupa por item; uma pendência que aparece em dois itens fica nos dois grupos
+  const grupos = new Map();
+  lista.forEach(p => pendGrupos(p).forEach(g => {
+    if(!grupos.has(g)) grupos.set(g, []);
+    grupos.get(g).push(p);
+  }));
+  const ordenados = [...grupos.entries()].sort((a,b)=>
+    b[1].filter(p=>p.status==='aberta').length - a[1].filter(p=>p.status==='aberta').length || a[0].localeCompare(b[0], 'pt-BR'));
+  document.getElementById('pendBody').innerHTML = ordenados.map(([g, ps], gi)=>{
+    const abertas = ps.filter(p=>p.status==='aberta');
+    const pedidos = [...new Set(ps.flatMap(p=>p.pedidos||[]))];
+    const fechado = pendFechados.has(g);
+    const cab = `<tr class="pend-grupo" data-g="${gi}">
+      <td colspan="6"><div class="pend-grupo-in">
+        <span class="seta">${fechado ? '▸' : '▾'}</span>
+        <b>${esc(g)}</b>
+        <span class="meta">${abertas.length} aberta${abertas.length===1?'':'s'} · ${ps.length} no total${pedidos.length ? ' · ' + pedidos.map(esc).join(', ') : ''}</span>
+        ${abertas.length ? `<button class="btn-sec" data-todas="${gi}" title="Corrigiu no produto pai? Marca todas as abertas deste item">Marcar o item todo corrigido</button>` : ''}
+      </div></td></tr>`;
+    return cab + (fechado ? '' : ps.map(p=>pendLinha(p)).join(''));
+  }).join('');
+  document.querySelectorAll('#pendBody tr.pend-grupo').forEach(tr=>{
+    tr.onclick = e=>{
+      if(e.target.closest('button')) return;
+      const g = ordenados[+tr.dataset.g][0];
+      if(pendFechados.has(g)) pendFechados.delete(g); else pendFechados.add(g);
+      renderPend();
+    };
+  });
+  document.querySelectorAll('#pendBody button[data-todas]').forEach(b=>{
+    b.onclick = ()=>{
+      const [g, ps] = ordenados[+b.dataset.todas];
+      marcarItemTodo(g, ps.filter(p=>p.status==='aberta').map(p=>p.id), b);
+    };
+  });
+  document.querySelectorAll('#pendBody .pend-obs').forEach(inp=>{
+    inp.onchange = ()=>{
+      const p = pendencias.find(x=>x.id===Number(inp.dataset.id));
+      if(p) marcarPend(p.id, p.status, inp.value);
+    };
+  });
+}
+
+function pendLinha(p){
+    const corrigida = p.status === 'corrigida';
+    const situacao = corrigida
+      ? `<span class="sbadge concluido">Corrigida</span>
+         <div class="meta">${esc(nomeDe(p.corrigido_por))} · ${fmtDataHora(p.corrigido_em)}</div>
+         <button class="btn-sec" onclick="marcarPend(${p.id}, 'aberta')">Reabrir</button>`
+      : `<span class="sbadge liberado">Aberta</span>
+         ${p.reaberturas ? `<div class="meta" style="color:#ff8a80">voltou ${p.reaberturas}×</div>` : ''}
+         <button class="btn-sec" onclick="marcarPend(${p.id}, 'corrigida')">Marcar corrigida</button>`;
+    return `<tr class="${corrigida?'pend-corrigida':''}">
+      <td>${pendTipoTag(p.tipo)}</td>
+      <td>${pendDesc(p)}</td>
+      <td>${pendPedidos(p.pedidos)}</td>
+      <td><span class="meta">${fmtDataHora(p.visto_em)}${p.vezes>1?`<br>${p.vezes} conferências`:''}</span></td>
+      <td><input class="pend-obs" data-id="${p.id}" value="${esc(p.obs||'')}" placeholder="anotar…"></td>
+      <td><div class="pend-acao">${situacao}</div></td>
+    </tr>`;
+}
+
+// Corrigir no produto pai resolve todas as pendências do item: marca todas de uma vez.
+async function marcarItemTodo(g, ids, btn){
+  if(!ids.length) return;
+  if(btn.dataset.armado !== '1'){   // dois cliques: o primeiro arma, o segundo confirma
+    btn.dataset.armado = '1';
+    btn.textContent = `Confirmar ${ids.length}?`;
+    btn.classList.add('btn-armado');
+    setTimeout(()=>{ if(btn.isConnected){ btn.dataset.armado = ''; btn.textContent = 'Marcar o item todo corrigido'; btn.classList.remove('btn-armado'); } }, 4000);
+    return;
+  }
+  try {
+    const r = await rpc('custom_pendencias_marcar_varias', {p_token: token(), p_ids: ids, p_status: 'corrigida'}) || [];
+    r.forEach(n=>{ const i = pendencias.findIndex(p=>p.id===n.id); if(i>=0) pendencias[i] = n; });
+    renderPend();
+    showToast(`${r.length} pendências de ${g} marcadas como corrigidas.`);
+  } catch(e){
+    if(sessaoCaiu(e)) return;
+    showToast('Não salvou: ' + msgErro(e), 'error');
+  }
+}
+
+async function marcarPend(id, status, obs){
+  try {
+    const r = await rpc('custom_pendencia_marcar', {p_token: token(), p_id: id, p_status: status, p_obs: obs ?? null});
+    const i = pendencias.findIndex(p=>p.id===id);
+    if(i>=0) pendencias[i] = r;
+    renderPend();
+    if(obs === undefined) showToast(status==='corrigida' ? 'Pendência marcada como corrigida.' : 'Pendência reaberta.');
+  } catch(e){
+    if(sessaoCaiu(e)) return;
+    showToast('Não salvou: ' + msgErro(e), 'error');
+  }
+}
+
+function analisarPend(){
+  const {quando, itens} = lerMensagemPend(document.getElementById('pendTexto').value);
+  const lido = document.getElementById('pendLido');
+  if(!itens.length){
+    lido.textContent = 'Nenhuma pendência encontrada. Cole a mensagem inteira do "Copiar para WhatsApp".';
+    cancelarPend(true); return;
+  }
+  lido.textContent = quando ? 'Conferência de ' + fmtDataHora(quando) : 'Mensagem sem data: vale a hora de agora.';
+  const ref = quando || new Date();
+  const porChave = new Map(pendencias.map(p=>[p.chave, p]));
+  // a mesma pendência repetida dentro da mensagem conta uma vez só
+  const vistos = new Set();
+  pendPrevia = {quando, itens: itens.filter(x=>{
+    const k = pendChave(x.tipo, x.descricao);
+    if(vistos.has(k)) return false;
+    vistos.add(k); return true;
+  })};
+  let nNovas = 0, nRepete = 0, nReabre = 0;
+  document.getElementById('pendPreviaBody').innerHTML = pendPrevia.itens.map(x=>{
+    const ex = porChave.get(pendChave(x.tipo, x.descricao));
+    let sit;
+    if(!ex){ sit = '<span class="pend-novo">nova</span>'; nNovas++; }
+    else if(ex.status==='corrigida' && ref > new Date(ex.corrigido_em)){ sit = '<span class="pend-reabre">volta a abrir</span>'; nReabre++; }
+    else { sit = `<span class="pend-repete">já ${ex.status==='aberta'?'aberta':'corrigida'}</span>`; nRepete++; }
+    return `<tr><td>${pendTipoTag(x.tipo)}</td><td>${pendDesc(x)}${pendItens(x)}</td><td>${pendPedidos(x.pedidos)}</td><td>${sit}</td></tr>`;
+  }).join('');
+  document.getElementById('pendPreviaResumo').innerHTML =
+    `<b>${pendPrevia.itens.length}</b> pendências · ${nNovas} novas · ${nReabre} voltam a abrir · ${nRepete} já registradas`;
+  document.getElementById('pendPrevia').style.display = '';
+}
+
+function cancelarPend(manterTexto){
+  pendPrevia = null;
+  document.getElementById('pendPrevia').style.display = 'none';
+  if(manterTexto !== true){
+    document.getElementById('pendTexto').value = '';
+    document.getElementById('pendLido').textContent = '';
+  }
+}
+
+async function salvarPend(){
+  if(!pendPrevia) return;
+  const btn = document.getElementById('btnSalvarPend');
+  btn.disabled = true; overlay(true);
+  try {
+    const r = await rpc('custom_pendencias_importar', {
+      p_token: token(),
+      p_conferido_em: pendPrevia.quando ? pendPrevia.quando.toISOString() : null,
+      p_itens: pendPrevia.itens.map(x=>({tipo:x.tipo, codigo:x.codigo, produto:x.produto, descricao:x.descricao, pedidos:x.pedidos, itens:x.itens})),
+    });
+    showToast(`${r.novas} novas, ${r.reabertas} reabertas, ${r.repetidas} já registradas.`);
+    cancelarPend();
+    await carregarPend();
+  } catch(e){
+    if(sessaoCaiu(e)) return;
+    showToast('Não salvou: ' + msgErro(e), 'error');
+  } finally { btn.disabled = false; overlay(false); }
+}
+
+document.querySelectorAll('#tv-pendencias .filter-btn[data-pst]').forEach(b=>{
+  b.onclick = ()=>{
+    document.querySelectorAll('#tv-pendencias .filter-btn[data-pst]').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    pendFiltroSt = b.dataset.pst;
+    renderPend();
+  };
+});
+document.getElementById('pendBusca').addEventListener('input', renderPend);
+document.getElementById('pendTipo').addEventListener('change', renderPend);
+
+// ── SINCRONIA ──
+// Item assumido por um some da fila livre do outro em poucos segundos, sem recarregar.
+// Com as tabelas fechadas o tempo real do Supabase não enxerga nada, então a
+// tela pergunta ao banco o que mudou desde a última vez.
+const SINC_MS = 10000;
+async function sincronizar(){
   const badge = document.getElementById('syncBadge');
-  badge.style.display = '';
-  _rtChannel = sb.channel('cust-produtos')
-    .on('postgres_changes', {event:'*', schema:'public', table:'custom_produtos'}, payload=>{
-      const novo = payload.new;
+  try {
+    // 30 s de folga: pega também gravações que terminaram logo depois da última consulta
+    const desde = new Date(new Date(_desde).getTime() - 30000).toISOString();
+    const r = await rpc('custom_mudancas', {p_token: token(), p_desde: desde});
+    _desde = r.agora;
+    const lista = r.produtos || [];
+    lista.forEach(novo=>{
       if(!novo || !novo.codigo) return;
       const i = produtos.findIndex(p=>p.codigo===novo.codigo);
       if(i>=0) produtos[i] = {...produtos[i], ...novo};
       else if(novo.ativo) produtos.push(novo);
-      renderKpis(); renderFila(); renderPainel();
-      if(itemAberto && itemAberto.codigo===novo.codigo
-         && !document.querySelector('#mBody input:focus, #mBody textarea:focus')){
-        itemAberto = {...itemAberto, ...novo}; desenharItem();
-      }
-    })
-    .subscribe(st=>{
-      const live = st === 'SUBSCRIBED';
-      badge.className = 'sync-badge ' + (live ? 'live' : 'conn');
-      document.getElementById('syncTxt').textContent = live ? 'ao vivo' : 'conectando';
     });
+    if(lista.length){
+      renderKpis(); renderFila(); renderPainel();
+      const aberto = itemAberto && lista.find(x=>x.codigo===itemAberto.codigo);
+      if(aberto && !document.querySelector('#mBody input:focus, #mBody textarea:focus')){
+        itemAberto = {...itemAberto, ...aberto}; desenharItem();
+      }
+    }
+    badge.className = 'sync-badge live';
+    document.getElementById('syncTxt').textContent = 'ao vivo';
+  } catch(e){
+    if(sessaoCaiu(e)){ clearInterval(_sincTimer); return; }
+    badge.className = 'sync-badge conn';
+    document.getElementById('syncTxt').textContent = 'conectando';
+  }
+}
+function ligarSincronia(){
+  if(_sincTimer) return;
+  document.getElementById('syncBadge').style.display = '';
+  _sincTimer = setInterval(sincronizar, SINC_MS);
+  sincronizar();
 }
 
 // Cronômetro da coluna Tempo: redesenha de minuto em minuto o que está correndo.
 setInterval(()=>{ if(user && produtos.length) renderFila(); }, 60000);
 
 // ── SESSÃO SALVA ──
-(async function boot(){
-  let salvo = null;
-  try { salvo = localStorage.getItem('cust_uid'); } catch(e) {}
-  if(!salvo) return;
-  try {
-    const {data} = await sb.from('custom_usuarios').select('*').eq('id', Number(salvo)).eq('ativo', true);
-    if(data && data.length){ user = data[0]; abrirApp(); }
-    else try { localStorage.removeItem('cust_uid'); } catch(e) {}
-  } catch(e) {}
+// Quem já entrou no sistema de tickets (ou aqui) cai direto na aplicação.
+(function boot(){
+  try { localStorage.removeItem('cust_uid'); } catch(e) {}   // login antigo, não vale mais
+  if(token()) iniciar();
 })();
 </script>
 </body>
