@@ -698,6 +698,8 @@ tr.pend-grupo:hover td{background:rgba(192,146,42,.06)}
         <input class="filter-search" id="pendBusca" placeholder="Buscar por produto, código, pedido ou texto…">
         <select class="filter-select" id="pendTipo"><option value="">Todos os tipos</option></select>
         <span class="res-count" id="pendCount"></span>
+        <button class="btn-sec" style="padding:6px 12px" onclick="pendTodos(false)" title="Abre todos os itens (fica guardado neste PC)">▾ Abrir todos</button>
+        <button class="btn-sec" style="padding:6px 12px" onclick="pendTodos(true)" title="Fecha todos os itens (fica guardado neste PC)">▸ Fechar todos</button>
         <button class="btn-sec" id="pendExportar" style="padding:6px 14px" title="Baixa uma planilha com os pedidos da lista filtrada e copia os números. Em Corrigidas, só os pedidos sem nenhuma pendência aberta.">Exportar pedidos</button>
       </div>
       <div class="admin-table-wrap">
@@ -781,7 +783,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // Trocar a cada deploy — e o que permite uma aba antiga se reconhecer
 // como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.10.23-exportar-pedidos';
+const APP_VERSION = '2026.10.23-abrir-fechar-todos';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -2412,7 +2414,23 @@ const pendPedidos = v => (v && v.length) ? `<div class="pend-ped">${v.map(esc).j
 const pendItens = x => (x.itens && x.itens.length) ? `<div class="meta">Item: ${x.itens.map(esc).join(', ')}</div>` : '';
 // Grupo = item do pedido (produto vendido). Conferências antigas, sem a linha "Item:", ficam no próprio produto.
 const pendGrupos = p => (p.itens && p.itens.length) ? p.itens : [p.produto || '(sem item)'];
-let pendFechados = new Set();
+// Grupos abertos/fechados ficam guardados neste PC (sobrevivem ao F5).
+// "padrão" vale para todo item, inclusive os que aparecerem depois;
+// "trocados" são os itens que a pessoa abriu/fechou um a um, contra o padrão.
+const PEND_GRUPOS_KEY = 'cust_pend_grupos';
+let pendPadraoFechado = false, pendTrocados = new Set();
+try {
+  const g = JSON.parse(localStorage.getItem(PEND_GRUPOS_KEY) || 'null');
+  if(g){ pendPadraoFechado = !!g.fechado; pendTrocados = new Set(g.trocados || []); }
+} catch(e) {}
+function salvarPendGrupos(){
+  try { localStorage.setItem(PEND_GRUPOS_KEY, JSON.stringify({fechado: pendPadraoFechado, trocados: [...pendTrocados]})); } catch(e) {}
+}
+const pendFechado = g => pendPadraoFechado !== pendTrocados.has(g);
+function pendTodos(fechar){
+  pendPadraoFechado = fechar; pendTrocados.clear();
+  salvarPendGrupos(); renderPend();
+}
 
 async function carregarPend(){
   try {
@@ -2469,7 +2487,7 @@ function renderPend(){
   document.getElementById('pendBody').innerHTML = ordenados.map(([g, ps], gi)=>{
     const abertas = ps.filter(p=>p.status==='aberta');
     const pedidos = [...new Set(ps.flatMap(p=>p.pedidos||[]))];
-    const fechado = pendFechados.has(g);
+    const fechado = pendFechado(g);
     const cab = `<tr class="pend-grupo" data-g="${gi}">
       <td colspan="6"><div class="pend-grupo-in">
         <span class="seta">${fechado ? '▸' : '▾'}</span>
@@ -2483,7 +2501,8 @@ function renderPend(){
     tr.onclick = e=>{
       if(e.target.closest('button')) return;
       const g = ordenados[+tr.dataset.g][0];
-      if(pendFechados.has(g)) pendFechados.delete(g); else pendFechados.add(g);
+      if(pendTrocados.has(g)) pendTrocados.delete(g); else pendTrocados.add(g);
+      salvarPendGrupos();
       renderPend();
     };
   });
