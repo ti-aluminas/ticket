@@ -698,6 +698,7 @@ tr.pend-grupo:hover td{background:rgba(192,146,42,.06)}
         <input class="filter-search" id="pendBusca" placeholder="Buscar por produto, código, pedido ou texto…">
         <select class="filter-select" id="pendTipo"><option value="">Todos os tipos</option></select>
         <span class="res-count" id="pendCount"></span>
+        <button class="btn-sec" id="pendExportar" style="padding:6px 14px" title="Baixa uma planilha com os pedidos da lista filtrada e copia os números. Em Corrigidas, só os pedidos sem nenhuma pendência aberta.">Exportar pedidos</button>
       </div>
       <div class="admin-table-wrap">
         <table class="admin-table">
@@ -780,7 +781,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // Trocar a cada deploy — e o que permite uma aba antiga se reconhecer
 // como desatualizada em vez de gravar dados pela metade.
-const APP_VERSION = '2026.10.21-seguranca';
+const APP_VERSION = '2026.10.23-exportar-pedidos';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -2331,7 +2332,7 @@ const PEND_TITULOS = [
   [/^Componente sem servi[çc]o/i, 'sem_servico'],
   [/^Ordem dos servi[çc]os/i, 'ordem'],
 ];
-let pendencias = [], pendPrevia = null, pendFiltroSt = 'aberta';
+let pendencias = [], pendPrevia = null, pendFiltroSt = 'aberta', pendListaAtual = [];
 
 const pendLimpa = s => String(s||'').replace(/[*`]/g, '').trim();
 // Mesma chave que o banco usa (custom_pendencias_importar): tipo + descrição sem espaços repetidos
@@ -2454,6 +2455,7 @@ function renderPend(){
     && (!sel.value || p.tipo === sel.value)
     && (!q || [p.descricao, p.produto, p.codigo, (p.pedidos||[]).join(' ')].join(' ').toLowerCase().includes(q)));
 
+  pendListaAtual = lista;
   document.getElementById('pendCount').innerHTML = `<b>${lista.length}</b> / ${pendencias.length}`;
   document.getElementById('pendVazio').style.display = lista.length ? 'none' : '';
   // agrupa por item; uma pendência que aparece em dois itens fica nos dois grupos
@@ -2625,6 +2627,43 @@ document.querySelectorAll('#tv-pendencias .filter-btn[data-pst]').forEach(b=>{
 });
 document.getElementById('pendBusca').addEventListener('input', renderPend);
 document.getElementById('pendTipo').addEventListener('change', renderPend);
+
+// Exporta os pedidos da lista como está filtrada na tela (situação, tipo e busca):
+// baixa um .csv que o Excel abre direto e copia os números para colar onde quiser.
+// Em "Corrigidas" saem só os pedidos finalizados: sem nenhuma pendência aberta.
+document.getElementById('pendExportar').onclick = async ()=>{
+  const comAberta = new Set(pendencias.filter(p=>p.status==='aberta').flatMap(p=>p.pedidos||[]));
+  const soFinalizados = pendFiltroSt === 'corrigida';
+  const porPedido = new Map();
+  pendListaAtual.forEach(p => (p.pedidos||[]).forEach(ped=>{
+    if(soFinalizados && comAberta.has(ped)) return;
+    if(!porPedido.has(ped)) porPedido.set(ped, {ab:0, co:0, prod:new Set()});
+    const r = porPedido.get(ped);
+    if(p.status==='aberta') r.ab++; else r.co++;
+    pendGrupos(p).forEach(g=>r.prod.add(g));
+  }));
+  if(!porPedido.size) return showToast(soFinalizados ? 'Nenhum pedido finalizado (todos ainda têm pendência aberta)' : 'Nenhum pedido na lista filtrada', 'error');
+  const num = s => Number(String(s).replace(/\D/g,'')) || 0;
+  const peds = [...porPedido.keys()].sort((a,b)=>num(a)-num(b) || a.localeCompare(b));
+
+  const cel = v => /[;"\n]/.test(v) ? '"' + String(v).replace(/"/g,'""') + '"' : v;
+  const linhas = ['Pedido;Abertas;Corrigidas;Itens']
+    .concat(peds.map(ped=>{
+      const r = porPedido.get(ped);
+      return [ped, r.ab, r.co, cel([...r.prod].sort((a,b)=>a.localeCompare(b,'pt-BR')).join(' | '))].join(';');
+    }));
+  const sit = {aberta:'abertas', corrigida:'finalizados'}[pendFiltroSt] || 'todas';
+  const blob = new Blob(['﻿' + linhas.join('\r\n')], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `pedidos-pendencias-${sit}-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+
+  let copiou = false;
+  try { await navigator.clipboard.writeText(peds.join('\n')); copiou = true; } catch(e) {}
+  showToast(`${peds.length} pedido${peds.length===1?'':'s'} exportado${peds.length===1?'':'s'}${copiou ? ' e copiado' + (peds.length===1?'':'s') : ''}`);
+};
 
 // ── SINCRONIA ──
 // Item assumido por um some da fila livre do outro em poucos segundos, sem recarregar.
